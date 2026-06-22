@@ -72,8 +72,9 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Create `../Archive/Snapshots/Lead Studio V2/` and matching V2 archive.
 - [x] Remove old versioned Apps Script deployments.
 - [x] Confirm remaining Apps Script deployments are stable V2 plus read-only `@HEAD`.
-- [ ] Initialize git repository on `main`.
-- [ ] Push safe V2 project files to `https://github.com/MichoTronic/LeadStudio.git`.
+- [x] Initialize git repository on `main`.
+- [x] Create local V2 commit `c17001e` (`Prepare Lead Studio V2`).
+- [ ] Push safe V2 project files to `https://github.com/MichoTronic/LeadStudio.git` after GitHub HTTPS credential/token is available.
 - [ ] Add a lightweight local lint or syntax-check path for Apps Script files if future work becomes regular.
 - [ ] Keep rollback checkpoints only for meaningful deployments; archive or remove duplicate local copies after a stable deployment is confirmed.
 - [ ] Update `../PROJECT_STATUS.md` and this checklist after every meaningful code, config, workflow, or folder-structure change.
