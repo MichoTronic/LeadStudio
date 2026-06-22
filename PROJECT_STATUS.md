@@ -116,7 +116,7 @@ getDailyRefreshLeadsTriggerStatus() => triggerCount: 1
 
 - Stable deployment is version 54.
 - V2 remains available as git tag `v2-stable`.
-- V3 is tagged as `v3-stable`; final counter fixes are included after the tag is moved to the latest commit.
+- V3 is tagged as `v3-stable`; final counter fixes are included.
 - `clasp run runLeadStudioSmokeTests` is blocked by the local Apps Script execution permission context, so use Apps Script editor or Settings > Run Smoke Tests for runtime validation.
 
 ## Documentation Rules
