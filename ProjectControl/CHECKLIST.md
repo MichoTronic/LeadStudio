@@ -54,6 +54,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Lock visible table column widths so filtered rows do not resize the table.
 - [x] Add Email Date range filtering with Last 7 days, Last 30 days, and custom from/to dates.
 - [x] Make `Clear filters` reset dropdown, status, and date filters.
+- [x] Rename total dashboard metric label from `Leads` to `Contacts`.
 - [ ] Review table density and column order after the first real user feedback round.
 - [ ] Add clearer empty/error states for missing Jira credentials, Gmail delegation failure, and onboarding sheet access failure.
 - [ ] Verify CSV/XLSX export output for filtered rows, Jira links, and special characters.
@@ -64,9 +65,9 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Add a scheduled Refresh Leads wrapper with overlap protection.
 - [x] Add install/status/remove helpers for the daily 06:00 project-time refresh trigger.
 - [x] Add visible Apps Script execution-log output for daily refresh trigger install/status/remove helpers.
-- [ ] Owner authorization required: run `installDailyRefreshLeadsTrigger()` once successfully.
-- [ ] Confirm the daily refresh trigger is installed and visible in Apps Script triggers after deployment.
-- [ ] Confirm `getDailyRefreshLeadsTriggerStatus()` reports `triggerCount: 1`.
+- [x] Owner authorization required: run `installDailyRefreshLeadsTrigger()` once successfully.
+- [x] Confirm the daily refresh trigger is installed and visible in Apps Script triggers after deployment.
+- [x] Confirm `getDailyRefreshLeadsTriggerStatus()` reports `triggerCount: 1`.
 - [x] Run the full `../Phase_Completion_Review_Pack/` for V2.
 - [x] Save completed V2 completion-review reports in `../Reports/`.
 - [x] Move remaining V2 action items into this checklist.
