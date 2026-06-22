@@ -78,7 +78,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Deploy V3 as Apps Script version 54.
 - [x] Create `../Archive/Snapshots/Lead Studio V3/` and matching V3 archive.
 - [ ] Run `runLeadStudioSmokeTests()` from Apps Script editor or Settings after V3 deployment.
-- [ ] Tag V3 rollback state as `v3-stable` after deployment/snapshot commit.
+- [x] Tag V3 rollback state as `v3-stable`.
 - [x] Run the full `../Phase_Completion_Review_Pack/` for V2.
 - [x] Save completed V2 completion-review reports in `../Reports/`.
 - [x] Move remaining V2 action items into this checklist.
