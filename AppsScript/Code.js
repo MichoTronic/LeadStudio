@@ -51,6 +51,14 @@ function refreshEmailMatchesWithOptions_(options) {
   return loadEmailMatchesFromSheet_();
 }
 
+function getOperationsStatusForUi() {
+  return getLeadStudioOperationsStatus_();
+}
+
+function runLeadStudioSmokeTestsForUi() {
+  return runLeadStudioSmokeTests();
+}
+
 function scheduledRefreshLeads() {
   const lock = LockService.getScriptLock();
 
@@ -132,6 +140,13 @@ function handleSetupRequest_(e) {
     });
   }
 
+  if (!areSetupEndpointsEnabled_()) {
+    return buildJsonResponse_({
+      ok: false,
+      error: 'Setup URL endpoints are disabled. Run setup functions directly from the Apps Script editor or set LEAD_STUDIO_SETUP_ENDPOINTS_ENABLED=true temporarily.'
+    });
+  }
+
   if (action === 'movedatabase') {
     return buildJsonResponse_(moveLeadStudioDatabaseToProjectFolder());
   }
@@ -171,6 +186,13 @@ function handleTestRequest_(e) {
     });
   }
 
+  if (!areTestEndpointsEnabled_()) {
+    return buildJsonResponse_({
+      ok: false,
+      error: 'Test URL endpoints are disabled. Use Settings diagnostics or set LEAD_STUDIO_TEST_ENDPOINTS_ENABLED=true temporarily.'
+    });
+  }
+
   if (action === 'newcontactgmail') {
     return buildJsonResponse_(testLatestNewContactEmail_());
   }
@@ -205,6 +227,14 @@ function refreshEmailMatchesForImportEndpoint_() {
     mailbox: TRACKER_CONFIG.gmail.mailboxUser,
     maxResults: TRACKER_CONFIG.gmail.maxResults
   };
+}
+
+function areSetupEndpointsEnabled_() {
+  return normalizeValue_(PropertiesService.getScriptProperties().getProperty('LEAD_STUDIO_SETUP_ENDPOINTS_ENABLED')).toLowerCase() === 'true';
+}
+
+function areTestEndpointsEnabled_() {
+  return normalizeValue_(PropertiesService.getScriptProperties().getProperty('LEAD_STUDIO_TEST_ENDPOINTS_ENABLED')).toLowerCase() === 'true';
 }
 
 function deepScanEmailMatchesForImportEndpoint_() {

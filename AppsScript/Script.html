@@ -47,6 +47,7 @@
         state.options.interestedIn = payload.config && payload.config.options ? payload.config.options.interestedIn || [] : [];
         renderPropertyStatus(payload.propertyStatus || []);
         bindEvents();
+        loadOperationsStatus();
         loadEmailMatches();
       })
       .withFailureHandler(function(error) {
@@ -61,6 +62,8 @@
     document.getElementById('gmail-access-button').addEventListener('click', testGmailAccess);
     document.getElementById('gmail-test-button').addEventListener('click', testNewContactEmail);
     document.getElementById('service-account-button').addEventListener('click', showServiceAccountInfo);
+    document.getElementById('smoke-tests-button').addEventListener('click', runSmokeTests);
+    document.getElementById('operations-refresh-button').addEventListener('click', loadOperationsStatus);
     document.getElementById('refresh-button').addEventListener('click', refreshEmailMatches);
     document.getElementById('deep-scan-button').addEventListener('click', deepScanEmailMatches);
     document.getElementById('jira-refresh-all-button').addEventListener('click', refreshAllJiraMatches);
@@ -391,6 +394,23 @@
       .getServiceAccountInfoForSetupUi();
   }
 
+  function runSmokeTests() {
+    setStatus('Running smoke tests...');
+    setGmailTestOutput('Running Lead Studio smoke tests...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        setGmailTestOutput(JSON.stringify(result, null, 2));
+        setStatus('Smoke tests passed: ' + (result.passed || 0) + ' checks.', 'success');
+      })
+      .withFailureHandler(function(error) {
+        const message = getErrorMessage(error, 'Smoke tests failed.');
+        setGmailTestOutput(message);
+        setStatus(message, 'error');
+      })
+      .runLeadStudioSmokeTestsForUi();
+  }
+
   function testNewContactEmail() {
     setStatus('Testing latest New Contact email...');
     setGmailTestOutput('Running New Contact email test...');
@@ -440,6 +460,77 @@
       row.appendChild(status);
       container.appendChild(row);
     });
+  }
+
+  function loadOperationsStatus() {
+    const container = document.getElementById('operations-status');
+
+    if (container) {
+      container.innerHTML = '<div class="property-item"><span>Operations</span><strong>Loading</strong></div>';
+    }
+
+    google.script.run
+      .withSuccessHandler(renderOperationsStatus)
+      .withFailureHandler(function(error) {
+        renderOperationsStatus({
+          ok: false,
+          error: getErrorMessage(error, 'Unable to load operations status.')
+        });
+      })
+      .getOperationsStatusForUi();
+  }
+
+  function renderOperationsStatus(status) {
+    const container = document.getElementById('operations-status');
+    const payload = status || {};
+    const triggerStatus = payload.triggerStatus || {};
+    const latestScheduledEvent = payload.latestScheduledEvent || null;
+    const latestTriggerEvent = payload.latestTriggerEvent || null;
+
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = '';
+
+    if (!payload.ok) {
+      appendOperationsStatusRow(container, 'Operations', payload.error || 'Unavailable', false);
+      return;
+    }
+
+    appendOperationsStatusRow(container, 'Daily trigger', String(triggerStatus.triggerCount || 0), Number(triggerStatus.triggerCount || 0) === 1);
+    appendOperationsStatusRow(container, 'Timezone', triggerStatus.timezone || payload.timezone || '-');
+    appendOperationsStatusRow(container, 'Last scheduled run', formatOperationsEvent(latestScheduledEvent), latestScheduledEvent && latestScheduledEvent.eventName !== 'SCHEDULED_REFRESH_FAILED');
+    appendOperationsStatusRow(container, 'Last trigger change', formatOperationsEvent(latestTriggerEvent));
+    appendOperationsStatusRow(container, 'Checked at', payload.generatedAt || '-');
+  }
+
+  function appendOperationsStatusRow(container, label, value, ok) {
+    const row = document.createElement('div');
+    const name = document.createElement('span');
+    const status = document.createElement('strong');
+
+    row.className = 'property-item';
+    name.textContent = label;
+    status.textContent = value || '-';
+
+    if (ok === true) {
+      status.className = 'is-ok';
+    } else if (ok === false) {
+      status.className = 'is-bad';
+    }
+
+    row.appendChild(name);
+    row.appendChild(status);
+    container.appendChild(row);
+  }
+
+  function formatOperationsEvent(event) {
+    if (!event) {
+      return 'No event yet';
+    }
+
+    return [event.timestamp, event.eventName].filter(Boolean).join(' - ');
   }
 
   function renderTable() {
@@ -963,14 +1054,6 @@
 
   function isSortableHeader(header) {
     return header === 'Email Date' || header === 'Company Name';
-  }
-
-  function getSortGlyph(header) {
-    if (state.sort.header !== header) {
-      return ' ↕';
-    }
-
-    return state.sort.direction === 'asc' ? ' ↑' : ' ↓';
   }
 
   function toggleSort(header) {

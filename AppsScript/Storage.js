@@ -558,3 +558,58 @@ function appendDebugLog_(eventName, functionName, message, details) {
     typeof details === 'string' ? details : JSON.stringify(details || {})
   ]);
 }
+
+function getLatestDebugLogEvents_(eventNames, limit) {
+  const sheet = getTrackerSpreadsheet_().getSheetByName(TRACKER_CONFIG.sheets.debugLog);
+
+  if (!sheet) {
+    return [];
+  }
+
+  const requestedEvents = (eventNames || []).reduce(function(output, eventName) {
+    const key = normalizeValue_(eventName);
+
+    if (key) {
+      output[key] = true;
+    }
+
+    return output;
+  }, {});
+  const maxRows = Math.max(1, Number(limit) || 1);
+  const rowCount = sheet.getLastRow();
+  const columnCount = Math.max(5, sheet.getLastColumn());
+  const output = [];
+
+  if (!rowCount) {
+    return output;
+  }
+
+  const values = sheet.getRange(1, 1, rowCount, columnCount).getValues();
+
+  for (let index = values.length - 1; index >= 0 && output.length < maxRows; index -= 1) {
+    const row = values[index] || [];
+    const eventName = normalizeValue_(row[1]);
+
+    if (!eventName || (Object.keys(requestedEvents).length && !requestedEvents[eventName])) {
+      continue;
+    }
+
+    output.push({
+      timestamp: formatDebugLogTimestamp_(row[0]),
+      eventName: eventName,
+      functionName: normalizeValue_(row[2]),
+      message: normalizeValue_(row[3]),
+      details: normalizeValue_(row[4])
+    });
+  }
+
+  return output;
+}
+
+function formatDebugLogTimestamp_(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  }
+
+  return normalizeValue_(value);
+}

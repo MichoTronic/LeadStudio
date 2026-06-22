@@ -28,6 +28,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [ ] Confirm `DocumentationArchive/NOTES.md` remains excluded from `clasp` pushes and external sharing.
 - [ ] Review `appsscript.json` web app access and execution API settings before broader team use.
 - [ ] Document who owns the Gmail service-account JSON file and who can rotate it.
+- [x] Disable setup/test URL endpoints by default behind explicit Script Properties.
 
 ## Gmail Lead Parsing
 
@@ -55,6 +56,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Add Email Date range filtering with Last 7 days, Last 30 days, and custom from/to dates.
 - [x] Make `Clear filters` reset dropdown, status, and date filters.
 - [x] Rename total dashboard metric label from `Leads` to `Contacts`.
+- [x] Add Settings Operations status for daily trigger count and latest scheduled run.
+- [x] Add Settings `Run Smoke Tests` action.
 - [ ] Review table density and column order after the first real user feedback round.
 - [ ] Add clearer empty/error states for missing Jira credentials, Gmail delegation failure, and onboarding sheet access failure.
 - [ ] Verify CSV/XLSX export output for filtered rows, Jira links, and special characters.
@@ -68,6 +71,14 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Owner authorization required: run `installDailyRefreshLeadsTrigger()` once successfully.
 - [x] Confirm the daily refresh trigger is installed and visible in Apps Script triggers after deployment.
 - [x] Confirm `getDailyRefreshLeadsTriggerStatus()` reports `triggerCount: 1`.
+- [x] Tag V2 rollback state as `v2-stable`.
+- [x] Create `../Archive/Snapshots/Lead Studio V2 Stable/` before V3 changes.
+- [x] Add Apps Script smoke tests for parser formats, Jira lifecycle mapping, date range boundaries, and export row shaping.
+- [x] Remove duplicate shadowed sort-glyph helper from `Script.html`.
+- [x] Deploy V3 as Apps Script version 54.
+- [x] Create `../Archive/Snapshots/Lead Studio V3/` and matching V3 archive.
+- [ ] Run `runLeadStudioSmokeTests()` from Apps Script editor or Settings after V3 deployment.
+- [ ] Tag V3 rollback state as `v3-stable` after deployment/snapshot commit.
 - [x] Run the full `../Phase_Completion_Review_Pack/` for V2.
 - [x] Save completed V2 completion-review reports in `../Reports/`.
 - [x] Move remaining V2 action items into this checklist.

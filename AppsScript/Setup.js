@@ -48,7 +48,7 @@ function installDailyRefreshLeadsTrigger() {
     timezone: Session.getScriptTimeZone()
   });
 
-  const status = getDailyRefreshLeadsTriggerStatus();
+  const status = buildDailyRefreshLeadsTriggerStatus_();
   Logger.log(JSON.stringify(status, null, 2));
 
   return status;
@@ -83,11 +83,19 @@ function removeDailyRefreshLeadsTrigger() {
 }
 
 function getDailyRefreshLeadsTriggerStatus() {
+  const status = buildDailyRefreshLeadsTriggerStatus_();
+
+  Logger.log(JSON.stringify(status, null, 2));
+
+  return status;
+}
+
+function buildDailyRefreshLeadsTriggerStatus_() {
   const triggers = ScriptApp.getProjectTriggers().filter(function(trigger) {
     return trigger.getHandlerFunction() === 'scheduledRefreshLeads';
   });
 
-  const status = {
+  return {
     ok: true,
     timezone: Session.getScriptTimeZone(),
     triggerCount: triggers.length,
@@ -100,8 +108,27 @@ function getDailyRefreshLeadsTriggerStatus() {
       };
     })
   };
+}
 
-  Logger.log(JSON.stringify(status, null, 2));
+function getLeadStudioOperationsStatus_() {
+  const triggerStatus = buildDailyRefreshLeadsTriggerStatus_();
+  const latestScheduledEvents = getLatestDebugLogEvents_([
+    'SCHEDULED_REFRESH_COMPLETE',
+    'SCHEDULED_REFRESH_FAILED',
+    'SCHEDULED_REFRESH_SKIPPED'
+  ], 5);
+  const latestTriggerEvents = getLatestDebugLogEvents_([
+    'DAILY_REFRESH_TRIGGER_INSTALLED',
+    'DAILY_REFRESH_TRIGGER_REMOVED'
+  ], 5);
 
-  return status;
+  return {
+    ok: true,
+    generatedAt: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
+    triggerStatus: triggerStatus,
+    latestScheduledEvent: latestScheduledEvents[0] || null,
+    latestScheduledEvents: latestScheduledEvents,
+    latestTriggerEvent: latestTriggerEvents[0] || null,
+    latestTriggerEvents: latestTriggerEvents
+  };
 }
