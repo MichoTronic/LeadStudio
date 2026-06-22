@@ -87,6 +87,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Run the full `../Phase_Completion_Review_Pack/` for V3.
 - [x] Save completed V3 completion-review reports in `../Reports/`.
 - [x] Move remaining V3 action items into this checklist.
+- [x] Declare V3 as the current viable/stable Lead Studio baseline.
 - [x] Save completed V2 completion-review reports in `../Reports/`.
 - [x] Move remaining V2 action items into this checklist.
 - [x] Create `../Archive/Snapshots/Lead Studio V2/` and matching V2 archive.
@@ -95,13 +96,23 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Initialize git repository on `main`.
 - [x] Create local V2 commit `c17001e` (`Prepare Lead Studio V2`).
 - [x] Push safe V2 project files to `https://github.com/MichoTronic/LeadStudio.git`.
-- [ ] Add a lightweight local lint or syntax-check path for Apps Script files if future work becomes regular.
+## V4 Backlog
+
 - [ ] Add bounded Debug Log reads for Operations status.
 - [ ] Add refresh duration logging and display.
-- [ ] Add alerting for scheduled refresh failures.
+- [ ] Add scheduled-refresh failure alerting.
+- [ ] Add Gmail scan candidate/accepted-count performance tracking.
+- [ ] Add Gmail scan controls if candidate count grows.
 - [ ] Add sheet-write smoke tests for update/persistence behavior.
-- [ ] Add Gmail scan volume/performance controls if candidate count grows.
+- [ ] Run live QA for Refresh Leads.
+- [ ] Run live QA for CSV/XLSX export after filters.
+- [ ] Run live QA for manual Jira link save on a safe row.
+- [ ] Run live QA for Deep Refresh Jira Matches.
+- [ ] Review web app access settings before broader team/external use.
+- [ ] Review whether setup/test endpoint functions should remain present or be removed entirely.
 - [ ] Split client utilities from `Script.html` after test coverage improves.
+- [ ] Tighten `PROJECT_STATUS.md` Latest Change history into current-state summary plus release notes.
+- [ ] Add a lightweight local lint or syntax-check path for Apps Script files if future work becomes regular.
 - [ ] Keep rollback checkpoints only for meaningful deployments; archive or remove duplicate local copies after a stable deployment is confirmed.
 - [ ] Update `../PROJECT_STATUS.md` and this checklist after every meaningful code, config, workflow, or folder-structure change.
 

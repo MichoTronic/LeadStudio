@@ -13,6 +13,7 @@ Current status source of truth for Lead Studio.
 - Current stable deployment: Version 55 - Fix metric counter layout and Contacts filtering
 - Current stable web app deployment ID: `AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA`
 - Current V3 review decision: `GO WITH CONDITIONS`
+- Current viable/stable baseline: `V3`
 - Current deployment inventory: stable version 55 web app deployment plus Apps Script read-only `@HEAD`
 - Current V3 rollback tag: `v3-stable`
 - V2 rollback tag: `v2-stable`
@@ -120,7 +121,19 @@ getDailyRefreshLeadsTriggerStatus() => triggerCount: 1
 - V3 is tagged as `v3-stable`; final counter fixes are included.
 - `clasp run runLeadStudioSmokeTests` is blocked by the local Apps Script execution permission context, so use Apps Script editor or Settings > Run Smoke Tests for runtime validation.
 - Full V3 completion review decision is `GO WITH CONDITIONS`.
-- Main V3 follow-up themes are bounded Debug Log reads, refresh duration logging, scheduled-failure alerting, sheet-write smoke tests, and careful client-code modularization later.
+- Treat V3 as the current viable/stable Lead Studio baseline while V4 is planned.
+
+## V4 Planning Notes
+
+These are future-version tasks from the V3 completion review:
+
+- Bound Debug Log reads used by Settings Operations status.
+- Add refresh duration logging and display.
+- Add scheduled-refresh failure alerting.
+- Add Gmail scan candidate/accepted-count performance tracking and controls.
+- Add sheet-write smoke tests for update/persistence behavior.
+- Run live QA for Refresh Leads, CSV/XLSX export, manual Jira link save, and Deep Refresh Jira Matches.
+- Split client utilities from `Script.html` only after more tests exist.
 
 ## Documentation Rules
 
