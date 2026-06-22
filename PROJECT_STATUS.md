@@ -7,12 +7,12 @@ Current status source of truth for Lead Studio.
 - Product: `Lead Studio`
 - Platform: Google Apps Script web app
 - Storage: `Lead Studio Database` Google Sheet
-- Current local code line: V2 source line, with toolbar stability, date filters, fixed table columns, and scheduled refresh helpers present
+- Current local code line: V3 source line, with toolbar stability, date filters, fixed table columns, operations status, smoke tests, endpoint hardening, and scheduled refresh helpers present
 - Apps Script source root: `AppsScript/`
 - Official Version 1 checkpoint: Version 45
 - Current stable deployment: Version 55 - Fix metric counter layout and Contacts filtering
 - Current stable web app deployment ID: `AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA`
-- Current V2 review decision: `GO WITH CONDITIONS`
+- Current V3 review decision: `GO WITH CONDITIONS`
 - Current deployment inventory: stable version 55 web app deployment plus Apps Script read-only `@HEAD`
 - Current V3 rollback tag: `v3-stable`
 - V2 rollback tag: `v2-stable`
@@ -52,6 +52,7 @@ Current status source of truth for Lead Studio.
 - 2026-06-22: Browser smoke tests passed with `passed: 6`, `failed: 0`.
 - 2026-06-22: Reserved four-digit metric counter space and made the Contacts metric reflect active visible filters.
 - 2026-06-22: Created final `Archive/Snapshots/Lead Studio V3 Stable/` and `Archive/Snapshots/Lead Studio V3 Stable.zip`.
+- 2026-06-22: Ran the full V3 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Stabilized the table toolbar into fixed metric/filter and search/export/settings rows, and added outside-click/Escape closing behavior for filter/export dropdowns.
 - 2026-06-22: Pushed the updated Apps Script source files to project head with `clasp push`; no new version or stable deployment repoint has been created yet.
 - 2026-06-22: Moved live Apps Script files into `AppsScript/`, set `.clasp.json` `rootDir` accordingly, added `Phase_Completion_Review_Pack/`, `Reports/`, and `Resources/`, and moved sensitive historical notes into `ProjectControl/DocumentationArchive/`.
@@ -65,7 +66,7 @@ Current status source of truth for Lead Studio.
 ## Current Risks
 
 - `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
-- Daily refresh trigger code is deployed, but the trigger is not confirmed active until the project owner authorizes/installs it and `getDailyRefreshLeadsTriggerStatus()` reports one trigger.
+- Daily refresh trigger is installed and confirmed with `triggerCount: 1`; the next operational check is observing regular scheduled-run success over time.
 - Setup/test URL token handlers still exist in `Code.js`, but URL access is disabled by default unless `LEAD_STUDIO_SETUP_ENDPOINTS_ENABLED=true` or `LEAD_STUDIO_TEST_ENDPOINTS_ENABLED=true` is set temporarily.
 - There is a lightweight Apps Script smoke-test harness for parser, Jira mapping, date-range, and export-row behavior; sheet-update behavior still needs deeper automated coverage later.
 - `Script.html` and `GmailScanner.js` are large modules; future changes should stay focused or be split only after behavior is covered.
@@ -114,10 +115,12 @@ getDailyRefreshLeadsTriggerStatus() => triggerCount: 1
 
 ## V3 Notes
 
-- Stable deployment is version 54.
+- Stable deployment is version 55.
 - V2 remains available as git tag `v2-stable`.
 - V3 is tagged as `v3-stable`; final counter fixes are included.
 - `clasp run runLeadStudioSmokeTests` is blocked by the local Apps Script execution permission context, so use Apps Script editor or Settings > Run Smoke Tests for runtime validation.
+- Full V3 completion review decision is `GO WITH CONDITIONS`.
+- Main V3 follow-up themes are bounded Debug Log reads, refresh duration logging, scheduled-failure alerting, sheet-write smoke tests, and careful client-code modularization later.
 
 ## Documentation Rules
 

@@ -76,6 +76,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Tag V2 rollback state as `v2-stable`.
 - [x] Create `../Archive/Snapshots/Lead Studio V2 Stable/` before V3 changes.
 - [x] Add Apps Script smoke tests for parser formats, Jira lifecycle mapping, date range boundaries, and export row shaping.
+- [x] Add parser smoke cases for current `New Contact`, old `Contact Form (TLT-Webpage-*)`, and legacy `Form submission from:` formats.
 - [x] Remove duplicate shadowed sort-glyph helper from `Script.html`.
 - [x] Deploy V3 as Apps Script version 54.
 - [x] Create `../Archive/Snapshots/Lead Studio V3/` and matching V3 archive.
@@ -83,6 +84,9 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Run `runLeadStudioSmokeTests()` from Apps Script editor or Settings after V3 deployment.
 - [x] Tag V3 rollback state as `v3-stable`.
 - [x] Run the full `../Phase_Completion_Review_Pack/` for V2.
+- [x] Run the full `../Phase_Completion_Review_Pack/` for V3.
+- [x] Save completed V3 completion-review reports in `../Reports/`.
+- [x] Move remaining V3 action items into this checklist.
 - [x] Save completed V2 completion-review reports in `../Reports/`.
 - [x] Move remaining V2 action items into this checklist.
 - [x] Create `../Archive/Snapshots/Lead Studio V2/` and matching V2 archive.
@@ -92,6 +96,12 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Create local V2 commit `c17001e` (`Prepare Lead Studio V2`).
 - [x] Push safe V2 project files to `https://github.com/MichoTronic/LeadStudio.git`.
 - [ ] Add a lightweight local lint or syntax-check path for Apps Script files if future work becomes regular.
+- [ ] Add bounded Debug Log reads for Operations status.
+- [ ] Add refresh duration logging and display.
+- [ ] Add alerting for scheduled refresh failures.
+- [ ] Add sheet-write smoke tests for update/persistence behavior.
+- [ ] Add Gmail scan volume/performance controls if candidate count grows.
+- [ ] Split client utilities from `Script.html` after test coverage improves.
 - [ ] Keep rollback checkpoints only for meaningful deployments; archive or remove duplicate local copies after a stable deployment is confirmed.
 - [ ] Update `../PROJECT_STATUS.md` and this checklist after every meaningful code, config, workflow, or folder-structure change.
 
