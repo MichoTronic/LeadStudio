@@ -36,7 +36,7 @@ Current status source of truth for Lead Studio.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
 - 2026-06-22: Removed all old versioned Apps Script deployments; Apps Script still reports a read-only `@HEAD` deployment that `clasp` will not delete.
 - 2026-06-22: Initialized local git repository on `main` and created local commit `c17001e` (`Prepare Lead Studio V2`).
-- 2026-06-22: GitHub push to `https://github.com/MichoTronic/LeadStudio.git` is pending because HTTPS authentication failed without a valid username/token.
+- 2026-06-22: Pushed local V2 commits to `https://github.com/MichoTronic/LeadStudio.git` on branch `main`.
 - 2026-06-22: Stabilized the table toolbar into fixed metric/filter and search/export/settings rows, and added outside-click/Escape closing behavior for filter/export dropdowns.
 - 2026-06-22: Pushed the updated Apps Script source files to project head with `clasp push`; no new version or stable deployment repoint has been created yet.
 - 2026-06-22: Moved live Apps Script files into `AppsScript/`, set `.clasp.json` `rootDir` accordingly, added `Phase_Completion_Review_Pack/`, `Reports/`, and `Resources/`, and moved sensitive historical notes into `ProjectControl/DocumentationArchive/`.
@@ -51,7 +51,6 @@ Current status source of truth for Lead Studio.
 
 - `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
 - Daily refresh trigger code is deployed, but the trigger is not confirmed active until the project owner authorizes/installs it and `getDailyRefreshLeadsTriggerStatus()` reports one trigger.
-- GitHub remote is configured, but the first push requires a valid GitHub credential/token.
 - Setup/test URL token handlers still exist in `Code.js`; review whether they should be disabled or narrowed before broader production use.
 - There is no automated local test harness for parser, Jira mapping, or sheet-update behavior.
 - `Script.html` and `GmailScanner.js` are large modules; future changes should stay focused or be split only after behavior is covered.
