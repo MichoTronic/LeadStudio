@@ -298,14 +298,14 @@
 
   .metric-row {
     display: grid;
-    grid-template-columns: 96px 110px 130px 78px 104px 122px;
+    grid-template-columns: 112px 128px 146px 94px 118px 138px;
     gap: 10px;
     align-items: start;
   }
 
   .date-filter-row {
     display: grid;
-    grid-template-columns: 96px 110px minmax(348px, 1fr);
+    grid-template-columns: 112px 128px minmax(348px, 1fr);
     gap: 10px;
     align-items: start;
   }
@@ -313,6 +313,7 @@
   .rows-inline {
     display: inline-flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
     padding: 0 12px;
     width: 100%;
@@ -344,11 +345,15 @@
   .rows-inline-label {
     color: var(--muted);
     font-size: 0.82rem;
+    min-width: 0;
   }
 
   .rows-inline-value {
     color: var(--text);
+    flex: 0 0 4ch;
     font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
   }
 
   .metric-inline {

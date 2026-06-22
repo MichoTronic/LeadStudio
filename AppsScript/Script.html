@@ -550,7 +550,7 @@
       colgroup.remove();
     });
     table.insertBefore(buildTableColgroup(), table.firstChild);
-    document.getElementById('row-count').textContent = String(state.rows.length);
+    document.getElementById('row-count').textContent = String(rows.length);
     renderMetrics(metricRows);
     syncMetricFilterState();
     syncDateFilterState();

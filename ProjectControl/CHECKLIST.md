@@ -58,6 +58,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Rename total dashboard metric label from `Leads` to `Contacts`.
 - [x] Add Settings Operations status for daily trigger count and latest scheduled run.
 - [x] Add Settings `Run Smoke Tests` action.
+- [x] Reserve four-digit display space for dashboard metric counters.
+- [x] Make Contacts metric reflect active visible filters.
 - [ ] Review table density and column order after the first real user feedback round.
 - [ ] Add clearer empty/error states for missing Jira credentials, Gmail delegation failure, and onboarding sheet access failure.
 - [ ] Verify CSV/XLSX export output for filtered rows, Jira links, and special characters.
@@ -77,7 +79,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Remove duplicate shadowed sort-glyph helper from `Script.html`.
 - [x] Deploy V3 as Apps Script version 54.
 - [x] Create `../Archive/Snapshots/Lead Studio V3/` and matching V3 archive.
-- [ ] Run `runLeadStudioSmokeTests()` from Apps Script editor or Settings after V3 deployment.
+- [x] Create final `../Archive/Snapshots/Lead Studio V3 Stable/` archive after metric fixes.
+- [x] Run `runLeadStudioSmokeTests()` from Apps Script editor or Settings after V3 deployment.
 - [x] Tag V3 rollback state as `v3-stable`.
 - [x] Run the full `../Phase_Completion_Review_Pack/` for V2.
 - [x] Save completed V2 completion-review reports in `../Reports/`.

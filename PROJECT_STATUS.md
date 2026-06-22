@@ -10,10 +10,10 @@ Current status source of truth for Lead Studio.
 - Current local code line: V2 source line, with toolbar stability, date filters, fixed table columns, and scheduled refresh helpers present
 - Apps Script source root: `AppsScript/`
 - Official Version 1 checkpoint: Version 45
-- Current stable deployment: Version 54 - Lead Studio V3 optimization and observability sweep
+- Current stable deployment: Version 55 - Fix metric counter layout and Contacts filtering
 - Current stable web app deployment ID: `AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA`
 - Current V2 review decision: `GO WITH CONDITIONS`
-- Current deployment inventory: stable version 54 web app deployment plus Apps Script read-only `@HEAD`
+- Current deployment inventory: stable version 55 web app deployment plus Apps Script read-only `@HEAD`
 - Current V3 rollback tag: `v3-stable`
 - V2 rollback tag: `v2-stable`
 - Stable Jira checkpoint: Version 43
@@ -49,6 +49,9 @@ Current status source of truth for Lead Studio.
 - 2026-06-22: Added Settings `Run Smoke Tests` action and Apps Script `runLeadStudioSmokeTests()` function.
 - 2026-06-22: Disabled setup/test URL endpoints by default; they require temporary Script Properties to re-enable. Direct Apps Script editor functions and Settings diagnostics remain available.
 - 2026-06-22: Removed a duplicate shadowed sort-glyph helper from `Script.html`.
+- 2026-06-22: Browser smoke tests passed with `passed: 6`, `failed: 0`.
+- 2026-06-22: Reserved four-digit metric counter space and made the Contacts metric reflect active visible filters.
+- 2026-06-22: Created final `Archive/Snapshots/Lead Studio V3 Stable/` and `Archive/Snapshots/Lead Studio V3 Stable.zip`.
 - 2026-06-22: Stabilized the table toolbar into fixed metric/filter and search/export/settings rows, and added outside-click/Escape closing behavior for filter/export dropdowns.
 - 2026-06-22: Pushed the updated Apps Script source files to project head with `clasp push`; no new version or stable deployment repoint has been created yet.
 - 2026-06-22: Moved live Apps Script files into `AppsScript/`, set `.clasp.json` `rootDir` accordingly, added `Phase_Completion_Review_Pack/`, `Reports/`, and `Resources/`, and moved sensitive historical notes into `ProjectControl/DocumentationArchive/`.
@@ -113,7 +116,7 @@ getDailyRefreshLeadsTriggerStatus() => triggerCount: 1
 
 - Stable deployment is version 54.
 - V2 remains available as git tag `v2-stable`.
-- V3 is tagged as `v3-stable`.
+- V3 is tagged as `v3-stable`; final counter fixes are included after the tag is moved to the latest commit.
 - `clasp run runLeadStudioSmokeTests` is blocked by the local Apps Script execution permission context, so use Apps Script editor or Settings > Run Smoke Tests for runtime validation.
 
 ## Documentation Rules
