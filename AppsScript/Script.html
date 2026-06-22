@@ -1,0 +1,1488 @@
+<script>
+  const state = {
+    headers: [],
+    rows: [],
+    searchText: '',
+    statusMap: {
+      '01 new lead': 'Lead',
+      '02 qualified lead': 'Qualified Leads',
+      '06 active': 'Active',
+      '07 inactive': 'Not Active',
+      '08 customer archive': 'Not Active'
+    },
+    options: {
+      targetRegions: [],
+      businessTypes: [],
+      interestedIn: []
+    },
+    filters: {
+      targetRegions: [],
+      businessTypes: [],
+      interestedIn: [],
+      status: '',
+      dateRange: {
+        mode: '',
+        from: '',
+        to: ''
+      }
+    },
+    sort: {
+      header: 'Email Date',
+      direction: 'desc'
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', initializeApp);
+
+  function initializeApp() {
+    setStatus('Loading app core...');
+
+    google.script.run
+      .withSuccessHandler(function(payload) {
+        document.getElementById('viewer-email').textContent = payload.viewerEmail || 'Unknown user';
+        document.getElementById('mailbox-user').textContent =
+          payload.config && payload.config.gmail ? payload.config.gmail.mailboxUser : 'Not configured';
+        state.options.targetRegions = payload.config && payload.config.options ? payload.config.options.targetRegions || [] : [];
+        state.options.businessTypes = payload.config && payload.config.options ? payload.config.options.businessTypes || [] : [];
+        state.options.interestedIn = payload.config && payload.config.options ? payload.config.options.interestedIn || [] : [];
+        renderPropertyStatus(payload.propertyStatus || []);
+        bindEvents();
+        loadEmailMatches();
+      })
+      .withFailureHandler(function(error) {
+        setStatus(getErrorMessage(error, 'Unable to load app.'), 'error');
+      })
+      .bootstrapTrackerAppCore();
+  }
+
+  function bindEvents() {
+    document.getElementById('settings-button').addEventListener('click', openSettingsDialog);
+    document.getElementById('close-settings-button').addEventListener('click', closeSettingsDialog);
+    document.getElementById('gmail-access-button').addEventListener('click', testGmailAccess);
+    document.getElementById('gmail-test-button').addEventListener('click', testNewContactEmail);
+    document.getElementById('service-account-button').addEventListener('click', showServiceAccountInfo);
+    document.getElementById('refresh-button').addEventListener('click', refreshEmailMatches);
+    document.getElementById('deep-scan-button').addEventListener('click', deepScanEmailMatches);
+    document.getElementById('jira-refresh-all-button').addEventListener('click', refreshAllJiraMatches);
+    document.getElementById('jira-check-button').addEventListener('click', checkJiraAuth);
+    document.getElementById('close-lead-detail-button').addEventListener('click', closeLeadDetailDialog);
+    Array.from(document.querySelectorAll('.metric-button')).forEach(function(button) {
+      button.addEventListener('click', handleMetricClick);
+    });
+    Array.from(document.querySelectorAll('.date-filter-button')).forEach(function(button) {
+      button.addEventListener('click', handleDatePresetClick);
+    });
+    document.getElementById('date-from-input').addEventListener('change', handleCustomDateChange);
+    document.getElementById('date-to-input').addEventListener('change', handleCustomDateChange);
+    document.getElementById('target-region-filter-options').addEventListener('change', handleFilterChange);
+    document.getElementById('business-filter-options').addEventListener('change', handleFilterChange);
+    document.getElementById('interested-filter-options').addEventListener('change', handleFilterChange);
+    document.getElementById('clear-filters-button').addEventListener('click', clearDropdownFilters);
+    bindDropdownMenus();
+    document.getElementById('export-csv-button').addEventListener('click', function() {
+      exportVisibleTable('csv');
+    });
+    document.getElementById('export-xlsx-button').addEventListener('click', function() {
+      exportVisibleTable('xlsx');
+    });
+    document.getElementById('search-input').addEventListener('input', function(event) {
+      state.searchText = String(event.target.value || '').trim().toLowerCase();
+      renderTable();
+    });
+  }
+
+  function bindDropdownMenus() {
+    const menus = Array.from(document.querySelectorAll('.filter-menu, .export-menu'));
+
+    menus.forEach(function(menu) {
+      menu.addEventListener('toggle', function() {
+        if (!menu.open) {
+          return;
+        }
+
+        menus.forEach(function(otherMenu) {
+          if (otherMenu !== menu) {
+            otherMenu.open = false;
+          }
+        });
+      });
+    });
+
+    document.addEventListener('pointerdown', function(event) {
+      const clickedInsideMenu = menus.some(function(menu) {
+        return menu.contains(event.target);
+      });
+
+      if (!clickedInsideMenu) {
+        closeDropdownMenus();
+      }
+    });
+
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        closeDropdownMenus();
+      }
+    });
+  }
+
+  function closeDropdownMenus() {
+    Array.from(document.querySelectorAll('.filter-menu[open], .export-menu[open]')).forEach(function(menu) {
+      menu.open = false;
+    });
+  }
+
+  function loadEmailMatches() {
+    setStatus('Loading saved matches...');
+
+    google.script.run
+      .withSuccessHandler(function(payload) {
+        setRowsFromPayload(payload);
+        renderTable();
+        setStatus('Ready.');
+      })
+      .withFailureHandler(function(error) {
+        setStatus(getErrorMessage(error, 'Unable to load matches.'), 'error');
+      })
+      .loadEmailMatchesForUi();
+  }
+
+  function refreshEmailMatches() {
+    setStatus('Checking Gmail and Jira for the last 3 months...');
+
+    google.script.run
+      .withSuccessHandler(function(payload) {
+        setRowsFromPayload(payload);
+        renderTable();
+        setStatus('Lead check complete. Found ' + state.rows.length + ' leads.', 'success');
+      })
+      .withFailureHandler(function(error) {
+        setStatus(getErrorMessage(error, 'Unable to refresh Gmail matches.'), 'error');
+      })
+      .refreshEmailMatchesFromGmail();
+  }
+
+  function deepScanEmailMatches() {
+    setStatus('Running deep marketing inbox scan...');
+    setGmailTestOutput('Running deep scan. This can take a while.');
+
+    google.script.run
+      .withSuccessHandler(function(payload) {
+        setRowsFromPayload(payload);
+        renderTable();
+        setGmailTestOutput(JSON.stringify({
+          ok: true,
+          rows: state.rows.length,
+          message: 'Deep scan complete.'
+        }, null, 2));
+        setStatus('Deep scan complete. Found ' + state.rows.length + ' leads.', 'success');
+      })
+      .withFailureHandler(function(error) {
+        const message = getErrorMessage(error, 'Unable to complete deep scan.');
+        setGmailTestOutput(message);
+        setStatus(message, 'error');
+      })
+      .deepScanEmailMatchesFromGmail();
+  }
+
+  function refreshAllJiraMatches() {
+    const button = document.getElementById('jira-refresh-all-button');
+    const batchSize = 10;
+
+    button.disabled = true;
+    setStatus('Refreshing onboarding and Jira matches for all saved leads...');
+    setGmailTestOutput('Preparing Jira refresh candidates...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        const candidateIndexes = result.candidateIndexes || [];
+
+        setGmailTestOutput(JSON.stringify({
+          ok: true,
+          status: candidateIndexes.length ? 'prepared' : 'complete',
+          savedRows: result.totalRows || 0,
+          candidateRows: candidateIndexes.length,
+          message: candidateIndexes.length
+            ? 'Prepared Jira/onboarding candidate rows.'
+            : 'No saved rows currently have a Jira/onboarding candidate.'
+        }, null, 2));
+
+        if (!candidateIndexes.length) {
+          loadEmailMatchesAfterJiraRefresh({
+            updatedRows: 0,
+            matchedRows: 0,
+            jiraCheckedRows: 0
+          }, button);
+          return;
+        }
+
+        refreshAllJiraMatchesBatch(candidateIndexes, 0, batchSize, {
+          updatedRows: 0,
+          matchedRows: 0,
+          jiraCheckedRows: 0,
+          totalRows: result.totalRows || 0,
+          candidateRows: candidateIndexes.length
+        }, button);
+      })
+      .withFailureHandler(function(error) {
+        const message = getErrorMessage(error, 'Unable to prepare Jira refresh candidates.');
+        setGmailTestOutput(message);
+        setStatus(message, 'error');
+        button.disabled = false;
+      })
+      .prepareDeepJiraRefreshForUi();
+  }
+
+  function refreshAllJiraMatchesBatch(candidateIndexes, candidateOffset, batchSize, totals, button) {
+    const batchIndexes = candidateIndexes.slice(candidateOffset, candidateOffset + batchSize);
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        const processedRows = result.processedRows || 0;
+        const nextOffset = Math.min(candidateOffset + processedRows, candidateIndexes.length);
+        const nextTotals = {
+          updatedRows: totals.updatedRows + (result.updatedRows || 0),
+          matchedRows: totals.matchedRows + (result.matchedRows || 0),
+          jiraCheckedRows: totals.jiraCheckedRows + (result.jiraCheckedRows || 0),
+          totalRows: totals.totalRows,
+          candidateRows: totals.candidateRows
+        };
+
+        setGmailTestOutput(JSON.stringify({
+          ok: true,
+          status: nextOffset >= candidateIndexes.length ? 'complete' : 'running',
+          checkedCandidateRows: nextOffset,
+          candidateRows: candidateIndexes.length,
+          savedRows: totals.totalRows,
+          currentBatchRows: processedRows,
+          updatedRows: nextTotals.updatedRows,
+          matchedRows: nextTotals.matchedRows,
+          jiraCheckedRows: nextTotals.jiraCheckedRows,
+          jiraConfigured: Boolean(result.jiraConfigured)
+        }, null, 2));
+
+        setStatus('Refreshing Jira matches: ' + nextOffset + ' / ' + candidateIndexes.length + ' candidate rows checked...');
+
+        if (nextOffset < candidateIndexes.length) {
+          refreshAllJiraMatchesBatch(candidateIndexes, nextOffset, batchSize, nextTotals, button);
+          return;
+        }
+
+        loadEmailMatchesAfterJiraRefresh(nextTotals, button);
+      })
+      .withFailureHandler(function(error) {
+        const message = getErrorMessage(error, 'Unable to refresh Jira matches.');
+        setGmailTestOutput(message);
+        setStatus(message, 'error');
+        button.disabled = false;
+      })
+      .refreshJiraStatusesBatchForUi({
+        rowIndexes: batchIndexes,
+        batchSize: batchSize
+      });
+  }
+
+  function loadEmailMatchesAfterJiraRefresh(totals, button) {
+    google.script.run
+      .withSuccessHandler(function(payload) {
+        setRowsFromPayload(payload);
+        renderTable();
+
+        const metrics = computeMetrics();
+        setGmailTestOutput(JSON.stringify({
+          ok: true,
+          status: 'complete',
+          rows: state.rows.length,
+          candidateRows: totals.candidateRows || 0,
+          updatedRows: totals.updatedRows,
+          matchedRows: totals.matchedRows,
+          jiraCheckedRows: totals.jiraCheckedRows,
+          newLead: metrics.newLead,
+          qualified: metrics.qualified,
+          active: metrics.active,
+          notActive: metrics.inactive,
+          onboarding: metrics.onboarding,
+          message: 'Deep Jira match refresh complete.'
+        }, null, 2));
+        setStatus('Jira match refresh complete. Checked ' + state.rows.length + ' saved leads.', 'success');
+        button.disabled = false;
+      })
+      .withFailureHandler(function(error) {
+        const message = getErrorMessage(error, 'Jira refresh finished, but the table could not reload.');
+        setGmailTestOutput(message);
+        setStatus(message, 'error');
+        button.disabled = false;
+      })
+      .loadEmailMatchesForUi();
+  }
+
+  function setRowsFromPayload(payload) {
+    state.headers = payload.headers || [];
+    state.rows = payload.rows || [];
+    syncAvailableFilters();
+  }
+
+  function checkJiraAuth() {
+    setStatus('Checking Jira credentials...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        setStatus('Jira auth OK: ' + (result.displayName || result.emailAddress || result.accountId), 'success');
+      })
+      .withFailureHandler(function(error) {
+        setStatus(getErrorMessage(error, 'Unable to connect to Jira.'), 'error');
+      })
+      .checkJiraConnectionForUi();
+  }
+
+  function openSettingsDialog() {
+    const dialog = document.getElementById('settings-dialog');
+
+    if (!dialog.open) {
+      dialog.showModal();
+    }
+  }
+
+  function closeSettingsDialog() {
+    document.getElementById('settings-dialog').close();
+  }
+
+  function testGmailAccess() {
+    setStatus('Testing marketing mailbox access...');
+    setGmailTestOutput('Running Gmail access test...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        setGmailTestOutput(JSON.stringify(result, null, 2));
+
+        if (!result || !result.ok) {
+          setStatus((result && result.error) || 'Gmail access failed.', 'error');
+          return;
+        }
+
+        setStatus(
+          'Gmail access OK for ' +
+          (result.profileEmail || result.mailbox || 'marketing mailbox') +
+          '.',
+          'success'
+        );
+      })
+      .withFailureHandler(function(error) {
+        const message = getErrorMessage(error, 'Unable to test Gmail access.');
+        setGmailTestOutput(message);
+        setStatus(message, 'error');
+      })
+      .testMarketingMailboxAccessForUi();
+  }
+
+  function showServiceAccountInfo() {
+    setStatus('Loading service account details...');
+    setGmailTestOutput('Loading service account details...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        setGmailTestOutput(JSON.stringify(result, null, 2));
+        setStatus('Service account details loaded.', 'success');
+      })
+      .withFailureHandler(function(error) {
+        const message = getErrorMessage(error, 'Unable to load service account details.');
+        setGmailTestOutput(message);
+        setStatus(message, 'error');
+      })
+      .getServiceAccountInfoForSetupUi();
+  }
+
+  function testNewContactEmail() {
+    setStatus('Testing latest New Contact email...');
+    setGmailTestOutput('Running New Contact email test...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        setGmailTestOutput(JSON.stringify(result, null, 2));
+
+        if (!result || !result.ok) {
+          setStatus((result && result.error) || 'No matching New Contact email found.', 'error');
+          return;
+        }
+
+        setStatus(
+          'Gmail OK. Latest New Contact: ' +
+          (result.date || 'unknown date') +
+          ', sender: ' +
+          (result.sender || 'unknown sender') +
+          ', subject: ' +
+          (result.subject || 'unknown subject') +
+          ', body starts with NEW CONTACT: ' +
+          (result.bodyStartsWithNewContact ? 'yes' : 'no') +
+          '.',
+          result.bodyStartsWithNewContact ? 'success' : 'error'
+        );
+      })
+      .withFailureHandler(function(error) {
+        setStatus(getErrorMessage(error, 'Unable to test Gmail access.'), 'error');
+      })
+      .testLatestNewContactEmailForUi();
+  }
+
+  function renderPropertyStatus(items) {
+    const container = document.getElementById('property-status');
+    container.innerHTML = '';
+
+    items.forEach(function(item) {
+      const row = document.createElement('div');
+      const name = document.createElement('span');
+      const status = document.createElement('strong');
+
+      row.className = 'property-item';
+      name.textContent = item.name;
+      status.textContent = item.configured ? 'Set' : 'Missing';
+      status.className = item.configured ? 'is-ok' : 'is-bad';
+      row.appendChild(name);
+      row.appendChild(status);
+      container.appendChild(row);
+    });
+  }
+
+  function renderTable() {
+    const metricRows = getVisibleRows({
+      ignoreStatusFilter: true
+    });
+    const rows = getVisibleRows();
+    const thead = document.getElementById('table-head');
+    const tbody = document.getElementById('table-body');
+    const table = document.querySelector('.table-wrap table');
+    const headRow = document.createElement('tr');
+    const tableWidth = getTableWidth();
+
+    table.style.width = tableWidth + 'px';
+    table.style.minWidth = '100%';
+    table.querySelectorAll('colgroup').forEach(function(colgroup) {
+      colgroup.remove();
+    });
+    table.insertBefore(buildTableColgroup(), table.firstChild);
+    document.getElementById('row-count').textContent = String(state.rows.length);
+    renderMetrics(metricRows);
+    syncMetricFilterState();
+    syncDateFilterState();
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
+
+    state.headers.forEach(function(header) {
+      const th = document.createElement('th');
+
+      th.className = getColumnClass(header);
+
+      if (isSortableHeader(header)) {
+        const button = document.createElement('button');
+        button.className = 'sort-button' + (state.sort.header === header ? ' is-active' : '');
+        button.type = 'button';
+        button.textContent = header + getSortGlyph(header);
+        button.addEventListener('click', function() {
+          toggleSort(header);
+        });
+        th.appendChild(button);
+      } else {
+        th.textContent = header;
+      }
+
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+
+    if (!rows.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = Math.max(1, state.headers.length);
+      td.textContent = 'No matches yet.';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    rows.forEach(function(entry) {
+      const tr = document.createElement('tr');
+      const values = (entry && (entry.allValues || entry.values)) || {};
+
+      tr.className = 'lead-row ' + getLeadRowClass(values);
+      tr.tabIndex = 0;
+      tr.addEventListener('click', function() {
+        openLeadDetailDialog(entry);
+      });
+      tr.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openLeadDetailDialog(entry);
+        }
+      });
+
+      state.headers.forEach(function(header) {
+        const td = document.createElement('td');
+
+        td.className = getColumnClass(header);
+
+        if (header === 'Jira Issue Key') {
+          appendJiraIssueLink(td, values);
+        } else {
+          td.textContent = values[header] || '';
+        }
+
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function buildTableColgroup() {
+    const colgroup = document.createElement('colgroup');
+
+    state.headers.forEach(function(header) {
+      const col = document.createElement('col');
+
+      col.style.width = getColumnWidth(header) + 'px';
+      colgroup.appendChild(col);
+    });
+
+    return colgroup;
+  }
+
+  function getTableWidth() {
+    return state.headers.reduce(function(total, header) {
+      return total + getColumnWidth(header);
+    }, 0);
+  }
+
+  function getColumnWidth(header) {
+    const widths = {
+      'Email Date': 130,
+      'Company Name': 160,
+      Name: 120,
+      'Last Name': 120,
+      'Contact Email': 190,
+      'Target Region': 120,
+      'Business Type': 130,
+      'Interested in': 210,
+      Language: 120,
+      'Jira Issue Key': 120,
+      'Jira Status': 150,
+      'Onboarding Complete': 150,
+      'Last Checked': 150
+    };
+
+    return widths[header] || 140;
+  }
+
+  function getColumnClass(header) {
+    return 'column-' + String(header || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function appendJiraIssueLink(container, values) {
+    const issueKey = String(values['Jira Issue Key'] || '').trim();
+    const issueUrl = String(values['Jira Issue URL'] || '').trim();
+
+    if (!issueKey) {
+      container.textContent = '';
+      return;
+    }
+
+    if (!issueUrl) {
+      container.textContent = issueKey;
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = issueUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.className = 'jira-link';
+    link.textContent = issueKey;
+    link.addEventListener('click', function(event) {
+      event.stopPropagation();
+    });
+    container.appendChild(link);
+  }
+
+  function buildJiraEditSection(values) {
+    const section = document.createElement('section');
+    const heading = document.createElement('h3');
+    const form = document.createElement('div');
+    const keyLabel = document.createElement('label');
+    const urlLabel = document.createElement('label');
+    const keyInput = document.createElement('input');
+    const urlInput = document.createElement('input');
+    const actions = document.createElement('div');
+    const saveButton = document.createElement('button');
+    const currentLink = document.createElement('p');
+    const messageId = String(values['Gmail Message ID'] || '').trim();
+
+    section.className = 'detail-section jira-edit-section';
+    heading.textContent = 'Jira Link';
+    form.className = 'jira-edit-form';
+    keyLabel.textContent = 'Display text';
+    urlLabel.textContent = 'Web address';
+    keyInput.type = 'text';
+    keyInput.value = values['Jira Issue Key'] || '';
+    keyInput.placeholder = 'SF-127';
+    keyInput.className = 'detail-input';
+    urlInput.type = 'url';
+    urlInput.value = values['Jira Issue URL'] || '';
+    urlInput.placeholder = 'https://jira.at.semper7.net/browse/SF-127';
+    urlInput.className = 'detail-input';
+    saveButton.type = 'button';
+    saveButton.className = 'ghost-button detail-save-button';
+    saveButton.textContent = 'Save Jira Link';
+    currentLink.className = 'jira-current-link';
+
+    if (values['Jira Issue Key']) {
+      appendJiraIssueLink(currentLink, values);
+    } else {
+      currentLink.textContent = 'No Jira issue linked.';
+    }
+
+    saveButton.addEventListener('click', function() {
+      saveManualJiraLink({
+        messageId: messageId,
+        issueKey: keyInput.value,
+        issueUrl: urlInput.value
+      }, saveButton);
+    });
+
+    keyLabel.appendChild(keyInput);
+    urlLabel.appendChild(urlInput);
+    actions.appendChild(saveButton);
+    form.appendChild(currentLink);
+    form.appendChild(keyLabel);
+    form.appendChild(urlLabel);
+    form.appendChild(actions);
+    section.appendChild(heading);
+    section.appendChild(form);
+
+    return section;
+  }
+
+  function saveManualJiraLink(payload, button) {
+    if (!payload.messageId) {
+      setStatus('Cannot save Jira link because this row has no Gmail Message ID.', 'error');
+      return;
+    }
+
+    if (!String(payload.issueKey || '').trim() || !String(payload.issueUrl || '').trim()) {
+      setStatus('Jira issue key and URL are required.', 'error');
+      return;
+    }
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Saving...';
+    }
+
+    setStatus('Saving Jira link...');
+
+    google.script.run
+      .withSuccessHandler(function(payload) {
+        setRowsFromPayload(payload);
+        renderTable();
+        closeLeadDetailDialog();
+        setStatus('Jira link saved.', 'success');
+      })
+      .withFailureHandler(function(error) {
+        setStatus(getErrorMessage(error, 'Unable to save Jira link.'), 'error');
+
+        if (button) {
+          button.disabled = false;
+          button.textContent = 'Save Jira Link';
+        }
+      })
+      .updateManualJiraLinkForUi(payload);
+  }
+
+  function syncAvailableFilters() {
+    renderCheckboxFilter(
+      'target-region-filter-options',
+      'target-region-filter-summary',
+      'Target Region',
+      state.options.targetRegions,
+      state.filters.targetRegions
+    );
+    renderCheckboxFilter(
+      'business-filter-options',
+      'business-filter-summary',
+      'Business Type',
+      state.options.businessTypes,
+      state.filters.businessTypes
+    );
+    renderCheckboxFilter(
+      'interested-filter-options',
+      'interested-filter-summary',
+      'Interested in',
+      state.options.interestedIn,
+      state.filters.interestedIn
+    );
+  }
+
+  function renderCheckboxFilter(containerId, summaryId, label, options, selectedValues) {
+    const container = document.getElementById(containerId);
+    const summary = document.getElementById(summaryId);
+    const selectedSet = toLookup(selectedValues);
+
+    container.innerHTML = '';
+    selectedValues.splice(0, selectedValues.length);
+
+    options.forEach(function(option) {
+      const item = document.createElement('label');
+      const input = document.createElement('input');
+      const text = document.createElement('span');
+
+      input.type = 'checkbox';
+      input.value = option;
+      input.checked = Boolean(selectedSet[option]);
+      input.dataset.filter = getFilterNameForContainer_(containerId);
+      text.textContent = option || '-';
+      item.className = 'filter-option';
+      item.appendChild(input);
+      item.appendChild(text);
+      container.appendChild(item);
+
+      if (input.checked) {
+        selectedValues.push(option);
+      }
+    });
+
+    summary.textContent = selectedValues.length ? label + ' (' + selectedValues.length + ')' : label;
+  }
+
+  function getFilterNameForContainer_(containerId) {
+    if (containerId === 'target-region-filter-options') {
+      return 'targetRegions';
+    }
+
+    return containerId === 'business-filter-options' ? 'businessTypes' : 'interestedIn';
+  }
+
+  function handleFilterChange(event) {
+    const filterName = event.target && event.target.dataset ? event.target.dataset.filter : '';
+
+    if (!filterName) {
+      return;
+    }
+
+    state.filters[filterName] = Array.from(document.querySelectorAll('input[data-filter="' + filterName + '"]:checked'))
+      .map(function(input) {
+        return input.value;
+      });
+
+    updateFilterSummaries();
+    renderTable();
+  }
+
+  function clearDropdownFilters() {
+    state.filters.businessTypes = [];
+    state.filters.targetRegions = [];
+    state.filters.interestedIn = [];
+    state.filters.status = '';
+    state.filters.dateRange = {
+      mode: '',
+      from: '',
+      to: ''
+    };
+
+    Array.from(document.querySelectorAll('input[data-filter="businessTypes"], input[data-filter="targetRegions"], input[data-filter="interestedIn"]')).forEach(function(input) {
+      input.checked = false;
+    });
+    document.getElementById('date-from-input').value = '';
+    document.getElementById('date-to-input').value = '';
+
+    updateFilterSummaries();
+    syncDateFilterState();
+    closeDropdownMenus();
+    renderTable();
+  }
+
+  function updateFilterSummaries() {
+    document.getElementById('target-region-filter-summary').textContent =
+      state.filters.targetRegions.length ? 'Target Region (' + state.filters.targetRegions.length + ')' : 'Target Region';
+    document.getElementById('business-filter-summary').textContent =
+      state.filters.businessTypes.length ? 'Business Type (' + state.filters.businessTypes.length + ')' : 'Business Type';
+    document.getElementById('interested-filter-summary').textContent =
+      state.filters.interestedIn.length ? 'Interested in (' + state.filters.interestedIn.length + ')' : 'Interested in';
+  }
+
+  function handleMetricClick(event) {
+    const nextFilter = event.currentTarget.dataset.statusFilter || '';
+
+    state.filters.status = state.filters.status === nextFilter ? '' : nextFilter;
+    renderTable();
+  }
+
+  function handleDatePresetClick(event) {
+    const days = Number(event.currentTarget.dataset.datePreset) || 0;
+    const nextMode = days ? 'last' + days : '';
+
+    if (state.filters.dateRange.mode === nextMode) {
+      state.filters.dateRange = {
+        mode: '',
+        from: '',
+        to: ''
+      };
+    } else {
+      state.filters.dateRange = buildLastDaysRange(days);
+    }
+
+    document.getElementById('date-from-input').value = state.filters.dateRange.from || '';
+    document.getElementById('date-to-input').value = state.filters.dateRange.to || '';
+    renderTable();
+  }
+
+  function handleCustomDateChange() {
+    const from = document.getElementById('date-from-input').value || '';
+    const to = document.getElementById('date-to-input').value || '';
+
+    state.filters.dateRange = {
+      mode: from || to ? 'custom' : '',
+      from: from,
+      to: to
+    };
+    renderTable();
+  }
+
+  function buildLastDaysRange(days) {
+    const today = new Date();
+    const from = new Date(today);
+
+    today.setHours(0, 0, 0, 0);
+    from.setHours(0, 0, 0, 0);
+    from.setDate(today.getDate() - Math.max(0, days - 1));
+
+    return {
+      mode: 'last' + days,
+      from: formatDateInputValue(from),
+      to: formatDateInputValue(today)
+    };
+  }
+
+  function syncDateFilterState() {
+    const range = state.filters.dateRange || {};
+
+    Array.from(document.querySelectorAll('.date-filter-button')).forEach(function(button) {
+      const mode = 'last' + (button.dataset.datePreset || '');
+      button.classList.toggle('is-active', range.mode === mode);
+    });
+    document.getElementById('date-from-input').classList.toggle('is-active', Boolean(range.from));
+    document.getElementById('date-to-input').classList.toggle('is-active', Boolean(range.to));
+  }
+
+  function syncMetricFilterState() {
+    Array.from(document.querySelectorAll('.metric-button')).forEach(function(button) {
+      const filter = button.dataset.statusFilter || '';
+      button.classList.toggle('is-active', state.filters.status === filter);
+    });
+  }
+
+  function renderMetrics(rows) {
+    const metrics = rows.reduce(function(output, entry) {
+      const values = (entry && (entry.allValues || entry.values)) || {};
+      const statusBucket = getLeadStatusBucket(values);
+
+      if (statusBucket === 'Lead' && normalizeMetricValue(values['Jira Status'])) {
+        output.newLead += 1;
+      } else if (statusBucket === 'Qualified Leads') {
+        output.qualified += 1;
+      } else if (statusBucket === 'Active') {
+        output.active += 1;
+      } else if (statusBucket === 'Not Active') {
+        output.inactive += 1;
+      }
+
+      if (normalizeMetricValue(values['Onboarding Complete']) === 'yes') {
+        output.onboarding += 1;
+      }
+
+      return output;
+    }, {
+      newLead: 0,
+      qualified: 0,
+      active: 0,
+      inactive: 0,
+      onboarding: 0
+    });
+
+    setMetricValue('new-lead-count', metrics.newLead);
+    setMetricValue('qualified-count', metrics.qualified);
+    setMetricValue('active-count', metrics.active);
+    setMetricValue('inactive-count', metrics.inactive);
+    setMetricValue('onboarding-complete-count', metrics.onboarding);
+  }
+
+  function setMetricValue(id, value) {
+    const node = document.getElementById(id);
+
+    if (node) {
+      node.textContent = String(value || 0);
+    }
+  }
+
+  function getLeadStatusBucket(values) {
+    const savedBucket = String(values['Lead Status'] || '').trim();
+
+    if (savedBucket) {
+      return savedBucket;
+    }
+
+    return state.statusMap[normalizeMetricValue(values['Jira Status'])] || 'Lead';
+  }
+
+  function getLeadRowClass(values) {
+    const bucket = getLeadStatusBucket(values);
+
+    if (bucket === 'Qualified Leads') {
+      return 'lead-row-qualified';
+    }
+
+    if (bucket === 'Active') {
+      return 'lead-row-active';
+    }
+
+    if (bucket === 'Not Active') {
+      return 'lead-row-inactive';
+    }
+
+    return '';
+  }
+
+  function normalizeMetricValue(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function toLookup(values) {
+    return (values || []).reduce(function(output, value) {
+      output[value] = true;
+      return output;
+    }, {});
+  }
+
+  function isSortableHeader(header) {
+    return header === 'Email Date' || header === 'Company Name';
+  }
+
+  function getSortGlyph(header) {
+    if (state.sort.header !== header) {
+      return ' ↕';
+    }
+
+    return state.sort.direction === 'asc' ? ' ↑' : ' ↓';
+  }
+
+  function toggleSort(header) {
+    if (state.sort.header === header) {
+      state.sort.direction = state.sort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+      state.sort.header = header;
+      state.sort.direction = header === 'Email Date' ? 'desc' : 'asc';
+    }
+
+    renderTable();
+  }
+
+  function getSortGlyph(header) {
+    if (state.sort.header !== header) {
+      return ' -';
+    }
+
+    return state.sort.direction === 'asc' ? ' ^' : ' v';
+  }
+
+  function openLeadDetailDialog(entry) {
+    const values = (entry && (entry.allValues || entry.values)) || {};
+    const dialog = document.getElementById('lead-detail-dialog');
+    const title = document.getElementById('lead-detail-title');
+    const body = document.getElementById('lead-detail-body');
+    const displayName = [values.Name, values['Last Name']].filter(Boolean).join(' ');
+    const titleText = displayName || values['Company Name'] || values['Contact Email'] || 'Lead';
+
+    title.textContent = titleText;
+    body.innerHTML = '';
+    body.appendChild(buildDetailSection('Contact', [
+      ['Name', displayName],
+      ['Email', values['Contact Email']],
+      ['Target Region', values['Target Region']],
+      ['Phone', values.Phone],
+      ['Address', values.Address],
+      ['Company', values['Company Name']],
+      ['Business Type', values['Business Type']],
+      ['Interested in', values['Interested in']],
+      ['Language', values.Language]
+    ]));
+    body.appendChild(buildDetailSection('Message', [
+      ['Email Date', values['Email Date']],
+      ['Subject', values.Subject],
+      ['Sender', values.Sender],
+      ['Gmail Message ID', values['Gmail Message ID']],
+      ['Gmail Thread ID', values['Gmail Thread ID']]
+    ]));
+    body.appendChild(buildDetailSection('Tracking', [
+      ['Onboarding Sent', values['Onboarding Sent']],
+      ['Onboarding Sent At', values['Onboarding Sent At']],
+      ['Onboarding Message ID', values['Onboarding Message ID']],
+      ['Jira Status', values['Jira Status']],
+      ['Onboarding Complete', values['Onboarding Complete']],
+      ['Last Jira Check', values['Last Jira Check']],
+      ['Last Checked', values['Last Checked']]
+    ]));
+    body.appendChild(buildJiraEditSection(values));
+    body.appendChild(buildTextBlock('Inquiry', values.Inquiry));
+    body.appendChild(buildTextBlock('Full Body', values['Full Body']));
+
+    if (!dialog.open) {
+      dialog.showModal();
+    }
+  }
+
+  function closeLeadDetailDialog() {
+    document.getElementById('lead-detail-dialog').close();
+  }
+
+  function buildDetailSection(title, rows) {
+    const section = document.createElement('section');
+    const heading = document.createElement('h3');
+    const list = document.createElement('dl');
+
+    section.className = 'detail-section';
+    heading.textContent = title;
+    section.appendChild(heading);
+
+    rows.forEach(function(row) {
+      const label = row[0];
+      const value = row[1] || '';
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+
+      dt.textContent = label;
+      dd.textContent = value || '-';
+      list.appendChild(dt);
+      list.appendChild(dd);
+    });
+
+    section.appendChild(list);
+    return section;
+  }
+
+  function buildTextBlock(title, text) {
+    const section = document.createElement('section');
+    const heading = document.createElement('h3');
+    const content = document.createElement('p');
+
+    section.className = 'detail-section detail-text-section';
+    heading.textContent = title;
+    content.textContent = text || '-';
+    section.appendChild(heading);
+    section.appendChild(content);
+
+    return section;
+  }
+
+  function getVisibleRows(options) {
+    const filterOptions = options || {};
+    const businessLookup = toLookup(state.filters.businessTypes);
+    const targetRegionLookup = toLookup(state.filters.targetRegions);
+    const interestedLookup = toLookup(state.filters.interestedIn);
+    const rows = state.rows.filter(function(entry) {
+      const values = entry.values || {};
+      const allValues = entry.allValues || values;
+      const businessValue = String(allValues['Business Type'] || '').trim();
+      const targetRegionValues = String(allValues['Target Region'] || '').split(',').map(function(value) {
+        return value.trim();
+      });
+      const interestedValues = String(allValues['Interested in'] || '').split(',').map(function(value) {
+        return value.trim();
+      });
+      const matchesBusiness = !state.filters.businessTypes.length || Boolean(businessLookup[businessValue]);
+      const matchesTargetRegion = !state.filters.targetRegions.length || targetRegionValues.some(function(value) {
+        return Boolean(targetRegionLookup[value]);
+      });
+      const matchesInterested = !state.filters.interestedIn.length || interestedValues.some(function(value) {
+        return Boolean(interestedLookup[value]);
+      });
+      const matchesStatus = filterOptions.ignoreStatusFilter || !state.filters.status ||
+        (
+          state.filters.status === 'Onboarding'
+            ? normalizeMetricValue(allValues['Onboarding Complete']) === 'yes'
+            : state.filters.status === 'New Lead'
+              ? getLeadStatusBucket(allValues) === 'Lead' && Boolean(normalizeMetricValue(allValues['Jira Status']))
+              : getLeadStatusBucket(allValues) === state.filters.status
+        );
+      const matchesSearch = !state.searchText || Object.keys(values).some(function(key) {
+        return String(values[key] || '').toLowerCase().indexOf(state.searchText) !== -1;
+      });
+      const matchesDate = matchesDateRange(allValues['Email Date']);
+
+      return matchesBusiness && matchesTargetRegion && matchesInterested && matchesStatus && matchesSearch && matchesDate;
+    });
+
+    return rows.sort(compareVisibleRows);
+  }
+
+  function matchesDateRange(value) {
+    const range = state.filters.dateRange || {};
+
+    if (!range.from && !range.to) {
+      return true;
+    }
+
+    const rowDate = parseRowDate(value);
+
+    if (!rowDate) {
+      return false;
+    }
+
+    if (range.from) {
+      const fromDate = parseDateInputValue(range.from);
+
+      if (fromDate && rowDate < fromDate) {
+        return false;
+      }
+    }
+
+    if (range.to) {
+      const toDate = parseDateInputValue(range.to);
+
+      if (toDate) {
+        toDate.setHours(23, 59, 59, 999);
+
+        if (rowDate > toDate) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  function parseRowDate(value) {
+    const raw = String(value || '').trim();
+
+    if (!raw) {
+      return null;
+    }
+
+    return parseDateInputValue(raw.replace(/\//g, '-'));
+  }
+
+  function parseDateInputValue(value) {
+    const parts = String(value || '').trim().split('-').map(Number);
+
+    if (parts.length !== 3 || parts.some(function(part) {
+      return !part;
+    })) {
+      return null;
+    }
+
+    const date = new Date(parts[0], parts[1] - 1, parts[2]);
+
+    return isNaN(date.getTime()) ? null : date;
+  }
+
+  function formatDateInputValue(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return year + '-' + month + '-' + day;
+  }
+
+  function compareVisibleRows(left, right) {
+    const direction = state.sort.direction === 'asc' ? 1 : -1;
+    const leftValue = getSortValue(left, state.sort.header);
+    const rightValue = getSortValue(right, state.sort.header);
+
+    if (leftValue < rightValue) {
+      return -1 * direction;
+    }
+
+    if (leftValue > rightValue) {
+      return 1 * direction;
+    }
+
+    return 0;
+  }
+
+  function getSortValue(entry, header) {
+    const values = (entry && (entry.allValues || entry.values)) || {};
+    const raw = String(values[header] || '').trim();
+
+    if (header === 'Email Date') {
+      const parsed = Date.parse(raw.replace(/\//g, '-'));
+      return isNaN(parsed) ? 0 : parsed;
+    }
+
+    return raw.toLowerCase();
+  }
+
+  function exportVisibleTable(format) {
+    const rows = getVisibleRows();
+    const exportRows = buildExportRows(rows);
+    const filename = buildExportFilename(format);
+
+    document.getElementById('export-menu').open = false;
+
+    if (!exportRows.rows.length) {
+      setStatus('No visible contacts to export.', 'error');
+      return;
+    }
+
+    if (format === 'xlsx') {
+      downloadBlob(createXlsxBlob(exportRows.headers, exportRows.rows), filename);
+    } else {
+      downloadBlob(createCsvBlob(exportRows.headers, exportRows.rows), filename);
+    }
+
+    setStatus('Exported ' + exportRows.rows.length + ' visible contacts as ' + format.toUpperCase() + '.', 'success');
+  }
+
+  function buildExportRows(rows) {
+    const headers = getExportHeaders();
+
+    return {
+      headers: headers,
+      rows: rows.map(function(entry) {
+        const values = (entry && (entry.allValues || entry.values)) || {};
+
+        return headers.map(function(header) {
+          return values[header] || '';
+        });
+      })
+    };
+  }
+
+  function getExportHeaders() {
+    const headers = state.headers.slice();
+    const jiraKeyIndex = headers.indexOf('Jira Issue Key');
+
+    if (jiraKeyIndex !== -1 && headers.indexOf('Jira Issue URL') === -1) {
+      headers.splice(jiraKeyIndex + 1, 0, 'Jira Issue URL');
+    }
+
+    return headers;
+  }
+
+  function buildExportFilename(format) {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const parts = ['lead-studio'];
+
+    if (state.filters.status) {
+      parts.push(slugifyExportPart(state.filters.status));
+    }
+
+    if (state.filters.targetRegions.length) {
+      parts.push(slugifyExportPart(state.filters.targetRegions.join('-')));
+    }
+
+    parts.push('visible', stamp);
+    return parts.filter(Boolean).join('-') + '.' + format;
+  }
+
+  function slugifyExportPart(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function createCsvBlob(headers, rows) {
+    const lines = [headers].concat(rows).map(function(row) {
+      return row.map(escapeCsvCell).join(',');
+    });
+
+    return new Blob(['\ufeff' + lines.join('\r\n')], {
+      type: 'text/csv;charset=utf-8'
+    });
+  }
+
+  function escapeCsvCell(value) {
+    return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"';
+  }
+
+  function createXlsxBlob(headers, rows) {
+    const sheetRows = [headers].concat(rows);
+    const files = {
+      '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+      '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+      'xl/workbook.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Visible Leads" sheetId="1" r:id="rId1"/></sheets></workbook>',
+      'xl/_rels/workbook.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+      'xl/styles.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="1"><fill><patternFill patternType="none"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs></styleSheet>',
+      'xl/worksheets/sheet1.xml': buildWorksheetXml(sheetRows)
+    };
+
+    return new Blob([createZipBytes(files)], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+  }
+
+  function buildWorksheetXml(rows) {
+    const sheetData = rows.map(function(row, rowIndex) {
+      const cells = row.map(function(value, columnIndex) {
+        const ref = getColumnName(columnIndex + 1) + (rowIndex + 1);
+
+        return '<c r="' + ref + '" t="inlineStr"><is><t>' + escapeXml(value) + '</t></is></c>';
+      }).join('');
+
+      return '<row r="' + (rowIndex + 1) + '">' + cells + '</row>';
+    }).join('');
+
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>' + sheetData + '</sheetData></worksheet>';
+  }
+
+  function getColumnName(index) {
+    let name = '';
+    let cursor = index;
+
+    while (cursor > 0) {
+      const remainder = (cursor - 1) % 26;
+      name = String.fromCharCode(65 + remainder) + name;
+      cursor = Math.floor((cursor - 1) / 26);
+    }
+
+    return name;
+  }
+
+  function escapeXml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
+  function createZipBytes(files) {
+    const encoder = new TextEncoder();
+    const localParts = [];
+    const centralParts = [];
+    const now = new Date();
+    const dosTime = ((now.getHours() & 31) << 11) | ((now.getMinutes() & 63) << 5) | (Math.floor(now.getSeconds() / 2) & 31);
+    const dosDate = (((now.getFullYear() - 1980) & 127) << 9) | (((now.getMonth() + 1) & 15) << 5) | (now.getDate() & 31);
+    let offset = 0;
+
+    Object.keys(files).forEach(function(path) {
+      const nameBytes = encoder.encode(path);
+      const contentBytes = encoder.encode(files[path]);
+      const crc = crc32(contentBytes);
+      const localHeader = createZipHeader(0x04034b50, [20, 0, 0, dosTime, dosDate, crc, contentBytes.length, contentBytes.length, nameBytes.length, 0]);
+
+      localParts.push(localHeader, nameBytes, contentBytes);
+
+      const centralHeader = createZipHeader(0x02014b50, [20, 20, 0, 0, dosTime, dosDate, crc, contentBytes.length, contentBytes.length, nameBytes.length, 0, 0, 0, 0, 0, offset]);
+
+      centralParts.push(centralHeader, nameBytes);
+      offset += localHeader.length + nameBytes.length + contentBytes.length;
+    });
+
+    const centralSize = centralParts.reduce(function(total, part) {
+      return total + part.length;
+    }, 0);
+    const entryCount = Object.keys(files).length;
+    const endRecord = createZipHeader(0x06054b50, [0, 0, entryCount, entryCount, centralSize, offset, 0]);
+
+    return concatUint8Arrays(localParts.concat(centralParts, [endRecord]));
+  }
+
+  function createZipHeader(signature, fields) {
+    const sizes = signature === 0x02014b50
+      ? [2, 2, 2, 2, 2, 2, 4, 4, 4, 2, 2, 2, 2, 2, 4, 4]
+      : signature === 0x06054b50
+        ? [2, 2, 2, 2, 4, 4, 2]
+        : [2, 2, 2, 2, 2, 4, 4, 4, 2, 2];
+    const bytes = new Uint8Array(4 + sizes.reduce(function(total, size) {
+      return total + size;
+    }, 0));
+    const view = new DataView(bytes.buffer);
+    let offset = 0;
+
+    view.setUint32(offset, signature, true);
+    offset += 4;
+    fields.forEach(function(value, index) {
+      if (sizes[index] === 2) {
+        view.setUint16(offset, value, true);
+      } else {
+        view.setUint32(offset, value, true);
+      }
+
+      offset += sizes[index];
+    });
+
+    return bytes;
+  }
+
+  function concatUint8Arrays(parts) {
+    const totalLength = parts.reduce(function(total, part) {
+      return total + part.length;
+    }, 0);
+    const output = new Uint8Array(totalLength);
+    let offset = 0;
+
+    parts.forEach(function(part) {
+      output.set(part, offset);
+      offset += part.length;
+    });
+
+    return output;
+  }
+
+  function crc32(bytes) {
+    let crc = -1;
+
+    bytes.forEach(function(byte) {
+      crc = (crc >>> 8) ^ getCrcTable()[(crc ^ byte) & 0xff];
+    });
+
+    return (crc ^ -1) >>> 0;
+  }
+
+  function getCrcTable() {
+    if (window.__leadStudioCrcTable) {
+      return window.__leadStudioCrcTable;
+    }
+
+    window.__leadStudioCrcTable = Array.from({ length: 256 }, function(_, index) {
+      let cursor = index;
+
+      for (let bit = 0; bit < 8; bit += 1) {
+        cursor = cursor & 1 ? 0xedb88320 ^ (cursor >>> 1) : cursor >>> 1;
+      }
+
+      return cursor >>> 0;
+    });
+
+    return window.__leadStudioCrcTable;
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function setStatus(message, tone) {
+    const node = document.getElementById('status-text');
+    node.textContent = message || '';
+    node.className = 'status-text' + (tone ? ' is-' + tone : '');
+  }
+
+  function setGmailTestOutput(message) {
+    const node = document.getElementById('gmail-test-output');
+
+    if (node) {
+      node.textContent = message || '';
+    }
+  }
+
+  function getErrorMessage(error, fallback) {
+    return error && error.message ? error.message : fallback;
+  }
+</script>

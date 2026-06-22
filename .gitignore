@@ -1,0 +1,28 @@
+# Local/system noise
+desktop.ini
+**/desktop.ini
+Thumbs.db
+*.log
+
+# Dependencies/build output
+node_modules/
+dist/
+build/
+
+# Local secrets and environment
+.env
+.env.*
+*.key
+*.pem
+
+# Sensitive historical setup notes
+ProjectControl/DocumentationArchive/NOTES.md
+
+# Local rollback archives and binary snapshots
+Archive/
+*.zip
+
+# Local Google Drive shortcut files
+Resources/*.gsheet
+Resources/*.url
+

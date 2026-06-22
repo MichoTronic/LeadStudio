@@ -1,0 +1,16 @@
+desktop.ini
+AppsScript/desktop.ini
+node_modules/**
+.git/**
+.gitignore
+package.json
+package-lock.json
+../ProjectControl/DocumentationArchive/**
+../Reports/**
+../Resources/**
+../Phase_Completion_Review_Pack/**
+Archive/**
+Stable Gmail and UI v30/**
+Stable Gmail UI and Jira v43/**
+Lead Studio Version 1/**
+*.zip
