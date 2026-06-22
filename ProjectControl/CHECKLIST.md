@@ -63,6 +63,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 
 - [x] Add a scheduled Refresh Leads wrapper with overlap protection.
 - [x] Add install/status/remove helpers for the daily 06:00 project-time refresh trigger.
+- [x] Add visible Apps Script execution-log output for daily refresh trigger install/status/remove helpers.
 - [ ] Owner authorization required: run `installDailyRefreshLeadsTrigger()` once successfully.
 - [ ] Confirm the daily refresh trigger is installed and visible in Apps Script triggers after deployment.
 - [ ] Confirm `getDailyRefreshLeadsTriggerStatus()` reports `triggerCount: 1`.

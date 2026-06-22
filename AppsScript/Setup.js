@@ -48,7 +48,10 @@ function installDailyRefreshLeadsTrigger() {
     timezone: Session.getScriptTimeZone()
   });
 
-  return getDailyRefreshLeadsTriggerStatus();
+  const status = getDailyRefreshLeadsTriggerStatus();
+  Logger.log(JSON.stringify(status, null, 2));
+
+  return status;
 }
 
 function removeDailyRefreshLeadsTrigger() {
@@ -69,10 +72,14 @@ function removeDailyRefreshLeadsTrigger() {
     });
   }
 
-  return {
+  const result = {
     ok: true,
     removed: removed
   };
+
+  Logger.log(JSON.stringify(result, null, 2));
+
+  return result;
 }
 
 function getDailyRefreshLeadsTriggerStatus() {
@@ -80,7 +87,7 @@ function getDailyRefreshLeadsTriggerStatus() {
     return trigger.getHandlerFunction() === 'scheduledRefreshLeads';
   });
 
-  return {
+  const status = {
     ok: true,
     timezone: Session.getScriptTimeZone(),
     triggerCount: triggers.length,
@@ -93,4 +100,8 @@ function getDailyRefreshLeadsTriggerStatus() {
       };
     })
   };
+
+  Logger.log(JSON.stringify(status, null, 2));
+
+  return status;
 }
