@@ -10,7 +10,7 @@ Current status source of truth for Lead Studio.
 - Current local code line: V3 source line, with toolbar stability, date filters, fixed table columns, operations status, smoke tests, endpoint hardening, and scheduled refresh helpers present
 - Apps Script source root: `AppsScript/`
 - Official Version 1 checkpoint: Version 45
-- Current stable deployment: Version 57 - Use noreply New Contact sender
+- Current stable deployment: Version 58 - Align lifecycle metrics with onboarded Jira rows
 - Current stable web app deployment ID: `AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA`
 - Current V3 review decision: `GO WITH CONDITIONS`
 - Current viable/stable baseline: `V3`
@@ -59,6 +59,8 @@ Current status source of truth for Lead Studio.
 - 2026-07-20: Tightened current `New Contact` sender configuration so form notices are accepted from `noreply@timelesstech.io` / `no-reply@timelesstech.io`, not the marketing mailbox sender; created version 57 and redeployed the stable web app deployment ID to `@57`.
 - 2026-07-20: Operator confirmed `Settings > Refresh Leads` found the missing post-2026-06-21 contacts after the version 57 sender fix.
 - 2026-07-20: Ran V57 hotfix completion review pack, saved dated reports in `Reports/`, and recorded final decision `GO WITH CONDITIONS`.
+- 2026-07-20: Investigated lifecycle metric mismatch. Four onboarded rows had Jira keys but blank Jira/Lead Status, so they counted in Onboarding but not in lifecycle chips; updated New Lead metric/filter to include onboarded Jira-key rows with missing status.
+- 2026-07-20: Pushed lifecycle metric fix to Apps Script, created version 58, and redeployed the stable web app deployment ID to `@58`.
 - 2026-06-22: Stabilized the table toolbar into fixed metric/filter and search/export/settings rows, and added outside-click/Escape closing behavior for filter/export dropdowns.
 - 2026-06-22: Pushed the updated Apps Script source files to project head with `clasp push`; no new version or stable deployment repoint has been created yet.
 - 2026-07-20: Investigated stalled contact updates. Scheduled refreshes were succeeding but adding 0 rows because current `New Contact` form notices now arrive from `noreply@timelesstech.io`; added trusted form sender handling and smoke coverage.
@@ -73,7 +75,7 @@ Current status source of truth for Lead Studio.
 ## Current Risks
 
 - `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
-- Daily refresh trigger is installed and confirmed with `triggerCount: 1`; July 2026 scheduled runs are completing, and the 2026-07-20 noreply sender fix is deployed at `@57`. Manual Refresh Leads backfilled the missing contacts; the remaining condition is observing the next automatic scheduled run after version 57.
+- Daily refresh trigger is installed and confirmed with `triggerCount: 1`; July 2026 scheduled runs are completing, and the 2026-07-20 noreply sender fix is deployed. Manual Refresh Leads backfilled the missing contacts; the remaining condition is observing the next automatic scheduled run after version 57.
 - Setup/test URL token handlers still exist in `Code.js`, but URL access is disabled by default unless `LEAD_STUDIO_SETUP_ENDPOINTS_ENABLED=true` or `LEAD_STUDIO_TEST_ENDPOINTS_ENABLED=true` is set temporarily.
 - There is a lightweight Apps Script smoke-test harness for parser, Jira mapping, date-range, and export-row behavior; sheet-update behavior still needs deeper automated coverage later.
 - `Script.html` and `GmailScanner.js` are large modules; future changes should stay focused or be split only after behavior is covered.
@@ -122,7 +124,7 @@ getDailyRefreshLeadsTriggerStatus() => triggerCount: 1
 
 ## V3 Notes
 
-- Stable deployment is version 57.
+- Stable deployment is version 58.
 - V2 remains available as git tag `v2-stable`.
 - V3 is tagged as `v3-stable`; final counter fixes are included.
 - V57 hotfix completion review decision is `GO WITH CONDITIONS`.

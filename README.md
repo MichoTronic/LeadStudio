@@ -69,7 +69,7 @@ Open V2 conditions:
 
 Current viable and stable baseline: `V3`.
 
-- Apps Script stable deployment: version `57`
+- Apps Script stable deployment: version `58`
 - Git rollback tag: `v3-stable`
 - Local stable snapshot: `Archive/Snapshots/Lead Studio V3 Stable.zip`
 - V3 completion review reports: `Reports/2026_06_22_Phase_V3_*`
@@ -78,6 +78,8 @@ Current viable and stable baseline: `V3`.
 Keep V3 as the baseline while planning V4. V4 work should start from the V4 backlog in `ProjectControl/CHECKLIST.md`, not from ad hoc notes.
 
 V3 hotfix on 2026-07-20: version `57` uses `noreply@timelesstech.io` as the current `New Contact` notice sender; run `Settings > Refresh Leads` to verify/backfill post-2026-06-21 form notices.
+
+V3 hotfix on 2026-07-20: version `58` aligns lifecycle metrics so onboarded rows with Jira keys but missing Jira status are counted under New Lead.
 
 ## V4 Backlog Themes
 

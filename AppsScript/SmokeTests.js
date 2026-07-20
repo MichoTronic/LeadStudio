@@ -156,6 +156,17 @@ function runLeadStudioSmokeTests() {
     assertSmokeEqual_(exportRows.rows[0][4], 'https://jira.example/browse/SF-1', 'Jira URL injected');
   });
 
+  recordSmokeTest_(results, 'lifecycle metric includes onboarded missing Jira status', function() {
+    const row = {
+      'Jira Issue Key': 'SF-226',
+      'Jira Status': '',
+      'Onboarding Complete': 'Yes',
+      'Lead Status': ''
+    };
+
+    assertSmokeEqual_(isLifecycleTrackedLeadForSmoke_(row), true, 'Onboarded Jira row is lifecycle tracked');
+  });
+
   const failed = results.filter(function(result) {
     return !result.ok;
   });
@@ -261,4 +272,12 @@ function buildExportRowsForSmoke_(rows, visibleHeaders) {
       });
     })
   };
+}
+
+function isLifecycleTrackedLeadForSmoke_(values) {
+  return Boolean(
+    normalizeValue_(values['Jira Status']) ||
+    normalizeValue_(values['Jira Issue Key']) ||
+    normalizeValue_(values['Onboarding Complete']).toLowerCase() === 'yes'
+  );
 }

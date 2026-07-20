@@ -61,6 +61,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Add Settings `Run Smoke Tests` action.
 - [x] Reserve four-digit display space for dashboard metric counters.
 - [x] Make Contacts metric reflect active visible filters.
+- [x] Make New Lead metric/filter include onboarded Jira-key rows with missing Jira status so lifecycle chips reconcile with Onboarding.
 - [ ] Review table density and column order after the first real user feedback round.
 - [ ] Add clearer empty/error states for missing Jira credentials, Gmail delegation failure, and onboarding sheet access failure.
 - [ ] Verify CSV/XLSX export output for filtered rows, Jira links, and special characters.
