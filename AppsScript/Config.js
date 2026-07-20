@@ -41,6 +41,10 @@ const TRACKER_CONFIG = Object.freeze({
   }),
   gmail: Object.freeze({
     mailboxUser: 'marketing@timelesstech.io',
+    leadSenderEmails: Object.freeze([
+      'noreply@timelesstech.io',
+      'no-reply@timelesstech.io'
+    ]),
     serviceAccountJsonFileId: '1yAOLGYJPmb0qOtPofiRsl014KpuacWOE',
     pageSize: 100,
     maxResults: 500,
@@ -138,6 +142,7 @@ function getTrackerPublicConfig_() {
     spreadsheetId: TRACKER_CONFIG.spreadsheetId,
     gmail: {
       mailboxUser: TRACKER_CONFIG.gmail.mailboxUser,
+      leadSenderEmails: TRACKER_CONFIG.gmail.leadSenderEmails.slice(),
       pageSize: TRACKER_CONFIG.gmail.pageSize,
       maxResults: TRACKER_CONFIG.gmail.maxResults,
       deepScanMaxResults: TRACKER_CONFIG.gmail.deepScanMaxResults,

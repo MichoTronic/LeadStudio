@@ -359,8 +359,7 @@ function isLeadEmailMatch_(headers, bodyText) {
   const normalizedBody = normalizeValue_(bodyText).toLowerCase();
 
   return (
-      sender === mailbox ||
-      normalizeValue_(headers.From).toLowerCase().indexOf(mailbox) !== -1
+      isTrustedLeadSender_(sender, headers.From)
     ) &&
     (
       recipient.indexOf(mailbox) !== -1 ||
@@ -375,6 +374,24 @@ function isLeadEmailMatch_(headers, bodyText) {
         isLegacyWebformBody_(normalizedBody)
       )
     );
+}
+
+function isTrustedLeadSender_(senderEmail, fromHeader) {
+  const sender = normalizeValue_(senderEmail).toLowerCase();
+  const header = normalizeValue_(fromHeader).toLowerCase();
+  const trustedSenders = (TRACKER_CONFIG.gmail.leadSenderEmails || []).map(function(email) {
+    return normalizeValue_(email).toLowerCase();
+  }).filter(Boolean);
+
+  return trustedSenders.some(function(email) {
+    return sender === email || header.indexOf(email) !== -1;
+  });
+}
+
+function getPrimaryLeadSenderEmail_() {
+  const senders = (TRACKER_CONFIG.gmail.leadSenderEmails || []).map(normalizeValue_).filter(Boolean);
+
+  return senders[0] || TRACKER_CONFIG.gmail.mailboxUser;
 }
 
 function isNewContactBodyStart_(normalizedBody) {
@@ -710,8 +727,9 @@ function safeFindJiraOnboardingForContact_(contactEmail) {
 
 function testLatestNewContactEmail_() {
   const mailbox = TRACKER_CONFIG.gmail.mailboxUser;
+  const sender = getPrimaryLeadSenderEmail_();
   const accessToken = getDelegatedGmailAccessToken_(mailbox);
-  const query = 'from:' + mailbox + ' to:' + mailbox + ' subject:"New Contact"';
+  const query = 'from:' + sender + ' to:' + mailbox + ' subject:"New Contact"';
 
   try {
     const response = gmailApiFetch_(accessToken, '/gmail/v1/users/' + encodeURIComponent(mailbox) + '/messages', {

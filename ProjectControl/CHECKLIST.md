@@ -36,6 +36,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [ ] Add a small sample-based check for hidden body artifacts and HTML entity cleanup.
 - [ ] Review Gmail query limits for fast scan and deep scan after the next historical refresh.
 - [ ] Decide whether rejected lead samples should be surfaced in UI diagnostics or only written to `Debug Log`.
+- [x] Use `noreply@timelesstech.io` as the current `New Contact` form sender while still rejecting external `Re: New Contact` replies.
 
 ## Onboarding And Jira
 
@@ -67,6 +68,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 
 ## Operations
 
+- [x] Run `Settings > Refresh Leads` after version 57 and confirm post-2026-06-21 `noreply@timelesstech.io` form notices are appended.
+- [ ] Observe the next scheduled daily Refresh Leads run after version 57 and confirm it writes `SCHEDULED_REFRESH_COMPLETE`.
 - [x] Add a scheduled Refresh Leads wrapper with overlap protection.
 - [x] Add install/status/remove helpers for the daily 06:00 project-time refresh trigger.
 - [x] Add visible Apps Script execution-log output for daily refresh trigger install/status/remove helpers.

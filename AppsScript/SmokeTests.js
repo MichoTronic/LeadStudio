@@ -26,6 +26,59 @@ function runLeadStudioSmokeTests() {
     assertSmokeEqual_(parsed.Language, 'English', 'Language');
   });
 
+  recordSmokeTest_(results, 'accept current noreply New Contact sender', function() {
+    const isMatch = isLeadEmailMatch_({
+      From: 'No Reply Timeless Tech <noreply@timelesstech.io>',
+      To: 'marketing@timelesstech.io',
+      Subject: 'New Contact'
+    }, [
+      'New Contact',
+      'New Contact: DimariaBet',
+      "NEW CONTACT We've just received new contact form from:",
+      'Name: Dana',
+      'Last Name: Form',
+      'Email: dana@example.com',
+      'Phone:',
+      'Address:',
+      'Busines Type: platform_operator',
+      'Company Name: DimariaBet',
+      'Interested in: game_aggregator',
+      'Inquiry:',
+      'Language: en'
+    ].join(' '));
+
+    assertSmokeEqual_(isMatch, true, 'noreply lead sender');
+  });
+
+  recordSmokeTest_(results, 'reject external New Contact replies', function() {
+    const isMatch = isLeadEmailMatch_({
+      From: 'Ruzgar <anonvpscloud@gmail.com>',
+      To: 'Marketing Timeless <marketing@timelesstech.io>',
+      Subject: 'Re: New Contact'
+    }, 'Thank you so much for taking the time to respond.');
+
+    assertSmokeEqual_(isMatch, false, 'external reply sender');
+  });
+
+  recordSmokeTest_(results, 'reject mailbox sender when not configured as form sender', function() {
+    const isMatch = isLeadEmailMatch_({
+      From: 'Timeless Tech Marketing Team <marketing@timelesstech.io>',
+      To: 'marketing@timelesstech.io',
+      Subject: 'New Contact'
+    }, [
+      'New Contact',
+      "NEW CONTACT We've just received new contact form from:",
+      'Name: Dana',
+      'Last Name: Form',
+      'Email: dana@example.com',
+      'Company Name: DimariaBet',
+      'Interested in: game_aggregator',
+      'Language: en'
+    ].join(' '));
+
+    assertSmokeEqual_(isMatch, false, 'mailbox sender not accepted');
+  });
+
   recordSmokeTest_(results, 'parse old Contact Form format', function() {
     const parsed = parseLeadBody_({
       Subject: 'Contact Form (TLT-Webpage-test)'
