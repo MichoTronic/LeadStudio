@@ -12,11 +12,11 @@ Current status source of truth for Lead Studio.
 - Current local code line: V3 source line, with toolbar stability, date filters, fixed table columns, operations status, smoke tests, endpoint hardening, and scheduled refresh helpers present
 - Apps Script source root: `AppsScript/`
 - Official Version 1 checkpoint: Version 45
-- Current stable deployment: Version 59 - Shared TimelessStudioAuth gate
+- Current stable deployment: Version 60 - Auth phase cleanup
 - Current stable web app deployment ID: `AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA`
 - Current V3 review decision: `GO WITH CONDITIONS`
 - Current viable/stable baseline: `V3`
-- Current deployment inventory: stable version 59 web app deployment plus Apps Script read-only `@HEAD`
+- Current deployment inventory: stable version 60 web app deployment plus Apps Script read-only `@HEAD`
 - Current V3 rollback tag: `v3-stable`
 - Current V57 hotfix rollback tag: `v57-noreply-hotfix`
 - V2 rollback tag: `v2-stable`
@@ -74,6 +74,7 @@ Current status source of truth for Lead Studio.
 - 2026-06-22: Added token-protected setup endpoint actions for installing, removing, and checking the daily refresh trigger.
 - 2026-06-22: Deployed trigger helpers at version 51. One-time owner authorization/install is still required before the daily trigger is active.
 - 2026-08-05: Added shared `TimelessStudioAuth` integration for `studioPolicies/lead-studio`, pushed the Apps Script source, and redeployed the stable web app deployment ID to `@59`.
+- 2026-08-05: Completed shared-auth phase cleanup, rerouted scheduled/internal refresh paths away from protected UI wrappers, and redeployed the stable web app deployment ID to `@60`.
 
 ## Current Risks
 
@@ -130,14 +131,14 @@ getDailyRefreshLeadsTriggerStatus() => triggerCount: 1
 
 ## V3 Notes
 
-- Stable deployment is version 59.
+- Stable deployment is version 60.
 - V2 remains available as git tag `v2-stable`.
 - V3 is tagged as `v3-stable`; final counter fixes are included.
 - V57 hotfix completion review decision is `GO WITH CONDITIONS`.
 - `clasp run runLeadStudioSmokeTests` is blocked by the local Apps Script execution permission context, so use Apps Script editor or Settings > Run Smoke Tests for runtime validation.
 - Full V3 completion review decision is `GO WITH CONDITIONS`.
 - Treat V3 as the current viable/stable Lead Studio baseline while V4 is planned.
-- Shared-auth integration is deployed at version 59; controlled live verification is still needed for Mitja, Gaja, Vanesa, and a denied external account.
+- Shared-auth integration is deployed at version 60; controlled live verification is still needed for Mitja, Gaja, Vanesa, and a denied external account.
 
 ## V4 Planning Notes
 

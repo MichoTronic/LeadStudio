@@ -39,4 +39,6 @@ Deployed on 2026-08-05 to the existing stable web app deployment ID:
 AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA @59 - v59 shared TimelessStudioAuth gate 2026-08-05
 ```
 
+This was superseded the same day by the shared-auth phase cleanup deployment at version `60`.
+
 Live signed-in browser verification remains open for Mitja, Gaja, Vanesa, and one denied external account.

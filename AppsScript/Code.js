@@ -97,7 +97,9 @@ function scheduledRefreshLeads() {
 
   try {
     const before = loadEmailMatchesFromSheet_();
-    const after = refreshEmailMatchesFromGmail();
+    const after = refreshEmailMatchesWithOptions_({
+      deepScan: false
+    });
 
     appendDebugLog_('SCHEDULED_REFRESH_COMPLETE', 'scheduledRefreshLeads', 'Completed scheduled Refresh Leads run.', {
       beforeRows: before.rows.length,
@@ -313,7 +315,9 @@ function handleTestRequest_(e) {
 
 function refreshEmailMatchesForImportEndpoint_() {
   const before = loadEmailMatchesFromSheet_();
-  const after = refreshEmailMatchesFromGmail();
+  const after = refreshEmailMatchesWithOptions_({
+    deepScan: false
+  });
 
   return {
     ok: true,
@@ -339,7 +343,9 @@ function areTestEndpointsEnabled_() {
 
 function deepScanEmailMatchesForImportEndpoint_() {
   const before = loadEmailMatchesFromSheet_();
-  const after = deepScanEmailMatchesFromGmail();
+  const after = refreshEmailMatchesWithOptions_({
+    deepScan: true
+  });
 
   return {
     ok: true,

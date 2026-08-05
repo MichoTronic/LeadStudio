@@ -30,6 +30,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Add shared `TimelessStudioAuth` gate and backend verifier calls for Lead Studio.
 - [x] Register local auth rules for `studioPolicies/lead-studio`.
 - [x] Deploy Lead Studio shared-auth integration to the stable Apps Script web app.
+- [x] Run shared-auth phase completion cleanup and preserve scheduled/internal refresh paths.
 - [ ] Browser-test Mitja access through shared auth on the live Lead Studio URL.
 - [ ] Browser-test Gaja and Vanesa access after deployment.
 - [ ] Browser-test a denied account after deployment.
@@ -102,7 +103,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Move remaining V2 action items into this checklist.
 - [x] Create `../Archive/Snapshots/Lead Studio V2/` and matching V2 archive.
 - [x] Remove old versioned Apps Script deployments.
-- [x] Confirm remaining Apps Script deployments are stable V2 plus read-only `@HEAD`.
+- [x] Confirm remaining Apps Script deployments are stable version 60 plus read-only `@HEAD`.
 - [x] Initialize git repository on `main`.
 - [x] Create local V2 commit `c17001e` (`Prepare Lead Studio V2`).
 - [x] Push safe V2 project files to `https://github.com/MichoTronic/LeadStudio.git`.
