@@ -21,19 +21,22 @@ Added source-level integration with the shared `TimelessStudioAuth` system so Le
 ## Verification
 
 - `clasp status` confirmed `AppsScript/` is the active source root and only live source files are tracked.
-- `clasp deployments` confirmed the active deployment is still `@58` before deployment.
-- `clasp versions` confirmed latest version is `58` before deployment.
+- `clasp deployments` confirmed the active deployment was `@58` before deployment.
+- `clasp versions` confirmed latest version was `58` before deployment.
 - `.js` files passed `node --check`.
 - `appsscript.json` parsed successfully.
 - `Script.html` parsed successfully with `node`/`vm.Script`.
 - `git diff --check` passed.
+- Accidental secret scan found no Firebase API key or private key material.
+- Post-deploy `clasp deployments` confirmed the stable deployment is `@59`.
+- The stable web app URL returned HTTP 200 from an unauthenticated shell and redirected to Google sign-in, which is expected outside a signed-in browser session.
 
 ## Deployment Status
 
-Not deployed yet at the time this source report was created. The stable web app deployment still points to:
+Deployed on 2026-08-05 to the existing stable web app deployment ID:
 
 ```text
-@58 - Align lifecycle metrics with onboarded Jira rows
+AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA @59 - v59 shared TimelessStudioAuth gate 2026-08-05
 ```
 
-Deployment and live account verification should be recorded after the approved Apps Script push/promotion.
+Live signed-in browser verification remains open for Mitja, Gaja, Vanesa, and one denied external account.

@@ -16,4 +16,4 @@ Reports are evidence and history. Current active work belongs in `../ProjectCont
 
 | Date | Report | Status |
 | --- | --- | --- |
-| 2026-08-05 | `2026_08_05_Lead_Studio_Shared_Auth_Integration_Report.md` | Shared auth source integration staged; deployment pending |
+| 2026-08-05 | `2026_08_05_Lead_Studio_Shared_Auth_Integration_Report.md` | Shared auth integration deployed to Apps Script version 59 |

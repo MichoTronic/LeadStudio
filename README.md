@@ -56,7 +56,7 @@ Folder identity:
 - The app reads and updates lead status; it does not create Jira issues.
 - Manual Jira issue linking is supported from the lead detail UI.
 - Daily refresh trigger helpers exist in Apps Script, but the trigger requires one-time owner authorization before it is considered active.
-- Lead Studio uses shared `TimelessStudioAuth` source integration so Marketing Studio Console policy `studioPolicies/lead-studio` can control access after deployment.
+- Lead Studio uses shared `TimelessStudioAuth` integration so Marketing Studio Console policy `studioPolicies/lead-studio` controls access.
 
 ## V2 Completion Review
 
@@ -75,7 +75,7 @@ Open V2 conditions:
 
 Current viable and stable baseline: `V3`.
 
-- Apps Script stable deployment: version `58`
+- Apps Script stable deployment: version `59`
 - Git rollback tag: `v3-stable`
 - Local stable snapshot: `Archive/Snapshots/Lead Studio V3 Stable.zip`
 - V3 completion review reports: `Reports/2026_06_22_Phase_V3_*`
@@ -86,6 +86,8 @@ Keep V3 as the baseline while planning V4. V4 work should start from the V4 back
 V3 hotfix on 2026-07-20: version `57` uses `noreply@timelesstech.io` as the current `New Contact` notice sender; run `Settings > Refresh Leads` to verify/backfill post-2026-06-21 form notices.
 
 V3 hotfix on 2026-07-20: version `58` aligns lifecycle metrics so onboarded rows with Jira keys but missing Jira status are counted under New Lead.
+
+Shared auth deployment on 2026-08-05: version `59` adds the hosted TimelessStudioAuth sign-in gate, top-bar sign-out, and backend verifier checks for `studioPolicies/lead-studio`.
 
 ## V4 Backlog Themes
 
