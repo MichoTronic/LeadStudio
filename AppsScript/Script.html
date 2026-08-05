@@ -29,31 +29,146 @@
     sort: {
       header: 'Email Date',
       direction: 'desc'
-    }
+    },
+    authClient: null,
+    authState: null,
+    authReady: false,
+    authEventsBound: false,
+    eventsBound: false
   };
 
   document.addEventListener('DOMContentLoaded', initializeApp);
 
   function initializeApp() {
+    bindAuthEvents();
+    setAuthMessage('Loading secure sign-in...');
+
+    google.script.run
+      .withSuccessHandler(startStudioAuth)
+      .withFailureHandler(function(error) {
+        setAuthMessage(getErrorMessage(error, 'Unable to load auth configuration.'));
+      })
+      .getLeadStudioAuthRuntimeConfig();
+  }
+
+  function startStudioAuth(config) {
+    if (!window.TimelessStudioAuth || !window.TimelessStudioAuth.createStudioAuthClient) {
+      setAuthMessage('Unable to load the shared auth module. Refresh and try again.');
+      return;
+    }
+
+    state.authClient = window.TimelessStudioAuth.createStudioAuthClient(config);
+    state.authClient.subscribe(handleAuthStateChanged);
+    state.authClient.start();
+  }
+
+  function handleAuthStateChanged(authState) {
+    state.authState = authState || {};
+
+    if (state.authState.status === 'authorized') {
+      document.body.classList.remove('auth-locked');
+      document.getElementById('auth-signout-button').classList.remove('is-hidden');
+      setAuthMessage('Access verified.');
+
+      if (!state.authReady) {
+        state.authReady = true;
+        loadAppCore();
+      }
+
+      return;
+    }
+
+    document.body.classList.add('auth-locked');
+    state.authReady = false;
+    document.getElementById('auth-signout-button').classList.toggle('is-hidden', state.authState.status === 'signed-out');
+
+    if (state.authState.status === 'checking') {
+      setAuthMessage('Verifying access...');
+      return;
+    }
+
+    if (state.authState.status === 'denied') {
+      setAuthMessage(state.authState.authorization && state.authState.authorization.message || 'This account is not allowed.');
+      return;
+    }
+
+    if (state.authState.status === 'error') {
+      setAuthMessage(getErrorMessage(state.authState.error, 'Sign-in failed.'));
+      return;
+    }
+
+    setAuthMessage('Sign in with an approved Google account.');
+  }
+
+  function signIn() {
+    setAuthMessage('Opening Google sign-in...');
+    state.authClient.signIn().catch(function(error) {
+      setAuthMessage(getErrorMessage(error, 'Sign-in failed.'));
+    });
+  }
+
+  function signOut() {
+    document.getElementById('auth-signout-button').disabled = true;
+    document.getElementById('topbar-signout-button').disabled = true;
+
+    state.authClient.signOut().finally(function() {
+      state.authState = null;
+      state.authReady = false;
+      document.body.classList.add('auth-locked');
+      setAuthMessage('Signed out.');
+      document.getElementById('auth-signout-button').disabled = false;
+      document.getElementById('topbar-signout-button').disabled = false;
+    });
+  }
+
+  function setAuthMessage(message) {
+    const node = document.getElementById('auth-message');
+
+    if (node) {
+      node.textContent = message || '';
+    }
+  }
+
+  function getAuthPayload() {
+    return {
+      idToken: state.authState && state.authState.token || ''
+    };
+  }
+
+  function bindAuthEvents() {
+    if (state.authEventsBound) {
+      return;
+    }
+
+    state.authEventsBound = true;
+    document.getElementById('auth-signin-button').addEventListener('click', signIn);
+    document.getElementById('auth-signout-button').addEventListener('click', signOut);
+    document.getElementById('topbar-signout-button').addEventListener('click', signOut);
+  }
+
+  function loadAppCore() {
     setStatus('Loading app core...');
 
     google.script.run
       .withSuccessHandler(function(payload) {
-        document.getElementById('viewer-email').textContent = payload.viewerEmail || 'Unknown user';
+        document.getElementById('viewer-email').textContent = formatViewerLabel(payload.viewerEmail, payload.viewerRole);
         document.getElementById('mailbox-user').textContent =
           payload.config && payload.config.gmail ? payload.config.gmail.mailboxUser : 'Not configured';
         state.options.targetRegions = payload.config && payload.config.options ? payload.config.options.targetRegions || [] : [];
         state.options.businessTypes = payload.config && payload.config.options ? payload.config.options.businessTypes || [] : [];
         state.options.interestedIn = payload.config && payload.config.options ? payload.config.options.interestedIn || [] : [];
         renderPropertyStatus(payload.propertyStatus || []);
-        bindEvents();
+        if (!state.eventsBound) {
+          bindEvents();
+          state.eventsBound = true;
+        }
         loadOperationsStatus();
         loadEmailMatches();
       })
       .withFailureHandler(function(error) {
         setStatus(getErrorMessage(error, 'Unable to load app.'), 'error');
       })
-      .bootstrapTrackerAppCore();
+      .bootstrapTrackerAppCore(getAuthPayload());
   }
 
   function bindEvents() {
@@ -146,7 +261,7 @@
       .withFailureHandler(function(error) {
         setStatus(getErrorMessage(error, 'Unable to load matches.'), 'error');
       })
-      .loadEmailMatchesForUi();
+      .loadEmailMatchesForUi(getAuthPayload());
   }
 
   function refreshEmailMatches() {
@@ -161,7 +276,7 @@
       .withFailureHandler(function(error) {
         setStatus(getErrorMessage(error, 'Unable to refresh Gmail matches.'), 'error');
       })
-      .refreshEmailMatchesFromGmail();
+      .refreshEmailMatchesFromGmail(getAuthPayload());
   }
 
   function deepScanEmailMatches() {
@@ -184,7 +299,7 @@
         setGmailTestOutput(message);
         setStatus(message, 'error');
       })
-      .deepScanEmailMatchesFromGmail();
+      .deepScanEmailMatchesFromGmail(getAuthPayload());
   }
 
   function refreshAllJiraMatches() {
@@ -232,7 +347,7 @@
         setStatus(message, 'error');
         button.disabled = false;
       })
-      .prepareDeepJiraRefreshForUi();
+      .prepareDeepJiraRefreshForUi(getAuthPayload());
   }
 
   function refreshAllJiraMatchesBatch(candidateIndexes, candidateOffset, batchSize, totals, button) {
@@ -281,7 +396,7 @@
       .refreshJiraStatusesBatchForUi({
         rowIndexes: batchIndexes,
         batchSize: batchSize
-      });
+      }, getAuthPayload());
   }
 
   function loadEmailMatchesAfterJiraRefresh(totals, button) {
@@ -315,7 +430,7 @@
         setStatus(message, 'error');
         button.disabled = false;
       })
-      .loadEmailMatchesForUi();
+      .loadEmailMatchesForUi(getAuthPayload());
   }
 
   function setRowsFromPayload(payload) {
@@ -334,7 +449,7 @@
       .withFailureHandler(function(error) {
         setStatus(getErrorMessage(error, 'Unable to connect to Jira.'), 'error');
       })
-      .checkJiraConnectionForUi();
+      .checkJiraConnectionForUi(getAuthPayload());
   }
 
   function openSettingsDialog() {
@@ -374,7 +489,7 @@
         setGmailTestOutput(message);
         setStatus(message, 'error');
       })
-      .testMarketingMailboxAccessForUi();
+      .testMarketingMailboxAccessForUi(getAuthPayload());
   }
 
   function showServiceAccountInfo() {
@@ -391,7 +506,7 @@
         setGmailTestOutput(message);
         setStatus(message, 'error');
       })
-      .getServiceAccountInfoForSetupUi();
+      .getServiceAccountInfoForSetupUi(getAuthPayload());
   }
 
   function runSmokeTests() {
@@ -408,7 +523,7 @@
         setGmailTestOutput(message);
         setStatus(message, 'error');
       })
-      .runLeadStudioSmokeTestsForUi();
+      .runLeadStudioSmokeTestsForUi(getAuthPayload());
   }
 
   function testNewContactEmail() {
@@ -440,7 +555,7 @@
       .withFailureHandler(function(error) {
         setStatus(getErrorMessage(error, 'Unable to test Gmail access.'), 'error');
       })
-      .testLatestNewContactEmailForUi();
+      .testLatestNewContactEmailForUi(getAuthPayload());
   }
 
   function renderPropertyStatus(items) {
@@ -477,7 +592,7 @@
           error: getErrorMessage(error, 'Unable to load operations status.')
         });
       })
-      .getOperationsStatusForUi();
+      .getOperationsStatusForUi(getAuthPayload());
   }
 
   function renderOperationsStatus(status) {
@@ -785,7 +900,7 @@
           button.textContent = 'Save Jira Link';
         }
       })
-      .updateManualJiraLinkForUi(payload);
+      .updateManualJiraLinkForUi(payload, getAuthPayload());
   }
 
   function syncAvailableFilters() {
@@ -1561,6 +1676,13 @@
     const node = document.getElementById('status-text');
     node.textContent = message || '';
     node.className = 'status-text' + (tone ? ' is-' + tone : '');
+  }
+
+  function formatViewerLabel(email, role) {
+    const safeEmail = String(email || 'Unknown user').trim();
+    const safeRole = String(role || '').trim();
+
+    return safeRole ? safeEmail + ' (' + safeRole + ')' : safeEmail;
   }
 
   function setGmailTestOutput(message) {

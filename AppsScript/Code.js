@@ -17,25 +17,51 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-function bootstrapTrackerAppCore() {
+function getLeadStudioAuthRuntimeConfig() {
+  const authConfig = TRACKER_CONFIG.studioAuth || {};
+
   return {
-    viewerEmail: Session.getActiveUser().getEmail(),
+    studioId: authConfig.studioId || 'lead-studio',
+    requiredScope: 'read',
+    verifierUrl: authConfig.verifierUrl,
+    authPopupUrl: authConfig.authPopupUrl,
+    firebaseConfig: {
+      apiKey: '',
+      authDomain: authConfig.authDomain,
+      projectId: authConfig.projectId,
+      storageBucket: authConfig.storageBucket,
+      messagingSenderId: authConfig.messagingSenderId,
+      appId: authConfig.appId,
+      measurementId: authConfig.measurementId
+    }
+  };
+}
+
+function bootstrapTrackerAppCore(authPayload) {
+  const currentUser = assertAuthorizedUser_(authPayload, 'read');
+
+  return {
+    viewerEmail: currentUser.email,
+    viewerRole: currentUser.role,
     config: getTrackerPublicConfig_(),
     propertyStatus: getRequiredPropertyStatus_()
   };
 }
 
-function loadEmailMatchesForUi() {
+function loadEmailMatchesForUi(authPayload) {
+  assertAuthorizedUser_(authPayload, 'read');
   return loadEmailMatchesFromSheet_();
 }
 
-function refreshEmailMatchesFromGmail() {
+function refreshEmailMatchesFromGmail(authPayload) {
+  assertAuthorizedUser_(authPayload, 'write');
   return refreshEmailMatchesWithOptions_({
     deepScan: false
   });
 }
 
-function deepScanEmailMatchesFromGmail() {
+function deepScanEmailMatchesFromGmail(authPayload) {
+  assertAuthorizedUser_(authPayload, 'write');
   return refreshEmailMatchesWithOptions_({
     deepScan: true
   });
@@ -51,11 +77,13 @@ function refreshEmailMatchesWithOptions_(options) {
   return loadEmailMatchesFromSheet_();
 }
 
-function getOperationsStatusForUi() {
+function getOperationsStatusForUi(authPayload) {
+  assertAuthorizedUser_(authPayload, 'read');
   return getLeadStudioOperationsStatus_();
 }
 
-function runLeadStudioSmokeTestsForUi() {
+function runLeadStudioSmokeTestsForUi(authPayload) {
+  assertAuthorizedUser_(authPayload, 'settings');
   return runLeadStudioSmokeTests();
 }
 
@@ -84,23 +112,27 @@ function scheduledRefreshLeads() {
   }
 }
 
-function checkJiraConnectionForUi() {
+function checkJiraConnectionForUi(authPayload) {
+  assertAuthorizedUser_(authPayload, 'settings');
   return jiraCheckConnection_();
 }
 
-function refreshJiraStatusesForUi() {
+function refreshJiraStatusesForUi(authPayload) {
+  assertAuthorizedUser_(authPayload, 'write');
   updateEmailMatchesFromOnboardingAndJira_();
 
   return loadEmailMatchesFromSheet_();
 }
 
-function prepareDeepJiraRefreshForUi() {
+function prepareDeepJiraRefreshForUi(authPayload) {
+  assertAuthorizedUser_(authPayload, 'write');
   return Object.assign({
     ok: true
   }, buildJiraRefreshCandidateIndexes_());
 }
 
-function refreshJiraStatusesBatchForUi(payload) {
+function refreshJiraStatusesBatchForUi(payload, authPayload) {
+  assertAuthorizedUser_(authPayload, 'write');
   const options = payload || {};
   const result = updateEmailMatchesFromOnboardingAndJira_({
     startIndex: options.startIndex || 0,
@@ -113,20 +145,88 @@ function refreshJiraStatusesBatchForUi(payload) {
   }, result);
 }
 
-function updateManualJiraLinkForUi(payload) {
+function updateManualJiraLinkForUi(payload, authPayload) {
+  assertAuthorizedUser_(authPayload, 'write');
   return updateEmailMatchManualJiraLink_(payload);
 }
 
-function testLatestNewContactEmailForUi() {
+function testLatestNewContactEmailForUi(authPayload) {
+  assertAuthorizedUser_(authPayload, 'settings');
   return testLatestNewContactEmail_();
 }
 
-function testMarketingMailboxAccessForUi() {
+function testMarketingMailboxAccessForUi(authPayload) {
+  assertAuthorizedUser_(authPayload, 'settings');
   return testMarketingMailboxAccess_();
 }
 
-function getServiceAccountInfoForSetupUi() {
+function getServiceAccountInfoForSetupUi(authPayload) {
+  assertAuthorizedUser_(authPayload, 'settings');
   return getServiceAccountInfoForUi();
+}
+
+function assertAuthorizedUser_(authPayload, requiredScope) {
+  const authConfig = TRACKER_CONFIG.studioAuth || {};
+
+  if (!authConfig.enabled) {
+    return {
+      email: normalizeValue_(Session.getActiveUser().getEmail()).toLowerCase(),
+      role: '',
+      scopes: [],
+      authorized: true
+    };
+  }
+
+  const idToken = normalizeValue_(authPayload && authPayload.idToken);
+
+  if (!idToken) {
+    throw new Error('Access denied. Please sign in with Google.');
+  }
+
+  const result = verifyStudioAccess_(idToken, requiredScope || 'read');
+
+  if (!result.allowed) {
+    throw new Error(result.message || 'Access denied.');
+  }
+
+  return {
+    email: result.email || '',
+    role: result.role || '',
+    scopes: result.scopes || [],
+    authorized: true
+  };
+}
+
+function verifyStudioAccess_(idToken, requiredScope) {
+  const authConfig = TRACKER_CONFIG.studioAuth || {};
+  const response = UrlFetchApp.fetch(authConfig.verifierUrl, {
+    method: 'post',
+    contentType: 'application/json',
+    muteHttpExceptions: true,
+    payload: JSON.stringify({
+      idToken: idToken,
+      studioId: authConfig.studioId || 'lead-studio',
+      requiredScope: requiredScope || 'read'
+    })
+  });
+  const status = response.getResponseCode();
+  let result = {};
+
+  try {
+    result = JSON.parse(response.getContentText() || '{}');
+  } catch (error) {
+    result = {};
+  }
+
+  if (status < 200 || status >= 300) {
+    return {
+      allowed: false,
+      reason: result.reason || 'verifier_error',
+      message: result.message || 'Access verification failed.'
+    };
+  }
+
+  return result;
 }
 
 function handleSetupRequest_(e) {

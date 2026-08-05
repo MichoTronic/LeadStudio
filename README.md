@@ -23,6 +23,11 @@ Google Apps Script web app for tracking marketing contact-form leads, onboarding
 | UI shell, styles, and browser logic | `AppsScript/Index.html`, `AppsScript/Styles.html`, `AppsScript/Script.html` |
 | Rollback snapshots | `Archive/Snapshots/` |
 
+Folder identity:
+
+- Local folder: `D:\GoogleDrive\_Share\TimelessTech\Marketing\Optmizations\LeadStudio`
+- Parent Optimization Google Drive folder ID: `1keVmyWTXwqQM0cK5AWQzFPIKM7K7hyt1`
+
 ## Current Rules
 
 - The live Apps Script project is `AppsScript/`; `.clasp.json` must keep `rootDir` set to `AppsScript`.
@@ -51,6 +56,7 @@ Google Apps Script web app for tracking marketing contact-form leads, onboarding
 - The app reads and updates lead status; it does not create Jira issues.
 - Manual Jira issue linking is supported from the lead detail UI.
 - Daily refresh trigger helpers exist in Apps Script, but the trigger requires one-time owner authorization before it is considered active.
+- Lead Studio uses shared `TimelessStudioAuth` source integration so Marketing Studio Console policy `studioPolicies/lead-studio` can control access after deployment.
 
 ## V2 Completion Review
 

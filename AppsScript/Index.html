@@ -5,9 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <?!= include('Styles'); ?>
   </head>
-  <body>
+  <body class="auth-locked">
     <div class="aurora aurora-one"></div>
     <div class="aurora aurora-two"></div>
+
+    <section id="auth-gate" class="auth-gate" aria-live="polite">
+      <div class="auth-card">
+        <p class="panel-kicker">Secure Access</p>
+        <h1>Lead Studio</h1>
+        <p id="auth-message" class="auth-message">Checking sign-in...</p>
+        <div class="auth-actions">
+          <button id="auth-signin-button" class="primary-button" type="button">Sign in with Google</button>
+          <button id="auth-signout-button" class="ghost-button is-hidden" type="button">Sign out</button>
+        </div>
+      </div>
+    </section>
 
     <header class="topbar">
       <div class="topbar-brand">
@@ -20,6 +32,7 @@
       <div class="topbar-user">
         <span class="user-label">Authorized User</span>
         <strong id="viewer-email" class="user-value">Loading...</strong>
+        <button id="topbar-signout-button" class="topbar-signout-button" type="button">Sign out</button>
       </div>
     </header>
 
@@ -176,6 +189,7 @@
       </div>
     </dialog>
 
+    <script src="https://timeless-studio-auth.web.app/studio-auth-client.js"></script>
     <?!= include('Script'); ?>
   </body>
 </html>

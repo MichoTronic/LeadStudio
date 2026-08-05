@@ -27,6 +27,12 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [ ] Move all operational secrets into Apps Script Script Properties or managed secret storage.
 - [ ] Confirm `DocumentationArchive/NOTES.md` remains excluded from `clasp` pushes and external sharing.
 - [ ] Review `appsscript.json` web app access and execution API settings before broader team use.
+- [x] Add shared `TimelessStudioAuth` gate and backend verifier calls for Lead Studio.
+- [x] Register local auth rules for `studioPolicies/lead-studio`.
+- [ ] Deploy Lead Studio shared-auth integration to the stable Apps Script web app.
+- [ ] Browser-test Mitja access through shared auth on the live Lead Studio URL.
+- [ ] Browser-test Gaja and Vanesa access after deployment.
+- [ ] Browser-test a denied account after deployment.
 - [ ] Document who owns the Gmail service-account JSON file and who can rotate it.
 - [x] Disable setup/test URL endpoints by default behind explicit Script Properties.
 

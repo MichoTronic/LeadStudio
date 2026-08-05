@@ -2,6 +2,18 @@ const TRACKER_CONFIG = Object.freeze({
   appName: 'Lead Studio',
   spreadsheetId: '1M5U5kq_s8Yf1iRgv3goChXUkqLfRSwJLDrXrApjXjx4',
   driveFolderId: '1gnvbM3Tt75DtFg3onFp2tMURUGS9kZ60',
+  studioAuth: Object.freeze({
+    enabled: true,
+    studioId: 'lead-studio',
+    authDomain: 'timeless-studio-auth.firebaseapp.com',
+    projectId: 'timeless-studio-auth',
+    storageBucket: 'timeless-studio-auth.firebasestorage.app',
+    messagingSenderId: '827725110654',
+    appId: '1:827725110654:web:b5927bf2f6e5fe8b75e72f',
+    measurementId: 'G-07DJZ1TQPM',
+    authPopupUrl: 'https://timeless-studio-auth.web.app/auth-popup.html',
+    verifierUrl: 'https://europe-west1-timeless-studio-auth.cloudfunctions.net/verifyStudioAccess'
+  }),
   sheets: Object.freeze({
     emailMatches: 'Email Matches',
     trackerConfig: 'Tracker Config',

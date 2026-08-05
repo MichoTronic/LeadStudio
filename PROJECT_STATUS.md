@@ -7,6 +7,8 @@ Current status source of truth for Lead Studio.
 - Product: `Lead Studio`
 - Platform: Google Apps Script web app
 - Storage: `Lead Studio Database` Google Sheet
+- Local folder: `D:\GoogleDrive\_Share\TimelessTech\Marketing\Optmizations\LeadStudio`
+- Parent Google Drive folder: `1keVmyWTXwqQM0cK5AWQzFPIKM7K7hyt1`
 - Current local code line: V3 source line, with toolbar stability, date filters, fixed table columns, operations status, smoke tests, endpoint hardening, and scheduled refresh helpers present
 - Apps Script source root: `AppsScript/`
 - Official Version 1 checkpoint: Version 45
@@ -14,7 +16,7 @@ Current status source of truth for Lead Studio.
 - Current stable web app deployment ID: `AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA`
 - Current V3 review decision: `GO WITH CONDITIONS`
 - Current viable/stable baseline: `V3`
-- Current deployment inventory: stable version 55 web app deployment plus Apps Script read-only `@HEAD`
+- Current deployment inventory: stable version 58 web app deployment plus Apps Script read-only `@HEAD`
 - Current V3 rollback tag: `v3-stable`
 - Current V57 hotfix rollback tag: `v57-noreply-hotfix`
 - V2 rollback tag: `v2-stable`
@@ -71,6 +73,7 @@ Current status source of truth for Lead Studio.
 - 2026-06-22: Added `scheduledRefreshLeads()` plus trigger install/remove/status helpers for a daily 06:00 project-time Refresh Leads job.
 - 2026-06-22: Added token-protected setup endpoint actions for installing, removing, and checking the daily refresh trigger.
 - 2026-06-22: Deployed trigger helpers at version 51. One-time owner authorization/install is still required before the daily trigger is active.
+- 2026-08-05: Added source-level shared `TimelessStudioAuth` integration for `studioPolicies/lead-studio`; Apps Script deployment is still pending until this source is pushed and promoted.
 
 ## Current Risks
 
@@ -81,6 +84,7 @@ Current status source of truth for Lead Studio.
 - `Script.html` and `GmailScanner.js` are large modules; future changes should stay focused or be split only after behavior is covered.
 - Only files inside `AppsScript/` are live deployment candidates; archive/support folders must stay outside the `clasp` source root.
 - Because source now lives in `AppsScript/`, verify `clasp status` before every push to confirm only live source files are tracked.
+- Shared-auth source integration now expects Marketing Studio Console / TimelessStudioAuth policy `studioPolicies/lead-studio` to control who can access Lead Studio.
 
 ## Verification Set
 
@@ -88,6 +92,8 @@ Use this minimum check before code/config deployment:
 
 ```text
 clasp status
+clasp deployments
+clasp versions
 ```
 
 Use these runtime checks after deployment or when touching integrations:
@@ -131,6 +137,7 @@ getDailyRefreshLeadsTriggerStatus() => triggerCount: 1
 - `clasp run runLeadStudioSmokeTests` is blocked by the local Apps Script execution permission context, so use Apps Script editor or Settings > Run Smoke Tests for runtime validation.
 - Full V3 completion review decision is `GO WITH CONDITIONS`.
 - Treat V3 as the current viable/stable Lead Studio baseline while V4 is planned.
+- Shared-auth source integration is staged locally and will become the next deployed baseline after controlled live verification.
 
 ## V4 Planning Notes
 

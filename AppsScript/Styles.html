@@ -20,6 +20,10 @@
     box-sizing: border-box;
   }
 
+  .is-hidden {
+    display: none !important;
+  }
+
   html,
   body {
     margin: 0;
@@ -35,6 +39,50 @@
   body {
     min-height: 100vh;
     overflow-x: hidden;
+  }
+
+  body.auth-locked .topbar,
+  body.auth-locked .shell {
+    display: none;
+  }
+
+  .auth-gate {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+
+  body:not(.auth-locked) .auth-gate {
+    display: none;
+  }
+
+  .auth-card {
+    width: min(460px, 100%);
+    padding: 28px;
+    border-radius: var(--radius-xl);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+
+  .auth-card h1 {
+    margin: 0 0 12px;
+    font-size: 1.9rem;
+    line-height: 1.1;
+  }
+
+  .auth-message {
+    margin: 0 0 18px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .auth-actions {
+    display: grid;
+    gap: 10px;
   }
 
   .aurora {
@@ -135,6 +183,20 @@
     font-weight: 600;
   }
 
+  .topbar-signout-button {
+    appearance: none;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #dbeafe;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 8px 10px;
+    transition: background 150ms ease, border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  }
+
   .shell {
     position: relative;
     z-index: 1;
@@ -225,6 +287,20 @@
     background: rgba(22, 34, 56, 0.98);
     color: var(--text);
     padding: 12px 14px;
+  }
+
+  .topbar-signout-button:hover,
+  .primary-button:hover,
+  .ghost-button:hover {
+    border-color: rgba(91, 156, 255, 0.58);
+    box-shadow: 0 12px 24px rgba(59, 130, 246, 0.16);
+    transform: translateY(-1px);
+  }
+
+  .topbar-signout-button:active,
+  .primary-button:active,
+  .ghost-button:active {
+    transform: translateY(0) scale(0.98);
   }
 
   .property-list {
