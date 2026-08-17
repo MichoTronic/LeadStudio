@@ -122,6 +122,24 @@ exports.leadStudioActionV4 = functions.onCall({
           signJwt: signWorkspaceJwt
         });
       },
+      gmailOperationalLeadScan: function () {
+        return workspaceDelegation.scanGmailLeadMessages({
+          delegatedUser: leadStudioGmailUser.value(),
+          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
+          signJwt: signWorkspaceJwt,
+          operational: true,
+          timeZone: "Europe/Ljubljana"
+        });
+      },
+      gmailOperationalOnboardingScan: function () {
+        return workspaceDelegation.scanGmailOnboardingMessages({
+          delegatedUser: leadStudioGmailUser.value(),
+          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
+          signJwt: signWorkspaceJwt,
+          operational: true,
+          timeZone: "Europe/Ljubljana"
+        });
+      },
       onboardingSheetProbe: async function () {
         var response = await createSheetsClient().spreadsheets.values.get({
           spreadsheetId: leadStudioOnboardingSpreadsheetId.value(),

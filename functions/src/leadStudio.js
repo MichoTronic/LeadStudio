@@ -233,15 +233,15 @@ async function runAction(request, dependencies) {
     };
   }
   if (action === "refreshDryRun") {
-    ["gmailLeadScan", "gmailOnboardingScan", "onboardingSheetRows", "jiraIssueStatuses"].forEach(function (dependency) {
+    ["gmailOperationalLeadScan", "gmailOperationalOnboardingScan", "onboardingSheetRows", "jiraIssueStatuses"].forEach(function (dependency) {
       if (typeof dependencies[dependency] !== "function") {
         throw new HttpsError("failed-precondition", `Lead Studio refresh dry-run dependency ${dependency} is not configured.`);
       }
     });
     var refreshSheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
     var refreshInputs = await Promise.all([
-      dependencies.gmailLeadScan(),
-      dependencies.gmailOnboardingScan(),
+      dependencies.gmailOperationalLeadScan(),
+      dependencies.gmailOperationalOnboardingScan(),
       dependencies.onboardingSheetRows()
     ]);
     var refreshLookup = onboardingSheet.buildOnboardingLookup(refreshInputs[2]);
@@ -559,6 +559,16 @@ function buildRefreshDryRun(sheetResult, gmailLeadScan, gmailOnboardingScan, onb
   ));
   var jiraMismatchKeys = jira.blankInSheet.map(function (item) { return item.issueKey; })
     .concat(jira.mismatches.map(function (item) { return item.issueKey; }));
+  var appendPayloadReady = gmailLeadScan && gmailLeadScan.appendPayloadReady === true;
+  var gmailPaginationComplete = Boolean(
+    gmailLeadScan && gmailLeadScan.operational === true && gmailLeadScan.complete === true &&
+    gmailOnboardingScan && gmailOnboardingScan.operational === true && gmailOnboardingScan.complete === true
+  );
+  var blockers = [];
+  if (!appendPayloadReady) blockers.push("Firebase Gmail lead parsing does not yet produce the full GAS append-row payload.");
+  if (!gmailPaginationComplete) blockers.push("Operational Gmail pagination did not complete within its configured limits.");
+  blockers.push("Firebase refresh mutations and their audit/rollback acceptance remain disabled.");
+  blockers.push("GAS v60 remains the active writer and daily scheduler.");
 
   return {
     generatedAt: new Date().toISOString(),
@@ -571,6 +581,8 @@ function buildRefreshDryRun(sheetResult, gmailLeadScan, gmailOnboardingScan, onb
       acceptedMessages: gmailLeads.acceptedMessages,
       matchedMessages: gmailLeads.matchedMessages,
       plannedAppends: gmailLeads.notInSheet.length,
+      pagination: summarizeGmailPagination(gmailLeadScan),
+      appendPayloadReady: appendPayloadReady,
       mismatchRows: gmailLeads.fieldMismatches.map(function (item) { return { rowNumber: item.rowNumber, fields: item.fields }; })
     },
     gmailOnboarding: {
@@ -578,6 +590,7 @@ function buildRefreshDryRun(sheetResult, gmailLeadScan, gmailOnboardingScan, onb
       acceptedMessages: gmailOnboarding.acceptedMessages,
       matchedMessages: gmailOnboarding.matchedMessages,
       uncachedMessages: gmailOnboarding.notInSheet.length,
+      pagination: summarizeGmailPagination(gmailOnboardingScan),
       mismatchRows: gmailOnboarding.fieldMismatches.map(function (item) { return { rowNumber: item.rowNumber, fields: item.fields }; })
     },
     onboardingSheet: {
@@ -604,17 +617,25 @@ function buildRefreshDryRun(sheetResult, gmailLeadScan, gmailOnboardingScan, onb
     },
     cutoverReadiness: {
       dryRunOnly: true,
-      appendPayloadReady: false,
-      gmailScanBounded: true,
+      appendPayloadReady: appendPayloadReady,
+      gmailPaginationComplete: gmailPaginationComplete,
       mutationsEnabled: false,
       schedulerEnabled: false,
       ready: false,
-      blockers: [
-        "Firebase Gmail lead parsing does not yet produce the full GAS append-row payload.",
-        "The dry run uses bounded Gmail samples rather than operational pagination.",
-        "GAS v60 remains the active writer and daily scheduler."
-      ]
+      blockers: blockers
     }
+  };
+}
+
+function summarizeGmailPagination(scan) {
+  var queries = scan && Array.isArray(scan.queries) ? scan.queries : [];
+  return {
+    operational: Boolean(scan && scan.operational),
+    complete: Boolean(scan && scan.complete),
+    queryCount: queries.length,
+    pages: queries.reduce(function (total, query) { return total + (Number(query && query.pages) || 0); }, 0),
+    hitLimitQueries: queries.filter(function (query) { return query && query.hitLimit === true; }).length,
+    queriesWithMore: queries.filter(function (query) { return query && query.hasMore === true; }).length
   };
 }
 
@@ -641,6 +662,7 @@ module.exports = {
   jiraDiscoveryCandidates,
   jiraStatusBaseline,
   plannedJiraKeys,
+  summarizeGmailPagination,
   loadLeads,
   mapLead,
   publicAuthorization,

@@ -2,6 +2,9 @@
 
 var GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 var OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
+var OPERATIONAL_PAGE_SIZE = 100;
+var OPERATIONAL_MAX_RESULTS_PER_QUERY = 500;
+var MESSAGE_FETCH_CONCURRENCY = 8;
 var gmailLeadParser = require("./gmailLeadParser");
 
 async function createDelegatedAccessToken(options) {
@@ -77,41 +80,39 @@ async function scanGmailLeadMessages(options) {
     "in:anywhere \"Name & Surname\" \"E-mail\" \"Interested in\""
   ];
   var deepScan = options.deepScan === true;
+  var operational = options.operational === true;
   var afterDate = formatAfterDate(options.nowMs == null ? Date.now() : options.nowMs);
   var queries = deepScan ? baseQueries.concat(deepQueries) : baseQueries.map(function (query) {
     return `${query} after:${afterDate}`;
   });
-  var candidateLimit = deepScan ? 21 : 12;
-  var seen = new Set();
-  var messageIds = [];
-  var stats = [];
-  for (var queryIndex = 0; queryIndex < queries.length; queryIndex += 1) {
-    var query = queries[queryIndex];
-    var listUrl = new URL(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages`);
-    listUrl.searchParams.set("q", query);
-    listUrl.searchParams.set("maxResults", deepScan ? "3" : "15");
-    var listResponse = await gmailFetch(fetchImpl, listUrl.toString(), accessToken);
-    var listed = Array.isArray(listResponse.messages) ? listResponse.messages : [];
-    stats.push({ query: query, returned: listed.length });
-    listed.forEach(function (message) {
-      var id = normalize(message && message.id);
-      if (!id || seen.has(id) || messageIds.length >= candidateLimit) return;
-      seen.add(id);
-      messageIds.push(id);
-    });
-  }
+  var listing = await listGmailMessagesForQueries({
+    delegatedUser: delegatedUser,
+    accessToken: accessToken,
+    fetchImpl: fetchImpl,
+    queries: queries,
+    pageSize: operational ? OPERATIONAL_PAGE_SIZE : (deepScan ? 3 : 15),
+    maxResultsPerQuery: operational ? OPERATIONAL_MAX_RESULTS_PER_QUERY : (deepScan ? 3 : 15),
+    candidateLimit: operational ? Infinity : (deepScan ? 21 : 12)
+  });
+  var messageIds = listing.messageIds;
 
-  var accepted = [];
-  for (var messageIndex = 0; messageIndex < messageIds.length; messageIndex += 1) {
+  var parsedMessages = await mapWithConcurrency(messageIds, MESSAGE_FETCH_CONCURRENCY, async function (messageId) {
     var messageUrl = new URL(
-      `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageIds[messageIndex])}`
+      `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageId)}`
     );
     messageUrl.searchParams.set("format", "full");
     var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken);
-    var parsed = gmailLeadParser.parseGmailLeadMessage(message);
-    if (parsed) accepted.push(parsed);
-  }
-  return { queries: stats, candidateMessages: messageIds.length, acceptedMessages: accepted };
+    return gmailLeadParser.parseGmailLeadMessage(message, { nowMs: options.nowMs, timeZone: options.timeZone });
+  });
+  var accepted = parsedMessages.filter(Boolean);
+  return {
+    queries: listing.stats,
+    candidateMessages: messageIds.length,
+    acceptedMessages: accepted,
+    complete: listing.complete,
+    operational: operational,
+    appendPayloadReady: accepted.every(hasCompleteAppendPayload)
+  };
 }
 
 async function scanGmailOnboardingMessages(options) {
@@ -119,41 +120,104 @@ async function scanGmailOnboardingMessages(options) {
   var delegatedUser = normalize(options.delegatedUser).toLowerCase();
   var accessToken = await createDelegatedAccessToken(options);
   var fetchImpl = options.fetchImpl || fetch;
+  var operational = options.operational === true;
   var afterDate = formatAfterDate(options.nowMs == null ? Date.now() : options.nowMs);
   var queries = [
     `in:anywhere "ONBOARDING SENT" after:${afterDate}`,
     `in:anywhere subject:"Onboarding form sent" after:${afterDate}`
   ];
+  var listing = await listGmailMessagesForQueries({
+    delegatedUser: delegatedUser,
+    accessToken: accessToken,
+    fetchImpl: fetchImpl,
+    queries: queries,
+    pageSize: operational ? OPERATIONAL_PAGE_SIZE : 15,
+    maxResultsPerQuery: operational ? OPERATIONAL_MAX_RESULTS_PER_QUERY : 15,
+    candidateLimit: operational ? Infinity : 12
+  });
+  var messageIds = listing.messageIds;
+
+  var parsedMessages = await mapWithConcurrency(messageIds, MESSAGE_FETCH_CONCURRENCY, async function (messageId) {
+    var messageUrl = new URL(
+      `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageId)}`
+    );
+    messageUrl.searchParams.set("format", "full");
+    var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken);
+    return gmailLeadParser.parseGmailOnboardingMessage(message, { timeZone: options.timeZone });
+  });
+  return {
+    queries: listing.stats,
+    candidateMessages: messageIds.length,
+    acceptedMessages: parsedMessages.filter(Boolean),
+    complete: listing.complete,
+    operational: operational
+  };
+}
+
+async function listGmailMessagesForQueries(options) {
   var seen = new Set();
   var messageIds = [];
   var stats = [];
-  for (var queryIndex = 0; queryIndex < queries.length; queryIndex += 1) {
-    var query = queries[queryIndex];
-    var listUrl = new URL(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages`);
-    listUrl.searchParams.set("q", query);
-    listUrl.searchParams.set("maxResults", "15");
-    var listResponse = await gmailFetch(fetchImpl, listUrl.toString(), accessToken);
-    var listed = Array.isArray(listResponse.messages) ? listResponse.messages : [];
-    stats.push({ query: query, returned: listed.length });
-    listed.forEach(function (message) {
+  var candidateLimit = Number.isFinite(options.candidateLimit) ? Math.max(0, options.candidateLimit) : Infinity;
+  for (var queryIndex = 0; queryIndex < options.queries.length; queryIndex += 1) {
+    var query = options.queries[queryIndex];
+    var queryMessages = [];
+    var nextPageToken = "";
+    var pages = 0;
+    do {
+      var remaining = options.maxResultsPerQuery - queryMessages.length;
+      if (remaining <= 0) break;
+      var listUrl = new URL(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(options.delegatedUser)}/messages`);
+      listUrl.searchParams.set("q", query);
+      listUrl.searchParams.set("maxResults", String(Math.min(options.pageSize, remaining)));
+      if (nextPageToken) listUrl.searchParams.set("pageToken", nextPageToken);
+      var listResponse = await gmailFetch(options.fetchImpl, listUrl.toString(), options.accessToken);
+      var listed = Array.isArray(listResponse.messages) ? listResponse.messages : [];
+      queryMessages.push.apply(queryMessages, listed);
+      nextPageToken = normalize(listResponse.nextPageToken);
+      pages += 1;
+    } while (nextPageToken && queryMessages.length < options.maxResultsPerQuery);
+
+    stats.push({
+      query: query,
+      returned: queryMessages.length,
+      pages: pages,
+      hitLimit: queryMessages.length >= options.maxResultsPerQuery,
+      hasMore: Boolean(nextPageToken)
+    });
+    queryMessages.forEach(function (message) {
       var id = normalize(message && message.id);
-      if (!id || seen.has(id) || messageIds.length >= 12) return;
+      if (!id || seen.has(id) || messageIds.length >= candidateLimit) return;
       seen.add(id);
       messageIds.push(id);
     });
   }
+  return {
+    messageIds: messageIds,
+    stats: stats,
+    complete: stats.every(function (stat) { return stat.hasMore === false; })
+  };
+}
 
-  var accepted = [];
-  for (var messageIndex = 0; messageIndex < messageIds.length; messageIndex += 1) {
-    var messageUrl = new URL(
-      `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageIds[messageIndex])}`
-    );
-    messageUrl.searchParams.set("format", "full");
-    var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken);
-    var parsed = gmailLeadParser.parseGmailOnboardingMessage(message);
-    if (parsed) accepted.push(parsed);
+async function mapWithConcurrency(values, concurrency, worker) {
+  var results = new Array(values.length);
+  var cursor = 0;
+  async function runWorker() {
+    while (cursor < values.length) {
+      var index = cursor;
+      cursor += 1;
+      results[index] = await worker(values[index], index);
+    }
   }
-  return { queries: stats, candidateMessages: messageIds.length, acceptedMessages: accepted };
+  await Promise.all(Array.from({ length: Math.min(Math.max(1, concurrency), values.length || 1) }, runWorker));
+  return results;
+}
+
+function hasCompleteAppendPayload(message) {
+  var values = message && message.values;
+  return Boolean(values) && gmailLeadParser.APPEND_HEADERS.every(function (header) {
+    return Object.hasOwn(values, header);
+  }) && normalize(values["Gmail Message ID"]) === normalize(message.messageId);
 }
 
 async function gmailFetch(fetchImpl, url, accessToken) {
@@ -180,8 +244,12 @@ function normalize(value) {
 
 module.exports = {
   GMAIL_READONLY_SCOPE,
+  MESSAGE_FETCH_CONCURRENCY,
   OAUTH_TOKEN_URL,
+  OPERATIONAL_MAX_RESULTS_PER_QUERY,
+  OPERATIONAL_PAGE_SIZE,
   createDelegatedAccessToken,
+  listGmailMessagesForQueries,
   probeGmailMailbox,
   scanGmailLeadMessages,
   scanGmailOnboardingMessages

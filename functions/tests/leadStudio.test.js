@@ -433,15 +433,22 @@ test("builds a PII-minimized read-only refresh plan without Sheet writes", async
     sheetsClient: { spreadsheets: { values: { get: async function () {
       return { data: { values: [headers].concat(rows) } };
     } } } },
-    gmailLeadScan: async function () { return {
+    gmailOperationalLeadScan: async function () { return {
       candidateMessages: 2,
+      operational: true,
+      complete: true,
+      appendPayloadReady: true,
+      queries: [{ pages: 1, hitLimit: false, hasMore: false }],
       acceptedMessages: [
         { messageId: "gmail-1", contactEmail: "ada@example.com", companyName: "Example" },
         { messageId: "gmail-3", contactEmail: "new@example.com", companyName: "New" }
       ]
     }; },
-    gmailOnboardingScan: async function () { return {
+    gmailOperationalOnboardingScan: async function () { return {
       candidateMessages: 1,
+      operational: true,
+      complete: true,
+      queries: [{ pages: 1, hitLimit: false, hasMore: false }],
       acceptedMessages: [{ messageId: "onboarding-1", contactEmail: "ada@example.com" }]
     }; },
     onboardingSheetRows: async function () { return [
@@ -458,7 +465,10 @@ test("builds a PII-minimized read-only refresh plan without Sheet writes", async
   assert.equal(response.refreshDryRun.snapshot.loadedRows, 2);
   assert.equal(response.refreshDryRun.plannedMutations.appendRows, 1);
   assert.equal(response.refreshDryRun.jira.candidateRows, 2);
+  assert.equal(response.refreshDryRun.cutoverReadiness.appendPayloadReady, true);
+  assert.equal(response.refreshDryRun.cutoverReadiness.gmailPaginationComplete, true);
   assert.equal(response.refreshDryRun.cutoverReadiness.ready, false);
   assert.equal(JSON.stringify(response.refreshDryRun).includes("ada@example.com"), false);
   assert.equal(JSON.stringify(response.refreshDryRun).includes("gmail-1"), false);
+  assert.equal(JSON.stringify(response.refreshDryRun).includes("New Contact Email"), false);
 });

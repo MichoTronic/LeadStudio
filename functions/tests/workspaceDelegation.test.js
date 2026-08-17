@@ -68,7 +68,7 @@ test("rejects a failed delegated token exchange without returning provider paylo
   );
 });
 
-test("runs a bounded delegated Gmail lead scan without returning bodies or tokens", async function () {
+test("runs a bounded delegated Gmail lead scan with private append payloads and no tokens", async function () {
   var listCalls = 0;
   var result = await delegation.scanGmailLeadMessages({
     serviceAccountEmail: "runtime@example.iam.gserviceaccount.com",
@@ -104,9 +104,12 @@ test("runs a bounded delegated Gmail lead scan without returning bodies or token
   });
   assert.equal(result.candidateMessages, 2);
   assert.equal(result.acceptedMessages.length, 2);
+  assert.equal(result.appendPayloadReady, true);
+  assert.equal(result.complete, true);
+  assert.equal(result.operational, false);
   assert.equal(result.queries[0].query.endsWith("after:2026/05/17"), true);
   assert.equal(JSON.stringify(result).includes("private-token"), false);
-  assert.equal(JSON.stringify(result).includes("New Contact Email"), false);
+  assert.match(result.acceptedMessages[0].values["Full Body"], /^New Contact Email:/);
 });
 
 test("runs a bounded delegated Gmail onboarding scan without returning bodies or tokens", async function () {
@@ -141,6 +144,8 @@ test("runs a bounded delegated Gmail onboarding scan without returning bodies or
   });
   assert.equal(result.candidateMessages, 2);
   assert.equal(result.acceptedMessages.length, 2);
+  assert.equal(result.complete, true);
+  assert.equal(result.operational, false);
   assert.equal(result.queries[0].query.endsWith("after:2026/05/17"), true);
   assert.equal(JSON.stringify(result).includes("private-token"), false);
   assert.equal(JSON.stringify(result).includes("ONBOARDING SENT"), true);
@@ -170,4 +175,34 @@ test("samples every undated legacy query in a bounded deep lead scan", async fun
   assert.equal(result.candidateMessages, 0);
   assert.equal(listUrls.every(function (url) { return url.searchParams.get("maxResults") === "3"; }), true);
   assert.equal(listUrls.every(function (url) { return !url.searchParams.get("q").includes("after:"); }), true);
+});
+
+test("follows Gmail page tokens and reports a complete operational listing", async function () {
+  var listUrls = [];
+  var listing = await delegation.listGmailMessagesForQueries({
+    delegatedUser: "marketing@timelesstech.io",
+    accessToken: "private-token",
+    queries: ["query-one", "query-two"],
+    pageSize: 2,
+    maxResultsPerQuery: 5,
+    candidateLimit: Infinity,
+    fetchImpl: async function (url) {
+      var parsedUrl = new URL(url);
+      listUrls.push(parsedUrl);
+      var query = parsedUrl.searchParams.get("q");
+      var page = parsedUrl.searchParams.get("pageToken");
+      if (query === "query-one" && !page) {
+        return { ok: true, json: async function () { return { messages: [{ id: "one" }, { id: "shared" }], nextPageToken: "next" }; } };
+      }
+      if (query === "query-one") {
+        return { ok: true, json: async function () { return { messages: [{ id: "two" }] }; } };
+      }
+      return { ok: true, json: async function () { return { messages: [{ id: "shared" }, { id: "three" }] }; } };
+    }
+  });
+  assert.deepEqual(listing.messageIds, ["one", "shared", "two", "three"]);
+  assert.equal(listing.complete, true);
+  assert.equal(listing.stats[0].pages, 2);
+  assert.equal(listing.stats[0].hasMore, false);
+  assert.equal(listUrls[1].searchParams.get("pageToken"), "next");
 });

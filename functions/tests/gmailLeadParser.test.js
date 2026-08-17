@@ -18,19 +18,25 @@ function message(id, subject, body) {
   };
 }
 
-test("parses current New Contact messages without retaining the body", function () {
+test("builds the complete GAS-compatible append payload for current messages", function () {
   var parsed = parser.parseGmailLeadMessage(message(
     "gmail-1",
     "New Contact",
     "New Contact Name: Ada Last Name: Lovelace Email: ada@example.com Phone: 1 Address: EU Business Type: Operator Company Name: Analytical Engines Interested in: Platform Inquiry: Hello Language: en"
-  ));
-  assert.deepEqual(parsed, {
-    messageId: "gmail-1",
-    contactEmail: "ada@example.com",
-    companyName: "Analytical Engines",
-    format: "new"
-  });
+  ), { nowMs: Date.UTC(2026, 7, 17, 10, 15), timeZone: "Europe/Ljubljana" });
+  assert.equal(parsed.messageId, "gmail-1");
+  assert.equal(parsed.contactEmail, "ada@example.com");
+  assert.equal(parsed.companyName, "Analytical Engines");
+  assert.equal(parsed.format, "new");
   assert.equal(Object.hasOwn(parsed, "body"), false);
+  assert.deepEqual(Object.keys(parsed.values), parser.APPEND_HEADERS);
+  assert.equal(parsed.values["Found At"], "2026-08-17 12:15");
+  assert.equal(parsed.values["Name"], "Ada");
+  assert.equal(parsed.values["Last Name"], "Lovelace");
+  assert.equal(parsed.values["Language"], "English");
+  assert.equal(parsed.values["Gmail Message ID"], "gmail-1");
+  assert.match(parsed.values["Full Body"], /^New Contact Name: Ada/);
+  assert.equal(parsed.values["Onboarding Complete"], "No");
 });
 
 test("parses old and legacy lead formats", function () {
@@ -63,11 +69,12 @@ test("parses onboarding notices without retaining message content", function () 
     "Onboarding form sent",
     "ONBOARDING SENT 2 TIMES We've just received new contact form from Name: Ada Last Name: Lovelace Email: ADA@example.com Phone: 1"
   ));
-  assert.deepEqual(parsed, {
-    messageId: "onboarding-1",
-    contactEmail: "ada@example.com",
-    countHint: 2
-  });
+  assert.equal(parsed.messageId, "onboarding-1");
+  assert.equal(parsed.contactEmail, "ada@example.com");
+  assert.equal(parsed.countHint, 2);
+  assert.equal(parsed.threadId, "");
+  assert.equal(parsed.emailDate, "");
+  assert.equal(parsed.subject, "Onboarding form sent");
   assert.equal(Object.hasOwn(parsed, "body"), false);
   assert.equal(parser.parseGmailOnboardingMessage(message("other-1", "Other", "Email: a@example.com Phone: 1")), null);
 });
