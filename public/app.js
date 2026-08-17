@@ -110,6 +110,7 @@ Object.defineProperty(window, "__leadStudioDiagnostics", {
     jiraStatusParity: () => callAction("jiraStatusParity"),
     jiraDiscoveryParity: () => callAction("jiraDiscoveryParity"),
     jiraDirectLookupParity: () => callAction("jiraDirectLookupParity"),
+    refreshDryRun: () => callAction("refreshDryRun"),
     notesWriteAcceptance: runNotesWriteAcceptance,
     manualJiraRoundTrip: runManualJiraRoundTrip
   }),

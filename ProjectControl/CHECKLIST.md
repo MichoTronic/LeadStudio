@@ -126,6 +126,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Configure keyless domain-wide Gmail delegation and prove mailbox-profile access from the signed Firebase preview.
 - [x] Port bounded Gmail lead searches and current/old/legacy parsing; all 7 accepted messages in the live 12-candidate sample matched existing Sheet rows and fields.
 - [x] Port onboarding-notice reads, Form-linked onboarding matching, and deep-query parity before moving Gmail refresh ownership.
+- [x] Deploy and live-verify a settings-only, PII-minimized refresh dry-run; all 302 rows loaded, bounded Gmail/onboarding parity stayed exact, Jira planned no status changes, and the Sheet/Debug Log remained unchanged.
+- [ ] Produce the complete GAS-compatible Gmail lead append payload and add operational Gmail pagination while the refresh path remains read-only.
 - [x] Select row 2 and complete disabled-by-default Firebase Notes write/verify/restore/replay acceptance.
 - [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.
 - [x] Port filtered exports and manual Jira-link operations; keep the Jira command/editor disabled while GAS owns writes.
