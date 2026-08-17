@@ -19,6 +19,7 @@ Current status source of truth for Lead Studio.
 - Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
 - Firebase pilot mode: read-only; central Auth policy `studioPolicies/lead-studio`
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
+- Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; the settings-only connection probe is deployed, while Jira issue reads and synchronization remain on GAS v60
 - Current V3 review decision: `GO WITH CONDITIONS`
 - Current viable/stable baseline: `V3`
 - Current deployment inventory: stable version 60 web app deployment plus Apps Script read-only `@HEAD`
@@ -47,6 +48,7 @@ Current status source of truth for Lead Studio.
 - 2026-08-17: Registered `lead-studio-v4` and `lead-studio-v4-test` with the central SSO broker. The preview completed signed Chrome acceptance with 302 contacts, lifecycle metrics `32 / 4 / 10 / 9 / 55`, working filters/details, no network or console errors, and no horizontal overflow at 390px.
 - 2026-08-17: Kept Gmail scanning, Jira synchronization, Sheet writes, onboarding matching, exports, and the installed daily trigger on GAS v60. Console remains only the access/authentication front door.
 - 2026-08-17: Enabled IAM Credentials and Gmail APIs, granted the Firebase runtime service account permission to sign its own Workspace JWTs, and verified the delegated `marketing@timelesstech.io` mailbox profile from the signed Hosting preview. The probe returned mailbox metadata only and completed without browser/runtime errors; no service-account key or user OAuth access token is stored by the Firebase runtime.
+- 2026-08-17: Rotated the exposed Jira API token, updated the GAS operational credential, stored the replacement as Firebase secret `LEAD_STUDIO_JIRA_API_TOKEN`, and deployed a settings-only Jira connection probe in Function revision `leadstudioactionv4-00003-run`. Signed preview acceptance confirmed the active Mitja Jira account, 302 Sheet rows, continued Gmail delegation, and no browser errors. GAS v60 independently passed `Check Jira Auth` after the rotation.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -89,7 +91,7 @@ Current status source of truth for Lead Studio.
 ## Current Risks
 
 - The Firebase pilot is intentionally read-only. Do not point the Console production tile to it or retire GAS until write, Gmail, Jira, scheduled-refresh, export, and rollback acceptance is complete.
-- A Jira API token was exposed outside managed secret storage on 2026-08-17. Revoke it, create a replacement, and set the replacement directly as a Firebase Functions secret before porting Jira reads. Never paste the replacement into chat, source, documentation, or local env files.
+- Firebase Jira support currently proves only credentials and `/rest/api/3/myself`. Keep Jira issue searches, bulk status reads, and synchronization on GAS until their bounded Firebase implementations pass data-parity and rollback acceptance.
 - The Hosting preview expires on 2026-08-31 unless renewed or replaced. Production Hosting has not been promoted.
 - The source Sheet is currently readable by link, matching its pre-migration state. Tightening Drive sharing should be a separate reviewed data-access change after a dedicated runtime identity can be granted access.
 - `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
@@ -170,7 +172,7 @@ The first V4 slice is active in parallel and read-only. It proves standalone bil
 Next controlled slices:
 
 - Design backend-only write commands with row/version conflict checks and an audit trail.
-- Move Jira credentials to Secret Manager and port Jira reads before any write cutover.
+- Port bounded Jira issue lookup/search reads using the verified Secret Manager credential, then run parity against GAS before any synchronization cutover.
 - Extend the verified keyless Gmail delegation from mailbox-profile diagnostics to bounded message searches and parser parity. Do not introduce a service-account JSON key or store user OAuth access tokens.
 - Recreate scheduled refresh with Cloud Scheduler only after duplicate execution is impossible.
 - Port export and manual Jira-link workflows, then run parity and rollback acceptance.

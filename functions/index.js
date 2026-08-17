@@ -4,17 +4,25 @@ var initializeApp = require("firebase-admin/app").initializeApp;
 var functions = require("firebase-functions/v2/https");
 var logger = require("firebase-functions/logger");
 var params = require("firebase-functions/params");
+var jiraClient = require("./src/jiraClient");
 var leadStudio = require("./src/leadStudio");
 var workspaceDelegation = require("./src/workspaceDelegation");
 
 initializeApp();
 
 var leadStudioSpreadsheetId = params.defineSecret("LEAD_STUDIO_SPREADSHEET_ID");
+var leadStudioJiraApiToken = params.defineSecret("LEAD_STUDIO_JIRA_API_TOKEN");
 var leadStudioGmailUser = params.defineString("LEAD_STUDIO_GMAIL_USER", {
   default: "marketing@timelesstech.io"
 });
 var leadStudioServiceAccountEmail = params.defineString("LEAD_STUDIO_SERVICE_ACCOUNT_EMAIL", {
   default: "819383433430-compute@developer.gserviceaccount.com"
+});
+var leadStudioJiraBaseUrl = params.defineString("LEAD_STUDIO_JIRA_BASE_URL", {
+  default: "https://gaming-universe.atlassian.net"
+});
+var leadStudioJiraEmail = params.defineString("LEAD_STUDIO_JIRA_EMAIL", {
+  default: "mitja@timelesstech.io"
 });
 var LEAD_STUDIO_ORIGINS = [
   "https://timeless-lead-studio.web.app",
@@ -48,7 +56,7 @@ async function signWorkspaceJwt(payload) {
 exports.leadStudioActionV4 = functions.onCall({
   region: "europe-west1",
   cors: LEAD_STUDIO_ORIGINS,
-  secrets: [leadStudioSpreadsheetId],
+  secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
   timeoutSeconds: 60,
   memory: "256MiB",
   maxInstances: 4
@@ -62,6 +70,13 @@ exports.leadStudioActionV4 = functions.onCall({
           delegatedUser: leadStudioGmailUser.value(),
           serviceAccountEmail: leadStudioServiceAccountEmail.value(),
           signJwt: signWorkspaceJwt
+        });
+      },
+      jiraProbe: function () {
+        return jiraClient.probeJiraConnection({
+          baseUrl: leadStudioJiraBaseUrl.value(),
+          email: leadStudioJiraEmail.value(),
+          apiToken: leadStudioJiraApiToken.value()
         });
       }
     });

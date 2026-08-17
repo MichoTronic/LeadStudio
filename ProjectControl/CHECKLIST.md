@@ -23,7 +23,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 
 ## Security And Secrets
 
-- [ ] Revoke the Jira API token exposed on 2026-08-17, create a replacement, and set it directly as the Firebase secret `LEAD_STUDIO_JIRA_API_TOKEN` without placing it in chat, source, docs, or env files.
+- [x] Revoke the Jira API token exposed on 2026-08-17, update the GAS Script Property, and set the replacement directly as Firebase secret `LEAD_STUDIO_JIRA_API_TOKEN`.
 - [ ] Move all operational secrets into Apps Script Script Properties or managed secret storage.
 - [ ] Confirm `DocumentationArchive/NOTES.md` remains excluded from `clasp` pushes and external sharing.
 - [ ] Review `appsscript.json` web app access and execution API settings before broader team use.
@@ -119,7 +119,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Verify 390px mobile layout has no horizontal overflow.
 - [x] Keep Gmail, Jira, writes, onboarding matching, exports, and the daily trigger on GAS.
 - [ ] Design audited Firebase write commands with optimistic row-version checks.
-- [ ] Move Jira credentials to Secret Manager and port Jira reads.
+- [x] Bind the rotated Jira token from Secret Manager and verify a settings-only Firebase Jira profile probe.
+- [ ] Port bounded Jira issue lookup/search reads and compare their results with GAS before moving synchronization ownership.
 - [x] Configure keyless domain-wide Gmail delegation and prove mailbox-profile access from the signed Firebase preview.
 - [ ] Port bounded Gmail searches and lead parsing, then compare results with GAS before moving refresh ownership.
 - [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.

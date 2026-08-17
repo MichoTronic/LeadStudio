@@ -7,7 +7,7 @@ var STUDIO_ID = "lead-studio";
 var LEAD_SHEET = "Email Matches";
 var LEAD_RANGE = `'${LEAD_SHEET}'!A1:AI600`;
 var MAX_LEADS = 500;
-var SETTINGS_ACTIONS = new Set(["gmailProbe"]);
+var SETTINGS_ACTIONS = new Set(["gmailProbe", "jiraProbe"]);
 var PUBLIC_FIELDS = Object.freeze({
   "Email Date": "emailDate",
   "Name": "name",
@@ -97,6 +97,16 @@ async function runAction(request, dependencies) {
     return {
       mode: "read-only-pilot",
       mailbox: await dependencies.gmailProbe(),
+      authorization: publicAuthorization(authorization)
+    };
+  }
+  if (action === "jiraProbe") {
+    if (typeof dependencies.jiraProbe !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio Jira access is not configured.");
+    }
+    return {
+      mode: "read-only-pilot",
+      jira: await dependencies.jiraProbe(),
       authorization: publicAuthorization(authorization)
     };
   }

@@ -87,6 +87,25 @@ test("Gmail diagnostics require settings scope", async function () {
   assert.equal(response.mailbox.emailAddress, "marketing@example.com");
 });
 
+test("Jira diagnostics require settings scope", async function () {
+  var captured;
+  var response = await leadStudio.runAction({
+    data: { action: "jiraProbe", studioAuthToken: "signed-token" }
+  }, {
+    fetchImpl: async function (_url, request) {
+      captured = JSON.parse(request.body);
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["read", "settings"] };
+      } };
+    },
+    jiraProbe: async function () {
+      return { accountId: "account-1", displayName: "Admin", active: true };
+    }
+  });
+  assert.equal(captured.requiredScope, "settings");
+  assert.deepEqual(response.jira, { accountId: "account-1", displayName: "Admin", active: true });
+});
+
 test("bootstrap requires authorization before reading Sheets", async function () {
   var reads = 0;
   await assert.rejects(

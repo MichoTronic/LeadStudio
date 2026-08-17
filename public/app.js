@@ -82,7 +82,10 @@ nodes.dialog.addEventListener("click", (event) => {
 });
 nodes.legacy.href = leadStudioConfig.legacyUrl;
 Object.defineProperty(window, "__leadStudioDiagnostics", {
-  value: Object.freeze({ gmailProbe: () => callAction("gmailProbe") }),
+  value: Object.freeze({
+    gmailProbe: () => callAction("gmailProbe"),
+    jiraProbe: () => callAction("jiraProbe")
+  }),
   configurable: false,
   enumerable: false,
   writable: false
