@@ -107,3 +107,86 @@ test("loads validated Jira issue statuses in bounded batches", async function ()
   assert.equal(statuses["SF-55"].status, "01 New Lead");
   assert.equal(Object.hasOwn(statuses, "INVALID KEY"), false);
 });
+
+test("discovers the newest Jira issue for a validated contact email", async function () {
+  var requestedUrl;
+  var result = await jiraClient.findJiraIssueForContact({
+    baseUrl: "https://gaming-universe.atlassian.net",
+    email: "admin@example.com",
+    apiToken: "replacement-secret",
+    contactEmail: "Lead+EU@example.com",
+    fetchImpl: async function (url) {
+      requestedUrl = new URL(url);
+      return {
+        ok: true,
+        status: 200,
+        json: async function () {
+          return { issues: [{ key: "SF-42", fields: { status: { name: "02 Qualified Lead" } } }] };
+        }
+      };
+    }
+  });
+  assert.equal(requestedUrl.searchParams.get("jql"), 'text ~ "lead+eu@example.com" ORDER BY updated DESC');
+  assert.equal(requestedUrl.searchParams.get("maxResults"), "5");
+  assert.deepEqual(result, { issueKey: "SF-42", status: "02 Qualified Lead" });
+  assert.equal(JSON.stringify(result).includes("example.com"), false);
+});
+
+test("rejects invalid contact emails before Jira discovery", async function () {
+  var fetches = 0;
+  await assert.rejects(
+    jiraClient.findJiraIssueForContact({
+      baseUrl: "https://gaming-universe.atlassian.net",
+      email: "admin@example.com",
+      apiToken: "replacement-secret",
+      contactEmail: 'bad" OR key is not EMPTY',
+      fetchImpl: async function () { fetches += 1; }
+    }),
+    /contact email is invalid/
+  );
+  assert.equal(fetches, 0);
+});
+
+test("loads a single Jira issue by validated key", async function () {
+  var requestedUrl;
+  var result = await jiraClient.loadJiraIssueByKey({
+    baseUrl: "https://gaming-universe.atlassian.net",
+    email: "admin@example.com",
+    apiToken: "replacement-secret",
+    issueKey: "sf-42",
+    fetchImpl: async function (url) {
+      requestedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        json: async function () {
+          return { key: "SF-42", fields: { status: { name: "06 Active" } } };
+        }
+      };
+    }
+  });
+  assert.equal(requestedUrl, "https://gaming-universe.atlassian.net/rest/api/3/issue/SF-42?fields=status");
+  assert.deepEqual(result, { issueKey: "SF-42", status: "06 Active" });
+});
+
+test("returns null for a missing Jira issue and rejects malformed keys", async function () {
+  var missing = await jiraClient.loadJiraIssueByKey({
+    baseUrl: "https://gaming-universe.atlassian.net",
+    email: "admin@example.com",
+    apiToken: "replacement-secret",
+    issueKey: "SF-404",
+    fetchImpl: async function () {
+      return { ok: false, status: 404, json: async function () { return { private: "detail" }; } };
+    }
+  });
+  assert.equal(missing, null);
+  await assert.rejects(
+    jiraClient.loadJiraIssueByKey({
+      baseUrl: "https://gaming-universe.atlassian.net",
+      email: "admin@example.com",
+      apiToken: "replacement-secret",
+      issueKey: "../../secret"
+    }),
+    /issue key is invalid/
+  );
+});

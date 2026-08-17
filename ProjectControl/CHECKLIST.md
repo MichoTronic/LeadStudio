@@ -121,7 +121,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [ ] Design audited Firebase write commands with optimistic row-version checks.
 - [x] Bind the rotated Jira token from Secret Manager and verify a settings-only Firebase Jira profile probe.
 - [x] Port bounded Jira bulk-status reads by key and compare all 48 Sheet-linked keys with live Jira; all 45 cached statuses matched and three blank-status historical keys remained unresolved.
-- [ ] Port contact-email Jira discovery and direct single-issue lookup before moving refresh or synchronization ownership.
+- [x] Port PII-minimized contact-email Jira discovery; a 12-contact sample produced 10 exact matches, two no-results, and zero mismatches.
+- [x] Port validated direct Jira issue lookup; a 12-key sample produced 11 exact status matches, one known 404, and zero mismatches.
 - [x] Configure keyless domain-wide Gmail delegation and prove mailbox-profile access from the signed Firebase preview.
 - [ ] Port bounded Gmail searches and lead parsing, then compare results with GAS before moving refresh ownership.
 - [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.

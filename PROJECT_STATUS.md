@@ -50,6 +50,8 @@ Current status source of truth for Lead Studio.
 - 2026-08-17: Enabled IAM Credentials and Gmail APIs, granted the Firebase runtime service account permission to sign its own Workspace JWTs, and verified the delegated `marketing@timelesstech.io` mailbox profile from the signed Hosting preview. The probe returned mailbox metadata only and completed without browser/runtime errors; no service-account key or user OAuth access token is stored by the Firebase runtime.
 - 2026-08-17: Rotated the exposed Jira API token, updated the GAS operational credential, stored the replacement as Firebase secret `LEAD_STUDIO_JIRA_API_TOKEN`, and deployed a settings-only Jira connection probe in Function revision `leadstudioactionv4-00003-run`. Signed preview acceptance confirmed the active Mitja Jira account, 302 Sheet rows, continued Gmail delegation, and no browser errors. GAS v60 independently passed `Check Jira Auth` after the rotation.
 - 2026-08-17: Deployed bounded Firebase Jira bulk-status reads in Function revision `leadstudioactionv4-00004-weh`. The settings-only parity run checked 48 unique Sheet-linked keys: all 45 records with cached Jira statuses matched live Jira exactly, with no mismatches; `SF-226`, `SF-248`, and `SF-34` had blank cached statuses and were not returned by Jira. The diagnostic caps runs at 100 validated keys, batches at 50, and returns no contact data.
+- 2026-08-17: Added PII-minimized contact-email Jira discovery in revision `leadstudioactionv4-00005-peb`. A 12-contact sample rediscovered 10 exact Sheet issue keys with zero mismatches; `SF-226` and `SF-190` returned no search result. The diagnostic returns row numbers and issue keys only, never contact emails or Jira content.
+- 2026-08-17: Added validated direct Jira issue lookup in revision `leadstudioactionv4-00006-sam`. An independent 12-key sample matched 11 cached statuses exactly with zero mismatches; only the already-unresolved `SF-226` returned 404. The client rejects malformed keys and safely treats Jira 404 responses as missing records.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -92,7 +94,7 @@ Current status source of truth for Lead Studio.
 ## Current Risks
 
 - The Firebase pilot is intentionally read-only. Do not point the Console production tile to it or retire GAS until write, Gmail, Jira, scheduled-refresh, export, and rollback acceptance is complete.
-- Firebase Jira support now proves credentials, `/rest/api/3/myself`, and bounded bulk status reads by issue key. Keep contact-email discovery, direct issue lookup, refresh orchestration, and synchronization on GAS until their Firebase implementations pass parity and rollback acceptance.
+- Firebase Jira support now proves credentials, profile access, bounded bulk status reads, contact-email discovery, and direct issue lookup. Keep refresh orchestration, Sheet mutation, and synchronization ownership on GAS until audited write commands and rollback controls are accepted.
 - The Hosting preview expires on 2026-08-31 unless renewed or replaced. Production Hosting has not been promoted.
 - The source Sheet is currently readable by link, matching its pre-migration state. Tightening Drive sharing should be a separate reviewed data-access change after a dedicated runtime identity can be granted access.
 - `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
@@ -173,7 +175,7 @@ The first V4 slice is active in parallel and read-only. It proves standalone bil
 Next controlled slices:
 
 - Design backend-only write commands with row/version conflict checks and an audit trail.
-- Port contact-email Jira discovery and direct single-issue reads using the verified Secret Manager credential, then design refresh orchestration without enabling writes or duplicate synchronization.
+- Design audited Sheet mutation and Jira refresh orchestration with optimistic row-version checks. Do not enable Firebase refresh or writes while GAS owns those workflows.
 - Extend the verified keyless Gmail delegation from mailbox-profile diagnostics to bounded message searches and parser parity. Do not introduce a service-account JSON key or store user OAuth access tokens.
 - Recreate scheduled refresh with Cloud Scheduler only after duplicate execution is impossible.
 - Port export and manual Jira-link workflows, then run parity and rollback acceptance.

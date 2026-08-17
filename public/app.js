@@ -85,7 +85,9 @@ Object.defineProperty(window, "__leadStudioDiagnostics", {
   value: Object.freeze({
     gmailProbe: () => callAction("gmailProbe"),
     jiraProbe: () => callAction("jiraProbe"),
-    jiraStatusParity: () => callAction("jiraStatusParity")
+    jiraStatusParity: () => callAction("jiraStatusParity"),
+    jiraDiscoveryParity: () => callAction("jiraDiscoveryParity"),
+    jiraDirectLookupParity: () => callAction("jiraDirectLookupParity")
   }),
   configurable: false,
   enumerable: false,

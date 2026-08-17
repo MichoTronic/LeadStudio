@@ -51,7 +51,7 @@ Folder identity:
 - Gmail scans support fast recent refreshes and deeper historical scans.
 - Lead parsing supports current `New Contact`, old `Contact Form (TLT-Webpage-*)`, and legacy `Form submission from:` email formats.
 - Onboarding status comes from Gmail onboarding notices plus the onboarding request spreadsheet.
-- GAS v60 reads Jira through Script Properties: `JIRA_BASE_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN`. The Firebase V4 pilot stores its rotated token in Secret Manager and has verified settings-only Jira profile and bounded bulk-status reads. Live parity matched all 45 Sheet records with cached statuses; Jira discovery, direct lookup, refresh orchestration, and synchronization remain on GAS.
+- GAS v60 reads Jira through Script Properties: `JIRA_BASE_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN`. The Firebase V4 pilot stores its rotated token in Secret Manager and has verified settings-only profile, bulk-status, contact-discovery, and direct-issue reads. Live samples produced no key or status mismatches; refresh orchestration, Sheet mutation, and synchronization ownership remain on GAS.
 - Jira lifecycle buckets are mapped in `Config.js`.
 - The app reads and updates lead status; it does not create Jira issues.
 - Manual Jira issue linking is supported from the lead detail UI.

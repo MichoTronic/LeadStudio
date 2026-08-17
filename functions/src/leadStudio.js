@@ -7,7 +7,9 @@ var STUDIO_ID = "lead-studio";
 var LEAD_SHEET = "Email Matches";
 var LEAD_RANGE = `'${LEAD_SHEET}'!A1:AI600`;
 var MAX_LEADS = 500;
-var SETTINGS_ACTIONS = new Set(["gmailProbe", "jiraProbe", "jiraStatusParity"]);
+var SETTINGS_ACTIONS = new Set([
+  "gmailProbe", "jiraProbe", "jiraStatusParity", "jiraDiscoveryParity", "jiraDirectLookupParity"
+]);
 var PUBLIC_FIELDS = Object.freeze({
   "Email Date": "emailDate",
   "Name": "name",
@@ -123,6 +125,48 @@ async function runAction(request, dependencies) {
       authorization: publicAuthorization(authorization)
     };
   }
+  if (action === "jiraDiscoveryParity") {
+    if (typeof dependencies.jiraIssueForEmail !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio Jira discovery is not configured.");
+    }
+    var discoverySheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId);
+    var candidates = jiraDiscoveryCandidates(discoverySheetResult.leads, 12);
+    var discoveryResults = [];
+    for (var index = 0; index < candidates.length; index += 1) {
+      var candidate = candidates[index];
+      discoveryResults.push({
+        rowNumber: candidate.rowNumber,
+        sheetIssueKey: candidate.sheetIssueKey,
+        jira: await dependencies.jiraIssueForEmail(candidate.contactEmail)
+      });
+    }
+    return {
+      mode: "read-only-pilot",
+      jiraDiscoveryParity: compareJiraDiscovery(discoveryResults),
+      authorization: publicAuthorization(authorization)
+    };
+  }
+  if (action === "jiraDirectLookupParity") {
+    if (typeof dependencies.jiraIssueByKey !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio direct Jira lookup is not configured.");
+    }
+    var directSheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId);
+    var directBaseline = jiraStatusBaseline(directSheetResult.leads);
+    var directKeys = directBaseline.issueKeys.slice(0, 12);
+    var directStatuses = {};
+    for (var directIndex = 0; directIndex < directKeys.length; directIndex += 1) {
+      var issue = await dependencies.jiraIssueByKey(directKeys[directIndex]);
+      if (issue) directStatuses[issue.issueKey] = issue;
+    }
+    var selectedBaseline = Object.fromEntries(directKeys.map(function (key) {
+      return [key, directBaseline.statuses[key]];
+    }));
+    return {
+      mode: "read-only-pilot",
+      jiraDirectLookupParity: compareJiraStatuses(selectedBaseline, directStatuses),
+      authorization: publicAuthorization(authorization)
+    };
+  }
   throw new HttpsError("invalid-argument", "Unsupported Lead Studio action.");
 }
 
@@ -231,6 +275,51 @@ function compareJiraStatuses(sheetStatuses, liveStatuses) {
   };
 }
 
+function jiraDiscoveryCandidates(leads, limit) {
+  var seenEmails = new Set();
+  var candidates = [];
+  (Array.isArray(leads) ? leads : []).some(function (lead) {
+    var contactEmail = normalize(lead && lead.contactEmail).toLowerCase();
+    var sheetIssueKey = normalizeIssueKey(lead && lead.jiraIssueKey);
+    if (!contactEmail || !sheetIssueKey || seenEmails.has(contactEmail)) return false;
+    seenEmails.add(contactEmail);
+    candidates.push({
+      rowNumber: Number(lead.rowNumber) || 0,
+      contactEmail: contactEmail,
+      sheetIssueKey: sheetIssueKey
+    });
+    return candidates.length >= Math.max(0, Number(limit) || 0);
+  });
+  return candidates;
+}
+
+function compareJiraDiscovery(results) {
+  var matched = 0;
+  var notFound = [];
+  var mismatches = [];
+  (Array.isArray(results) ? results : []).forEach(function (result) {
+    var foundKey = normalizeIssueKey(result && result.jira && result.jira.issueKey);
+    if (!foundKey) {
+      notFound.push({ rowNumber: Number(result && result.rowNumber) || 0, sheetIssueKey: normalizeIssueKey(result && result.sheetIssueKey) });
+    } else if (foundKey === normalizeIssueKey(result && result.sheetIssueKey)) {
+      matched += 1;
+    } else {
+      mismatches.push({
+        rowNumber: Number(result && result.rowNumber) || 0,
+        sheetIssueKey: normalizeIssueKey(result && result.sheetIssueKey),
+        jiraIssueKey: foundKey
+      });
+    }
+  });
+  return {
+    checkedContacts: Array.isArray(results) ? results.length : 0,
+    matchedIssueKeys: matched,
+    notFound: notFound,
+    mismatches: mismatches,
+    checkedAt: new Date().toISOString()
+  };
+}
+
 function normalizeIssueKey(value) {
   var match = normalize(value).toUpperCase().match(/^[A-Z][A-Z0-9]+-\d+$/);
   return match ? match[0] : "";
@@ -249,7 +338,9 @@ module.exports = {
   SETTINGS_ACTIONS,
   STUDIO_ID,
   assertRequiredHeaders,
+  compareJiraDiscovery,
   compareJiraStatuses,
+  jiraDiscoveryCandidates,
   jiraStatusBaseline,
   loadLeads,
   mapLead,

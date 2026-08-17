@@ -41,6 +41,52 @@ async function loadJiraIssueStatuses(options) {
   return statuses;
 }
 
+async function findJiraIssueForContact(options) {
+  options = options || {};
+  var config = createConfig(options);
+  var contactEmail = normalize(options.contactEmail).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    throw new Error("Jira contact email is invalid.");
+  }
+  var escapedEmail = contactEmail.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+  var query = new URLSearchParams({
+    jql: `text ~ "${escapedEmail}" ORDER BY updated DESC`,
+    fields: "status",
+    maxResults: "5"
+  });
+  var response = await jiraFetch(config, `/rest/api/3/search/jql?${query.toString()}`, options.fetchImpl);
+  var body = await safeJson(response);
+  assertJiraResponse(response);
+  var issue = Array.isArray(body.issues) ? body.issues[0] : null;
+  var issueKey = normalizeIssueKey(issue && issue.key);
+  if (!issueKey) return null;
+  return {
+    issueKey: issueKey,
+    status: normalize(issue && issue.fields && issue.fields.status && issue.fields.status.name)
+  };
+}
+
+async function loadJiraIssueByKey(options) {
+  options = options || {};
+  var config = createConfig(options);
+  var issueKey = normalizeIssueKey(options.issueKey);
+  if (!issueKey) throw new Error("Jira issue key is invalid.");
+  var response = await jiraFetch(
+    config,
+    `/rest/api/3/issue/${encodeURIComponent(issueKey)}?fields=status`,
+    options.fetchImpl
+  );
+  var body = await safeJson(response);
+  if (response && response.status === 404) return null;
+  assertJiraResponse(response);
+  var returnedKey = normalizeIssueKey(body.key);
+  if (!returnedKey) throw new Error("Jira issue lookup returned an invalid issue.");
+  return {
+    issueKey: returnedKey,
+    status: normalize(body.fields && body.fields.status && body.fields.status.name)
+  };
+}
+
 function createConfig(options) {
   var baseUrl = normalizeBaseUrl(options.baseUrl);
   var email = normalize(options.email).toLowerCase();
@@ -113,6 +159,8 @@ function normalize(value) {
 }
 
 module.exports = {
+  findJiraIssueForContact,
+  loadJiraIssueByKey,
   loadJiraIssueStatuses,
   normalizeBaseUrl,
   normalizeIssueKey,

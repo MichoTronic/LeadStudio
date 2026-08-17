@@ -159,6 +159,90 @@ test("reports Jira parity gaps without exposing contact data", function () {
   assert.equal(JSON.stringify(result).includes("lead@example.com"), false);
 });
 
+test("runs bounded Jira discovery parity without returning contact emails", async function () {
+  var headers = Object.keys(leadStudio.PUBLIC_FIELDS);
+  var row = headers.map(function (header) {
+    return ({
+      "Contact Email": "lead@example.com",
+      "Company Name": "Example",
+      "Lead Status": "Lead",
+      "Jira Issue Key": "SF-42"
+    })[header] || "";
+  });
+  var response = await leadStudio.runAction({
+    data: { action: "jiraDiscoveryParity", studioAuthToken: "signed-token" }
+  }, {
+    fetchImpl: async function (_url, request) {
+      assert.equal(JSON.parse(request.body).requiredScope, "settings");
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["settings"] };
+      } };
+    },
+    spreadsheetId: "sheet-1",
+    sheetsClient: {
+      spreadsheets: { values: { get: async function () {
+        return { data: { values: [headers, row] } };
+      } } }
+    },
+    jiraIssueForEmail: async function (email) {
+      assert.equal(email, "lead@example.com");
+      return { issueKey: "SF-42", status: "01 New Lead" };
+    }
+  });
+  assert.equal(response.jiraDiscoveryParity.checkedContacts, 1);
+  assert.equal(response.jiraDiscoveryParity.matchedIssueKeys, 1);
+  assert.equal(JSON.stringify(response.jiraDiscoveryParity).includes("lead@example.com"), false);
+});
+
+test("caps and deduplicates Jira discovery candidates", function () {
+  var leads = Array.from({ length: 20 }, function (_, index) {
+    return { rowNumber: index + 2, contactEmail: `lead${index}@example.com`, jiraIssueKey: `SF-${index + 1}` };
+  });
+  leads.splice(1, 0, { rowNumber: 99, contactEmail: "lead0@example.com", jiraIssueKey: "SF-999" });
+  var candidates = leadStudio.jiraDiscoveryCandidates(leads, 12);
+  assert.equal(candidates.length, 12);
+  assert.equal(candidates[0].sheetIssueKey, "SF-1");
+  assert.equal(candidates.some(function (candidate) { return candidate.sheetIssueKey === "SF-999"; }), false);
+});
+
+test("runs bounded direct Jira lookup parity", async function () {
+  var headers = Object.keys(leadStudio.PUBLIC_FIELDS);
+  var rows = Array.from({ length: 15 }, function (_, index) {
+    return headers.map(function (header) {
+      return ({
+        "Contact Email": `lead${index}@example.com`,
+        "Company Name": `Example ${index}`,
+        "Lead Status": "Lead",
+        "Jira Issue Key": `SF-${index + 1}`,
+        "Jira Status": "01 New Lead"
+      })[header] || "";
+    });
+  });
+  var lookups = [];
+  var response = await leadStudio.runAction({
+    data: { action: "jiraDirectLookupParity", studioAuthToken: "signed-token" }
+  }, {
+    fetchImpl: async function () {
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["settings"] };
+      } };
+    },
+    spreadsheetId: "sheet-1",
+    sheetsClient: {
+      spreadsheets: { values: { get: async function () {
+        return { data: { values: [headers].concat(rows) } };
+      } } }
+    },
+    jiraIssueByKey: async function (key) {
+      lookups.push(key);
+      return { issueKey: key, status: "01 New Lead" };
+    }
+  });
+  assert.equal(lookups.length, 12);
+  assert.equal(response.jiraDirectLookupParity.checkedKeys, 12);
+  assert.equal(response.jiraDirectLookupParity.matchedStatuses, 12);
+});
+
 test("bootstrap requires authorization before reading Sheets", async function () {
   var reads = 0;
   await assert.rejects(
