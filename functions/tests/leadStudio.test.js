@@ -408,18 +408,7 @@ test("bootstrap requires authorization before reading Sheets", async function ()
 });
 
 test("builds a PII-minimized read-only refresh plan without Sheet writes", async function () {
-  var headers = Object.keys(leadStudio.PUBLIC_FIELDS).concat(["Gmail Message ID", "Onboarding Message ID", "Onboarding Sheet Row"]);
-  var rows = [
-    headers.map(function (header) { return ({
-      "Name": "Ada", "Last Name": "Lovelace", "Contact Email": "ada@example.com", "Company Name": "Example",
-      "Lead Status": "Lead", "Jira Issue Key": "SF-1", "Jira Status": "01 New Lead", "Gmail Message ID": "gmail-1",
-      "Onboarding Message ID": "onboarding-1", "Onboarding Sheet Row": "2", "Target Region": "ROW"
-    })[header] || ""; }),
-    headers.map(function (header) { return ({
-      "Name": "Grace", "Last Name": "Hopper", "Contact Email": "grace@example.com", "Company Name": "Navy",
-      "Lead Status": "Lead", "Gmail Message ID": "gmail-2"
-    })[header] || ""; })
-  ];
+  var reads = 0;
   var response = await leadStudio.runAction({
     data: { action: "refreshDryRun", studioAuthToken: "signed-token" }
   }, {
@@ -429,45 +418,21 @@ test("builds a PII-minimized read-only refresh plan without Sheet writes", async
         return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["settings"] };
       } };
     },
-    spreadsheetId: "sheet-1",
-    sheetsClient: { spreadsheets: { values: { get: async function () {
-      return { data: { values: [headers].concat(rows) } };
-    } } } },
-    gmailOperationalLeadScan: async function () { return {
-      candidateMessages: 2,
-      operational: true,
-      complete: true,
-      appendPayloadReady: true,
-      queries: [{ pages: 1, hitLimit: false, hasMore: false }],
-      acceptedMessages: [
-        { messageId: "gmail-1", contactEmail: "ada@example.com", companyName: "Example" },
-        { messageId: "gmail-3", contactEmail: "new@example.com", companyName: "New" }
-      ]
-    }; },
-    gmailOperationalOnboardingScan: async function () { return {
-      candidateMessages: 1,
-      operational: true,
-      complete: true,
-      queries: [{ pages: 1, hitLimit: false, hasMore: false }],
-      acceptedMessages: [{ messageId: "onboarding-1", contactEmail: "ada@example.com" }]
-    }; },
-    onboardingSheetRows: async function () { return [
-      ["Timestamp", "Operating Markets", "Responsible Person", "Email Address", "JIRA task ID"],
-      ["2026-08-01", "ROW", "Ada Lovelace", "ada@example.com", "SF-1"],
-      ["2026-08-02", "LATAM", "Grace Hopper", "grace@example.com", "SF-2"]
-    ]; },
-    jiraIssueStatuses: async function (keys) {
-      assert.deepEqual(keys, ["SF-1", "SF-2"]);
-      return { "SF-1": { issueKey: "SF-1", status: "01 New Lead" }, "SF-2": { issueKey: "SF-2", status: "02 Qualified Lead" } };
+    refreshPlan: async function () {
+      reads += 1;
+      return {
+        snapshotVersion: "a".repeat(64),
+        targetVersion: "b".repeat(64),
+        summary: { sourceRows: 2, targetRows: 3, changedRows: 1, appendedRows: 1 },
+        rowNumbers: [2],
+        appendRowNumbers: [4]
+      };
     }
   });
 
-  assert.equal(response.refreshDryRun.snapshot.loadedRows, 2);
-  assert.equal(response.refreshDryRun.plannedMutations.appendRows, 1);
-  assert.equal(response.refreshDryRun.jira.candidateRows, 2);
-  assert.equal(response.refreshDryRun.cutoverReadiness.appendPayloadReady, true);
-  assert.equal(response.refreshDryRun.cutoverReadiness.gmailPaginationComplete, true);
-  assert.equal(response.refreshDryRun.cutoverReadiness.ready, false);
+  assert.equal(reads, 1);
+  assert.equal(response.refreshDryRun.summary.sourceRows, 2);
+  assert.equal(response.refreshDryRun.summary.appendedRows, 1);
   assert.equal(JSON.stringify(response.refreshDryRun).includes("ada@example.com"), false);
   assert.equal(JSON.stringify(response.refreshDryRun).includes("gmail-1"), false);
   assert.equal(JSON.stringify(response.refreshDryRun).includes("New Contact Email"), false);

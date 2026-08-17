@@ -7,6 +7,8 @@ var params = require("firebase-functions/params");
 var jiraClient = require("./src/jiraClient");
 var leadStudio = require("./src/leadStudio");
 var manualJiraLink = require("./src/manualJiraLink");
+var onboardingSheet = require("./src/onboardingSheet");
+var refreshMutation = require("./src/refreshMutation");
 var writeAcceptance = require("./src/writeAcceptance");
 var workspaceDelegation = require("./src/workspaceDelegation");
 
@@ -41,6 +43,12 @@ var leadStudioManualJiraEnabled = params.defineString("LEAD_STUDIO_MANUAL_JIRA_E
 var leadStudioManualJiraAcceptanceRow = params.defineString("LEAD_STUDIO_MANUAL_JIRA_ACCEPTANCE_ROW", {
   default: "2"
 });
+var leadStudioRefreshEnabled = params.defineString("LEAD_STUDIO_REFRESH_ENABLED", {
+  default: "false"
+});
+var leadStudioRefreshAcceptanceEnabled = params.defineString("LEAD_STUDIO_REFRESH_ACCEPTANCE_ENABLED", {
+  default: "false"
+});
 var LEAD_STUDIO_ORIGINS = [
   "https://timeless-lead-studio.web.app",
   "https://timeless-lead-studio.firebaseapp.com",
@@ -66,6 +74,15 @@ function createWriteSheetsClient() {
       scopes: ["https://www.googleapis.com/auth/spreadsheets"]
     })
   });
+}
+
+async function loadOnboardingRows() {
+  var response = await createSheetsClient().spreadsheets.values.get({
+    spreadsheetId: leadStudioOnboardingSpreadsheetId.value(),
+    range: "'OnboardingRequests'!A1:Z500",
+    valueRenderOption: "FORMATTED_VALUE"
+  });
+  return response && response.data && response.data.values || [];
 }
 
 async function signWorkspaceJwt(payload) {
@@ -191,6 +208,10 @@ exports.leadStudioActionV4 = functions.onCall({
           apiToken: leadStudioJiraApiToken.value(),
           issueKey: issueKey
         });
+      },
+      refreshPlan: async function () {
+        var prepared = await buildLiveRefreshPlan(createSheetsClient());
+        return refreshMutation.publicPlan(prepared.plan);
       }
     });
   } catch (error) {
@@ -200,6 +221,131 @@ exports.leadStudioActionV4 = functions.onCall({
       message: error && error.message
     });
     throw new functions.HttpsError("internal", "Lead Studio could not load its data.");
+  }
+});
+
+async function buildLiveRefreshPlan(sheetsClient) {
+  sheetsClient = sheetsClient || createWriteSheetsClient();
+  var spreadsheetId = leadStudioSpreadsheetId.value().trim();
+  var workspaceOptions = {
+    delegatedUser: leadStudioGmailUser.value(),
+    serviceAccountEmail: leadStudioServiceAccountEmail.value(),
+    signJwt: signWorkspaceJwt,
+    operational: true,
+    timeZone: "Europe/Ljubljana"
+  };
+  var initial = await Promise.all([
+    refreshMutation.readSnapshot({ sheetsClient: sheetsClient, spreadsheetId: spreadsheetId }),
+    workspaceDelegation.scanGmailLeadMessages(workspaceOptions),
+    workspaceDelegation.scanGmailOnboardingMessages(workspaceOptions),
+    loadOnboardingRows()
+  ]);
+  var snapshot = initial[0];
+  var gmailLeadScan = initial[1];
+  var gmailOnboardingScan = initial[2];
+  var onboardingLookup = onboardingSheet.buildOnboardingLookup(initial[3]);
+  var issueKeys = refreshMutation.collectIssueKeys(snapshot, onboardingLookup);
+  var newLeadEmails = refreshMutation.collectNewLeadContacts(snapshot, gmailLeadScan);
+  var jiraConfig = {
+    baseUrl: leadStudioJiraBaseUrl.value(),
+    email: leadStudioJiraEmail.value(),
+    apiToken: leadStudioJiraApiToken.value()
+  };
+  var jiraResults = await Promise.all([
+    jiraClient.loadJiraIssueStatuses(Object.assign({}, jiraConfig, { issueKeys: issueKeys })),
+    Promise.all(newLeadEmails.map(function (contactEmail) {
+      return jiraClient.findJiraIssueForContact(Object.assign({}, jiraConfig, { contactEmail: contactEmail }))
+        .then(function (issue) { return [contactEmail, issue]; });
+    }))
+  ]);
+  var plan = refreshMutation.buildRefreshPlan({
+    snapshot: snapshot,
+    gmailLeadScan: gmailLeadScan,
+    gmailOnboardingScan: gmailOnboardingScan,
+    onboardingLookup: onboardingLookup,
+    liveStatuses: jiraResults[0],
+    jiraByEmail: Object.fromEntries(jiraResults[1]),
+    timeZone: "Europe/Ljubljana"
+  });
+  plan.summary.inputs = {
+    gmailLeadCandidates: gmailLeadScan.candidateMessages,
+    gmailLeadAccepted: gmailLeadScan.acceptedMessages.length,
+    gmailLeadComplete: gmailLeadScan.complete === true,
+    gmailOnboardingCandidates: gmailOnboardingScan.candidateMessages,
+    gmailOnboardingAccepted: gmailOnboardingScan.acceptedMessages.length,
+    gmailOnboardingComplete: gmailOnboardingScan.complete === true,
+    onboardingEligibleRows: Number(onboardingLookup.eligibleRows) || 0,
+    jiraRequestedKeys: issueKeys.length,
+    jiraLiveStatuses: Object.keys(jiraResults[0]).length,
+    newLeadJiraLookups: newLeadEmails.length
+  };
+  return {
+    sheetsClient: sheetsClient,
+    spreadsheetId: spreadsheetId,
+    plan: plan
+  };
+}
+
+exports.leadStudioRefreshV4 = functions.onCall({
+  region: "europe-west1",
+  cors: LEAD_STUDIO_ORIGINS,
+  secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
+  timeoutSeconds: 180,
+  memory: "512MiB",
+  maxInstances: 1,
+  concurrency: 1,
+  serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT
+}, async function (request) {
+  var data = request && request.data || {};
+  var actionName = String(data.action || "").trim();
+  try {
+    var authorization = await leadStudio.verifyAccess(data.studioAuthToken, "settings");
+    var acceptance = actionName === "executeAcceptance";
+    var prepare = actionName === "prepare" || actionName === "prepareAcceptance";
+    if (!prepare && !acceptance && actionName !== "execute") {
+      throw new functions.HttpsError("invalid-argument", "Unsupported refresh action.");
+    }
+    if (acceptance && leadStudioRefreshAcceptanceEnabled.value() !== "true") {
+      throw new functions.HttpsError("failed-precondition", "Lead Studio refresh acceptance is disabled.");
+    }
+    if (actionName === "execute" && leadStudioRefreshEnabled.value() !== "true") {
+      throw new functions.HttpsError("failed-precondition", "Lead Studio operational refresh is disabled.");
+    }
+    var prepared = await buildLiveRefreshPlan();
+    if (prepare) {
+      return {
+        mode: "refresh-disabled",
+        refresh: refreshMutation.publicPlan(prepared.plan),
+        authorization: leadStudio.publicAuthorization(authorization)
+      };
+    }
+    var result = await refreshMutation.executeRefreshPlan({
+      plan: prepared.plan,
+      sheetsClient: prepared.sheetsClient,
+      spreadsheetId: prepared.spreadsheetId,
+      actor: authorization.email,
+      idempotencyKey: data.idempotencyKey,
+      expectedVersion: data.expectedVersion,
+      restoreAfterVerify: acceptance
+    });
+    logger.info("Lead Studio Firebase refresh completed", {
+      actor: authorization.email,
+      acceptance: acceptance,
+      restored: result.restored,
+      changedRows: result.changedRows,
+      appendedRows: result.appendedRows
+    });
+    return {
+      mode: acceptance ? "refresh-acceptance" : "refresh-operational",
+      refresh: result,
+      authorization: leadStudio.publicAuthorization(authorization)
+    };
+  } catch (error) {
+    if (error instanceof functions.HttpsError) throw error;
+    var code = ["invalid-argument", "failed-precondition", "aborted", "data-loss"].includes(error && error.code)
+      ? error.code : "internal";
+    logger.error("leadStudioRefreshV4 failed", { name: error && error.name, code: code, message: error && error.message });
+    throw new functions.HttpsError(code, code === "internal" ? "Lead Studio refresh failed." : error.message);
   }
 });
 

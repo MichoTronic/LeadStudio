@@ -2,10 +2,16 @@
 
 var COLUMNS = Object.freeze({
   timestamp: "Timestamp",
+  companyName: "Company Name",
+  clientOperatorName: "Client / Operator Name",
   targetRegion: "Operating Markets",
   responsiblePerson: "Responsible Person",
   emailAddress: "Email Address",
-  jiraIssueKey: "JIRA task ID"
+  jiraIssueKey: "JIRA task ID",
+  driveFolderUrl: "Google Drive Folder URL",
+  infoSheetUrl: "Info Sheet",
+  onboardingDocUrl: "Onboarding Doc",
+  jiraIssueUrl: "JIRA task URL"
 });
 var TARGET_REGIONS = Object.freeze(["ROW", "Asia", "LATAM"]);
 
@@ -19,10 +25,16 @@ function buildOnboardingLookup(values) {
     var match = {
       rowNumber: index + 2,
       submittedAt: cell(row, indexes, COLUMNS.timestamp),
+      companyName: cell(row, indexes, COLUMNS.companyName),
+      clientOperatorName: cell(row, indexes, COLUMNS.clientOperatorName),
       targetRegion: normalizeTargetRegion(cell(row, indexes, COLUMNS.targetRegion)),
       responsiblePerson: cell(row, indexes, COLUMNS.responsiblePerson),
       email: cell(row, indexes, COLUMNS.emailAddress),
-      jiraIssueKey: normalizeIssueKey(cell(row, indexes, COLUMNS.jiraIssueKey))
+      jiraIssueKey: normalizeIssueKey(cell(row, indexes, COLUMNS.jiraIssueKey)),
+      jiraIssueUrl: cell(row, indexes, COLUMNS.jiraIssueUrl),
+      driveFolderUrl: cell(row, indexes, COLUMNS.driveFolderUrl),
+      infoSheetUrl: cell(row, indexes, COLUMNS.infoSheetUrl),
+      onboardingDocUrl: cell(row, indexes, COLUMNS.onboardingDocUrl)
     };
     if (!match.jiraIssueKey) return;
     lookup.eligibleRows += 1;

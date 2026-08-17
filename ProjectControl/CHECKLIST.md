@@ -128,7 +128,9 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Port onboarding-notice reads, Form-linked onboarding matching, and deep-query parity before moving Gmail refresh ownership.
 - [x] Deploy and live-verify a settings-only, PII-minimized refresh dry-run; all 302 rows loaded, bounded Gmail/onboarding parity stayed exact, Jira planned no status changes, and the Sheet/Debug Log remained unchanged.
 - [x] Produce the complete GAS-compatible 35-column Gmail lead append payload and add operational Gmail pagination while the refresh path remains read-only; live acceptance completed 95 lead candidates and 27 onboarding candidates with no parity gaps.
-- [ ] Add new-lead Jira discovery/onboarding enrichment and an audited, disabled refresh mutation command with snapshot versioning, idempotency, and rollback acceptance.
+- [x] Add new-lead Jira discovery/onboarding enrichment and an audited, disabled refresh mutation command with snapshot versioning, idempotency, metadata-only audit records, and exact rollback support.
+- [x] Deploy the disabled dedicated refresh writer and verify its canonical read-only plan matches `leadStudioActionV4`: 302 rows, 69 planned updates, zero appends/conflicts, no Sheet or audit writes.
+- [ ] Stop and verify removal of the GAS daily refresh trigger, then run live Firebase whole-refresh write/verify/restore/replay acceptance before enabling either operational writer or scheduler.
 - [x] Select row 2 and complete disabled-by-default Firebase Notes write/verify/restore/replay acceptance.
 - [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.
 - [x] Port filtered exports and manual Jira-link operations; keep the Jira command/editor disabled while GAS owns writes.

@@ -233,30 +233,12 @@ async function runAction(request, dependencies) {
     };
   }
   if (action === "refreshDryRun") {
-    ["gmailOperationalLeadScan", "gmailOperationalOnboardingScan", "onboardingSheetRows", "jiraIssueStatuses"].forEach(function (dependency) {
-      if (typeof dependencies[dependency] !== "function") {
-        throw new HttpsError("failed-precondition", `Lead Studio refresh dry-run dependency ${dependency} is not configured.`);
-      }
-    });
-    var refreshSheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
-    var refreshInputs = await Promise.all([
-      dependencies.gmailOperationalLeadScan(),
-      dependencies.gmailOperationalOnboardingScan(),
-      dependencies.onboardingSheetRows()
-    ]);
-    var refreshLookup = onboardingSheet.buildOnboardingLookup(refreshInputs[2]);
-    var refreshKeys = plannedJiraKeys(refreshSheetResult.leads, refreshLookup);
-    var refreshStatuses = await dependencies.jiraIssueStatuses(refreshKeys.issueKeys);
+    if (typeof dependencies.refreshPlan !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio refresh planning is not configured.");
+    }
     return {
       mode: "read-only-refresh-dry-run",
-      refreshDryRun: buildRefreshDryRun(
-        refreshSheetResult,
-        refreshInputs[0],
-        refreshInputs[1],
-        refreshLookup,
-        refreshKeys,
-        refreshStatuses
-      ),
+      refreshDryRun: await dependencies.refreshPlan(),
       authorization: publicAuthorization(authorization)
     };
   }
@@ -529,116 +511,6 @@ function compareOnboardingSheet(sheetLeads, lookup) {
   };
 }
 
-function plannedJiraKeys(leads, lookup) {
-  var issueKeys = [];
-  var seen = new Set();
-  var rowNumbers = [];
-  var statusByKey = {};
-  (Array.isArray(leads) ? leads : []).forEach(function (lead) {
-    var onboardingResult = onboardingSheet.findOnboardingRequest(lookup, lead);
-    var existingKey = normalizeIssueKey(lead && lead.jiraIssueKey);
-    var issueKey = existingKey || normalizeIssueKey(onboardingResult.match && onboardingResult.match.jiraIssueKey);
-    if (!issueKey) return;
-    rowNumbers.push(Number(lead && lead.rowNumber) || 0);
-    if (seen.has(issueKey)) return;
-    seen.add(issueKey);
-    issueKeys.push(issueKey);
-    statusByKey[issueKey] = normalize(lead && lead.jiraStatus);
-  });
-  return { issueKeys: issueKeys.slice(0, 100), rowNumbers: rowNumbers, statusByKey: statusByKey };
-}
-
-function buildRefreshDryRun(sheetResult, gmailLeadScan, gmailOnboardingScan, onboardingLookup, jiraPlan, liveStatuses) {
-  var leads = sheetResult && Array.isArray(sheetResult.leads) ? sheetResult.leads : [];
-  var gmailLeads = compareGmailLeads(leads, gmailLeadScan);
-  var gmailOnboarding = compareGmailOnboarding(leads, gmailOnboardingScan);
-  var onboarding = compareOnboardingSheet(leads, onboardingLookup);
-  var jira = compareJiraStatuses(jiraPlan.statusByKey, liveStatuses);
-  var onboardingRows = Array.from(new Set(
-    onboarding.notCached.concat(onboarding.fieldMismatches).map(function (item) { return Number(item.rowNumber) || 0; }).filter(Boolean)
-  ));
-  var jiraMismatchKeys = jira.blankInSheet.map(function (item) { return item.issueKey; })
-    .concat(jira.mismatches.map(function (item) { return item.issueKey; }));
-  var appendPayloadReady = gmailLeadScan && gmailLeadScan.appendPayloadReady === true;
-  var gmailPaginationComplete = Boolean(
-    gmailLeadScan && gmailLeadScan.operational === true && gmailLeadScan.complete === true &&
-    gmailOnboardingScan && gmailOnboardingScan.operational === true && gmailOnboardingScan.complete === true
-  );
-  var blockers = [];
-  if (!appendPayloadReady) blockers.push("Firebase Gmail lead parsing does not yet produce the full GAS append-row payload.");
-  if (!gmailPaginationComplete) blockers.push("Operational Gmail pagination did not complete within its configured limits.");
-  blockers.push("Firebase refresh mutations and their audit/rollback acceptance remain disabled.");
-  blockers.push("GAS v60 remains the active writer and daily scheduler.");
-
-  return {
-    generatedAt: new Date().toISOString(),
-    snapshot: {
-      sourceRows: Number(sheetResult && sheetResult.metadata && sheetResult.metadata.totalRows) || 0,
-      loadedRows: leads.length
-    },
-    gmailLeads: {
-      candidateMessages: gmailLeads.candidateMessages,
-      acceptedMessages: gmailLeads.acceptedMessages,
-      matchedMessages: gmailLeads.matchedMessages,
-      plannedAppends: gmailLeads.notInSheet.length,
-      pagination: summarizeGmailPagination(gmailLeadScan),
-      appendPayloadReady: appendPayloadReady,
-      mismatchRows: gmailLeads.fieldMismatches.map(function (item) { return { rowNumber: item.rowNumber, fields: item.fields }; })
-    },
-    gmailOnboarding: {
-      candidateMessages: gmailOnboarding.candidateMessages,
-      acceptedMessages: gmailOnboarding.acceptedMessages,
-      matchedMessages: gmailOnboarding.matchedMessages,
-      uncachedMessages: gmailOnboarding.notInSheet.length,
-      pagination: summarizeGmailPagination(gmailOnboardingScan),
-      mismatchRows: gmailOnboarding.fieldMismatches.map(function (item) { return { rowNumber: item.rowNumber, fields: item.fields }; })
-    },
-    onboardingSheet: {
-      eligibleRows: onboarding.eligibleOnboardingRows,
-      discoveredMatches: onboarding.discoveredMatches,
-      cachedMatches: onboarding.matchedCachedRows,
-      plannedRows: onboardingRows,
-      mismatchRows: onboarding.fieldMismatches
-    },
-    jira: {
-      candidateRows: jiraPlan.rowNumbers.length,
-      uniqueKeys: jiraPlan.issueKeys.length,
-      liveStatuses: Object.keys(liveStatuses || {}).length,
-      exactStatuses: jira.matchedStatuses,
-      plannedStatusKeys: jiraMismatchKeys,
-      missingKeys: jira.missingInJira
-    },
-    plannedMutations: {
-      appendRows: gmailLeads.notInSheet.length,
-      onboardingMailRows: gmailOnboarding.notInSheet.length + gmailOnboarding.fieldMismatches.length,
-      onboardingSheetRows: onboardingRows.length,
-      jiraTimestampRows: jiraPlan.rowNumbers.length,
-      jiraStatusKeys: jiraMismatchKeys.length
-    },
-    cutoverReadiness: {
-      dryRunOnly: true,
-      appendPayloadReady: appendPayloadReady,
-      gmailPaginationComplete: gmailPaginationComplete,
-      mutationsEnabled: false,
-      schedulerEnabled: false,
-      ready: false,
-      blockers: blockers
-    }
-  };
-}
-
-function summarizeGmailPagination(scan) {
-  var queries = scan && Array.isArray(scan.queries) ? scan.queries : [];
-  return {
-    operational: Boolean(scan && scan.operational),
-    complete: Boolean(scan && scan.complete),
-    queryCount: queries.length,
-    pages: queries.reduce(function (total, query) { return total + (Number(query && query.pages) || 0); }, 0),
-    hitLimitQueries: queries.filter(function (query) { return query && query.hitLimit === true; }).length,
-    queriesWithMore: queries.filter(function (query) { return query && query.hasMore === true; }).length
-  };
-}
-
 function normalize(value) {
   return String(value == null ? "" : value).trim();
 }
@@ -658,11 +530,8 @@ module.exports = {
   compareOnboardingSheet,
   compareJiraDiscovery,
   compareJiraStatuses,
-  buildRefreshDryRun,
   jiraDiscoveryCandidates,
   jiraStatusBaseline,
-  plannedJiraKeys,
-  summarizeGmailPagination,
   loadLeads,
   mapLead,
   publicAuthorization,
