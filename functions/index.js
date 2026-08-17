@@ -6,6 +6,7 @@ var logger = require("firebase-functions/logger");
 var params = require("firebase-functions/params");
 var jiraClient = require("./src/jiraClient");
 var leadStudio = require("./src/leadStudio");
+var writeAcceptance = require("./src/writeAcceptance");
 var workspaceDelegation = require("./src/workspaceDelegation");
 
 initializeApp();
@@ -27,11 +28,18 @@ var leadStudioJiraEmail = params.defineString("LEAD_STUDIO_JIRA_EMAIL", {
 var leadStudioOnboardingSpreadsheetId = params.defineString("LEAD_STUDIO_ONBOARDING_SPREADSHEET_ID", {
   default: "1Ev6nu3bp1Hjh86vB0YY-qvq9DjQh_IZzD5czBjMrtM0"
 });
+var leadStudioWriteAcceptanceEnabled = params.defineString("LEAD_STUDIO_WRITE_ACCEPTANCE_ENABLED", {
+  default: "false"
+});
+var leadStudioWriteAcceptanceRow = params.defineString("LEAD_STUDIO_WRITE_ACCEPTANCE_ROW", {
+  default: "2"
+});
 var LEAD_STUDIO_ORIGINS = [
   "https://timeless-lead-studio.web.app",
   "https://timeless-lead-studio.firebaseapp.com",
   "https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app"
 ];
+var LEAD_STUDIO_WRITER_SERVICE_ACCOUNT = "lead-studio-writer@timeless-lead-studio.iam.gserviceaccount.com";
 
 function createSheetsClient() {
   var google = require("googleapis").google;
@@ -39,6 +47,16 @@ function createSheetsClient() {
     version: "v4",
     auth: new google.auth.GoogleAuth({
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    })
+  });
+}
+
+function createWriteSheetsClient() {
+  var google = require("googleapis").google;
+  return google.sheets({
+    version: "v4",
+    auth: new google.auth.GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
     })
   });
 }
@@ -157,5 +175,65 @@ exports.leadStudioActionV4 = functions.onCall({
       message: error && error.message
     });
     throw new functions.HttpsError("internal", "Lead Studio could not load its data.");
+  }
+});
+
+exports.leadStudioWriteAcceptanceV4 = functions.onCall({
+  region: "europe-west1",
+  cors: LEAD_STUDIO_ORIGINS,
+  secrets: [leadStudioSpreadsheetId],
+  serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT,
+  timeoutSeconds: 30,
+  memory: "256MiB",
+  maxInstances: 1
+}, async function (request) {
+  try {
+    if (leadStudioWriteAcceptanceEnabled.value().toLowerCase() !== "true") {
+      throw new functions.HttpsError("failed-precondition", "Lead Studio write acceptance is disabled.");
+    }
+    var data = request && request.data || {};
+    var authorization = await leadStudio.verifyAccess(data.studioAuthToken, "settings");
+    var options = {
+      sheetsClient: createWriteSheetsClient(),
+      spreadsheetId: leadStudioSpreadsheetId.value().trim(),
+      rowNumber: Number(leadStudioWriteAcceptanceRow.value()),
+      actor: authorization.email,
+      idempotencyKey: data.idempotencyKey,
+      expectedVersion: data.expectedVersion
+    };
+    if (data.action === "prepareNotesRoundTrip") {
+      return {
+        mode: "write-acceptance",
+        acceptance: await writeAcceptance.prepareNotesRoundTrip(options),
+        authorization: leadStudio.publicAuthorization(authorization)
+      };
+    }
+    if (data.action === "executeNotesRoundTrip") {
+      var result = await writeAcceptance.executeNotesRoundTrip(options);
+      logger.info("Lead Studio write acceptance completed", {
+        rowNumber: result.rowNumber,
+        field: result.field,
+        restored: result.restored,
+        replayed: result.replayed,
+        idempotencyKey: result.idempotencyKey
+      });
+      return {
+        mode: "write-acceptance",
+        acceptance: result,
+        authorization: leadStudio.publicAuthorization(authorization)
+      };
+    }
+    throw new functions.HttpsError("invalid-argument", "Unsupported write acceptance action.");
+  } catch (error) {
+    if (error instanceof functions.HttpsError) throw error;
+    var safeCodes = new Set(["aborted", "data-loss", "failed-precondition", "invalid-argument"]);
+    var code = safeCodes.has(error && error.code) ? error.code : "internal";
+    logger.error("leadStudioWriteAcceptanceV4 failed", {
+      code: code,
+      name: error && error.name,
+      providerStatus: Number(error && error.response && error.response.status) || 0,
+      providerMessage: error && error.message
+    });
+    throw new functions.HttpsError(code, code === "internal" ? "Lead Studio write acceptance failed." : error.message);
   }
 });

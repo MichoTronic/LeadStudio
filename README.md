@@ -52,6 +52,7 @@ Folder identity:
 - Lead parsing supports current `New Contact`, old `Contact Form (TLT-Webpage-*)`, and legacy `Form submission from:` email formats.
 - Onboarding status comes from Gmail onboarding notices plus the onboarding request spreadsheet.
 - GAS v60 reads Jira through Script Properties: `JIRA_BASE_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN`. The Firebase V4 pilot stores its rotated token in Secret Manager and has verified settings-only profile, bulk-status, contact-discovery, and direct-issue reads. It has also matched the Form-linked onboarding Sheet exactly without modifying the Google Form response connection. Refresh orchestration, Sheet mutation, and synchronization ownership remain on GAS.
+- Firebase write acceptance is isolated in `leadStudioWriteAcceptanceV4`, requires central settings authorization, uses optimistic row versions and idempotency keys, and audits only metadata to `Debug Log`. Its dedicated writer service account has Sheet Editor access; the normal runtime remains Viewer. The endpoint is deployed disabled after a successful write/verify/restore/replay test.
 - Jira lifecycle buckets are mapped in `Config.js`.
 - The app reads and updates lead status; it does not create Jira issues.
 - Manual Jira issue linking is supported from the lead detail UI.

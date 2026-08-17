@@ -126,7 +126,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Configure keyless domain-wide Gmail delegation and prove mailbox-profile access from the signed Firebase preview.
 - [x] Port bounded Gmail lead searches and current/old/legacy parsing; all 7 accepted messages in the live 12-candidate sample matched existing Sheet rows and fields.
 - [x] Port onboarding-notice reads, Form-linked onboarding matching, and deep-query parity before moving Gmail refresh ownership.
-- [ ] Select one test lead row for disabled-by-default Firebase write acceptance.
+- [x] Select row 2 and complete disabled-by-default Firebase Notes write/verify/restore/replay acceptance.
 - [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.
 - [ ] Port exports and manual Jira-link operations.
 - [ ] Run write/parity/rollback acceptance before changing the Console production tile.
@@ -135,7 +135,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [ ] Add scheduled-refresh failure alerting.
 - [ ] Add Gmail scan candidate/accepted-count performance tracking.
 - [ ] Add Gmail scan controls if candidate count grows.
-- [ ] Add sheet-write smoke tests for update/persistence behavior.
+- [x] Add sheet-write smoke tests for exact restoration, stale-version rejection, audit events, and idempotent replay.
 - [ ] Run live QA for Refresh Leads.
 - [ ] Run live QA for CSV/XLSX export after filters.
 - [ ] Run live QA for manual Jira link save on a safe row.

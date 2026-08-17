@@ -3,9 +3,14 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 import { firebaseConfig, leadStudioConfig } from "./config.js";
 
 const backendApp = initializeApp(firebaseConfig, "lead-studio-backend");
+const backendFunctions = getFunctions(backendApp, leadStudioConfig.functionRegion);
 const action = httpsCallable(
-  getFunctions(backendApp, leadStudioConfig.functionRegion),
+  backendFunctions,
   leadStudioConfig.functionName
+);
+const writeAcceptanceAction = httpsCallable(
+  backendFunctions,
+  leadStudioConfig.writeAcceptanceFunctionName
 );
 const previewDeployment = window.location.hostname.includes("--");
 const authConfig = {
@@ -92,7 +97,8 @@ Object.defineProperty(window, "__leadStudioDiagnostics", {
     jiraProbe: () => callAction("jiraProbe"),
     jiraStatusParity: () => callAction("jiraStatusParity"),
     jiraDiscoveryParity: () => callAction("jiraDiscoveryParity"),
-    jiraDirectLookupParity: () => callAction("jiraDirectLookupParity")
+    jiraDirectLookupParity: () => callAction("jiraDirectLookupParity"),
+    notesWriteAcceptance: runNotesWriteAcceptance
   }),
   configurable: false,
   enumerable: false,
@@ -170,6 +176,18 @@ async function callAction(actionName) {
   const studioAuthToken = await state.authClient.refreshToken();
   if (!studioAuthToken) throw new Error("Timeless Studio authorization expired.");
   return action({ action: actionName, studioAuthToken });
+}
+
+async function runNotesWriteAcceptance(idempotencyKey = crypto.randomUUID().replaceAll("-", "")) {
+  const studioAuthToken = await state.authClient.refreshToken();
+  if (!studioAuthToken) throw new Error("Timeless Studio authorization expired.");
+  const prepared = await writeAcceptanceAction({ action: "prepareNotesRoundTrip", studioAuthToken });
+  return writeAcceptanceAction({
+    action: "executeNotesRoundTrip",
+    studioAuthToken,
+    idempotencyKey,
+    expectedVersion: prepared.data.acceptance.rowVersion
+  });
 }
 
 function applyFilters() {

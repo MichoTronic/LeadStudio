@@ -9,6 +9,7 @@ export const firebaseConfig = Object.freeze({
 
 export const leadStudioConfig = Object.freeze({
   functionName: "leadStudioActionV4",
+  writeAcceptanceFunctionName: "leadStudioWriteAcceptanceV4",
   functionRegion: "europe-west1",
   legacyUrl: "https://script.google.com/macros/s/AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA/exec"
 });
