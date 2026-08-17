@@ -16,6 +16,23 @@ function parseGmailLeadMessage(message) {
   };
 }
 
+function parseGmailOnboardingMessage(message) {
+  var headers = headerMap(message && message.payload && message.payload.headers);
+  var body = normalizeBody(extractBody(message && message.payload));
+  var subject = normalize(headers.Subject).toLowerCase();
+  var normalizedBody = normalize(body).toLowerCase();
+  var matches = subject.includes("onboarding form sent") ||
+    normalizedBody.startsWith("onboarding sent") ||
+    (normalizedBody.includes("onboarding sent") && normalizedBody.includes("we've just received new contact form from"));
+  if (!matches) return null;
+  var countMatch = body.match(/ONBOARDING SENT\s+(\d+)\s+TIME/i);
+  return {
+    messageId: normalize(message && message.id),
+    contactEmail: extractField(body, "Email", ["Phone"]).toLowerCase(),
+    countHint: countMatch && countMatch[1] ? Number(countMatch[1]) || 0 : 0
+  };
+}
+
 function isLeadMatch(headers, body) {
   var sender = extractEmail(headers.From).toLowerCase();
   var recipients = [headers.To, headers.Cc, headers.Bcc, headers["Delivered-To"], headers["X-Original-To"]]
@@ -138,5 +155,6 @@ function normalize(value) {
 module.exports = {
   extractBody,
   normalizeBody,
-  parseGmailLeadMessage
+  parseGmailLeadMessage,
+  parseGmailOnboardingMessage
 };

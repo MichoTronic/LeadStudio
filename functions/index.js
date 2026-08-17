@@ -24,6 +24,9 @@ var leadStudioJiraBaseUrl = params.defineString("LEAD_STUDIO_JIRA_BASE_URL", {
 var leadStudioJiraEmail = params.defineString("LEAD_STUDIO_JIRA_EMAIL", {
   default: "mitja@timelesstech.io"
 });
+var leadStudioOnboardingSpreadsheetId = params.defineString("LEAD_STUDIO_ONBOARDING_SPREADSHEET_ID", {
+  default: "1Ev6nu3bp1Hjh86vB0YY-qvq9DjQh_IZzD5czBjMrtM0"
+});
 var LEAD_STUDIO_ORIGINS = [
   "https://timeless-lead-studio.web.app",
   "https://timeless-lead-studio.firebaseapp.com",
@@ -78,6 +81,42 @@ exports.leadStudioActionV4 = functions.onCall({
           serviceAccountEmail: leadStudioServiceAccountEmail.value(),
           signJwt: signWorkspaceJwt
         });
+      },
+      gmailDeepLeadScan: function () {
+        return workspaceDelegation.scanGmailLeadMessages({
+          delegatedUser: leadStudioGmailUser.value(),
+          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
+          signJwt: signWorkspaceJwt,
+          deepScan: true
+        });
+      },
+      gmailOnboardingScan: function () {
+        return workspaceDelegation.scanGmailOnboardingMessages({
+          delegatedUser: leadStudioGmailUser.value(),
+          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
+          signJwt: signWorkspaceJwt
+        });
+      },
+      onboardingSheetProbe: async function () {
+        var response = await createSheetsClient().spreadsheets.values.get({
+          spreadsheetId: leadStudioOnboardingSpreadsheetId.value(),
+          range: "'OnboardingRequests'!A1:Z2",
+          valueRenderOption: "FORMATTED_VALUE"
+        });
+        var values = response && response.data && response.data.values || [];
+        return {
+          sheetName: "OnboardingRequests",
+          sampledRows: Math.max(values.length - 1, 0),
+          columns: values.length ? values[0].length : 0
+        };
+      },
+      onboardingSheetRows: async function () {
+        var response = await createSheetsClient().spreadsheets.values.get({
+          spreadsheetId: leadStudioOnboardingSpreadsheetId.value(),
+          range: "'OnboardingRequests'!A1:Z500",
+          valueRenderOption: "FORMATTED_VALUE"
+        });
+        return response && response.data && response.data.values || [];
       },
       jiraProbe: function () {
         return jiraClient.probeJiraConnection({

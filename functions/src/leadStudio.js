@@ -1,6 +1,7 @@
 "use strict";
 
 var HttpsError = require("firebase-functions/v2/https").HttpsError;
+var onboardingSheet = require("./onboardingSheet");
 
 var CENTRAL_VERIFIER_URL = "https://europe-west1-timeless-studio-auth.cloudfunctions.net/verifyStudioAccess";
 var STUDIO_ID = "lead-studio";
@@ -8,9 +9,14 @@ var LEAD_SHEET = "Email Matches";
 var LEAD_RANGE = `'${LEAD_SHEET}'!A1:AI600`;
 var MAX_LEADS = 500;
 var SETTINGS_ACTIONS = new Set([
-  "gmailProbe", "gmailLeadParity", "jiraProbe", "jiraStatusParity", "jiraDiscoveryParity", "jiraDirectLookupParity"
+  "gmailProbe", "gmailLeadParity", "gmailDeepLeadParity", "gmailOnboardingParity", "onboardingSheetProbe", "onboardingSheetParity", "jiraProbe", "jiraStatusParity",
+  "jiraDiscoveryParity", "jiraDirectLookupParity"
 ]);
-var INTERNAL_FIELDS = Object.freeze({ "Gmail Message ID": "gmailMessageId" });
+var INTERNAL_FIELDS = Object.freeze({
+  "Gmail Message ID": "gmailMessageId",
+  "Onboarding Message ID": "onboardingMessageId",
+  "Onboarding Sheet Row": "onboardingSheetRow"
+});
 var PUBLIC_FIELDS = Object.freeze({
   "Email Date": "emailDate",
   "Name": "name",
@@ -112,6 +118,52 @@ async function runAction(request, dependencies) {
     return {
       mode: "read-only-pilot",
       gmailLeadParity: compareGmailLeads(gmailSheetResult.leads, gmailScan),
+      authorization: publicAuthorization(authorization)
+    };
+  }
+  if (action === "gmailDeepLeadParity") {
+    if (typeof dependencies.gmailDeepLeadScan !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio deep Gmail scanning is not configured.");
+    }
+    var deepGmailSheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
+    var deepGmailScan = await dependencies.gmailDeepLeadScan();
+    return {
+      mode: "read-only-pilot",
+      gmailDeepLeadParity: compareGmailLeads(deepGmailSheetResult.leads, deepGmailScan),
+      authorization: publicAuthorization(authorization)
+    };
+  }
+  if (action === "gmailOnboardingParity") {
+    if (typeof dependencies.gmailOnboardingScan !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio Gmail onboarding scanning is not configured.");
+    }
+    var onboardingSheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
+    var onboardingScan = await dependencies.gmailOnboardingScan();
+    return {
+      mode: "read-only-pilot",
+      gmailOnboardingParity: compareGmailOnboarding(onboardingSheetResult.leads, onboardingScan),
+      authorization: publicAuthorization(authorization)
+    };
+  }
+  if (action === "onboardingSheetProbe") {
+    if (typeof dependencies.onboardingSheetProbe !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio onboarding Sheet access is not configured.");
+    }
+    return {
+      mode: "read-only-pilot",
+      onboardingSheet: await dependencies.onboardingSheetProbe(),
+      authorization: publicAuthorization(authorization)
+    };
+  }
+  if (action === "onboardingSheetParity") {
+    if (typeof dependencies.onboardingSheetRows !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio onboarding Sheet reads are not configured.");
+    }
+    var onboardingLeadResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
+    var onboardingLookup = onboardingSheet.buildOnboardingLookup(await dependencies.onboardingSheetRows());
+    return {
+      mode: "read-only-pilot",
+      onboardingSheetParity: compareOnboardingSheet(onboardingLeadResult.leads, onboardingLookup),
       authorization: publicAuthorization(authorization)
     };
   }
@@ -382,6 +434,73 @@ function compareGmailLeads(sheetLeads, scan) {
   };
 }
 
+function compareGmailOnboarding(sheetLeads, scan) {
+  var sheetByMessageId = {};
+  (Array.isArray(sheetLeads) ? sheetLeads : []).forEach(function (lead) {
+    normalize(lead && lead.onboardingMessageId).split(",").map(normalize).filter(Boolean).forEach(function (messageId) {
+      if (!Object.hasOwn(sheetByMessageId, messageId)) sheetByMessageId[messageId] = lead;
+    });
+  });
+  var matched = 0;
+  var notInSheet = [];
+  var fieldMismatches = [];
+  var accepted = scan && Array.isArray(scan.acceptedMessages) ? scan.acceptedMessages : [];
+  accepted.forEach(function (parsed) {
+    var messageId = normalize(parsed && parsed.messageId);
+    var sheetLead = sheetByMessageId[messageId];
+    if (!sheetLead) {
+      notInSheet.push(messageId);
+      return;
+    }
+    if (normalize(parsed.contactEmail).toLowerCase() !== normalize(sheetLead.contactEmail).toLowerCase()) {
+      fieldMismatches.push({ messageId: messageId, rowNumber: sheetLead.rowNumber, fields: ["contactEmail"] });
+    } else {
+      matched += 1;
+    }
+  });
+  return {
+    queries: scan && Array.isArray(scan.queries) ? scan.queries : [],
+    candidateMessages: Number(scan && scan.candidateMessages) || 0,
+    acceptedMessages: accepted.length,
+    matchedMessages: matched,
+    notInSheet: notInSheet,
+    fieldMismatches: fieldMismatches,
+    checkedAt: new Date().toISOString()
+  };
+}
+
+function compareOnboardingSheet(sheetLeads, lookup) {
+  var matched = 0;
+  var matchSources = { email: 0, responsiblePerson: 0 };
+  var notCached = [];
+  var fieldMismatches = [];
+  (Array.isArray(sheetLeads) ? sheetLeads : []).forEach(function (lead) {
+    var result = onboardingSheet.findOnboardingRequest(lookup, lead);
+    if (!result.match) return;
+    matchSources[result.source] += 1;
+    var fields = [];
+    if (normalize(lead.onboardingSheetRow) !== String(result.match.rowNumber)) fields.push("onboardingSheetRow");
+    if (normalizeIssueKey(lead.jiraIssueKey) !== result.match.jiraIssueKey) fields.push("jiraIssueKey");
+    if (normalize(lead.targetRegion).toLowerCase() !== normalize(result.match.targetRegion).toLowerCase()) fields.push("targetRegion");
+    if (!normalize(lead.onboardingSheetRow)) {
+      notCached.push({ rowNumber: lead.rowNumber, onboardingSheetRow: result.match.rowNumber, source: result.source });
+    } else if (fields.length) {
+      fieldMismatches.push({ rowNumber: lead.rowNumber, onboardingSheetRow: result.match.rowNumber, fields: fields });
+    } else {
+      matched += 1;
+    }
+  });
+  return {
+    eligibleOnboardingRows: Number(lookup && lookup.eligibleRows) || 0,
+    discoveredMatches: matchSources.email + matchSources.responsiblePerson,
+    matchSources: matchSources,
+    matchedCachedRows: matched,
+    notCached: notCached,
+    fieldMismatches: fieldMismatches,
+    checkedAt: new Date().toISOString()
+  };
+}
+
 function normalize(value) {
   return String(value == null ? "" : value).trim();
 }
@@ -397,6 +516,8 @@ module.exports = {
   STUDIO_ID,
   assertRequiredHeaders,
   compareGmailLeads,
+  compareGmailOnboarding,
+  compareOnboardingSheet,
   compareJiraDiscovery,
   compareJiraStatuses,
   jiraDiscoveryCandidates,

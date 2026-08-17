@@ -56,3 +56,18 @@ test("rejects untrusted senders and cleans hidden HTML artifacts", function () {
   assert.equal(parser.parseGmailLeadMessage(untrusted), null);
   assert.equal(parser.normalizeBody("<p>A&#x200b;da &amp; Co</p>"), "A da & Co");
 });
+
+test("parses onboarding notices without retaining message content", function () {
+  var parsed = parser.parseGmailOnboardingMessage(message(
+    "onboarding-1",
+    "Onboarding form sent",
+    "ONBOARDING SENT 2 TIMES We've just received new contact form from Name: Ada Last Name: Lovelace Email: ADA@example.com Phone: 1"
+  ));
+  assert.deepEqual(parsed, {
+    messageId: "onboarding-1",
+    contactEmail: "ada@example.com",
+    countHint: 2
+  });
+  assert.equal(Object.hasOwn(parsed, "body"), false);
+  assert.equal(parser.parseGmailOnboardingMessage(message("other-1", "Other", "Email: a@example.com Phone: 1")), null);
+});

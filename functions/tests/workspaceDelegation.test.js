@@ -108,3 +108,66 @@ test("runs a bounded delegated Gmail lead scan without returning bodies or token
   assert.equal(JSON.stringify(result).includes("private-token"), false);
   assert.equal(JSON.stringify(result).includes("New Contact Email"), false);
 });
+
+test("runs a bounded delegated Gmail onboarding scan without returning bodies or tokens", async function () {
+  var listCalls = 0;
+  var result = await delegation.scanGmailOnboardingMessages({
+    serviceAccountEmail: "runtime@example.iam.gserviceaccount.com",
+    delegatedUser: "marketing@timelesstech.io",
+    nowMs: Date.UTC(2026, 7, 17),
+    signJwt: async function () { return "signed-jwt"; },
+    fetchImpl: async function (url) {
+      if (url === delegation.OAUTH_TOKEN_URL) {
+        return { ok: true, json: async function () { return { access_token: "private-token" }; } };
+      }
+      var parsedUrl = new URL(url);
+      if (parsedUrl.pathname.endsWith("/messages")) {
+        listCalls += 1;
+        return { ok: true, json: async function () {
+          return { messages: listCalls === 1 ? [{ id: "onboarding-1" }] : [{ id: "onboarding-1" }, { id: "onboarding-2" }] };
+        } };
+      }
+      var id = parsedUrl.pathname.split("/").pop();
+      return { ok: true, json: async function () {
+        return {
+          id: id,
+          payload: {
+            headers: [{ name: "Subject", value: "Onboarding form sent" }],
+            body: { data: Buffer.from(`ONBOARDING SENT 1 TIME Email: ${id}@example.com Phone: 1`).toString("base64url") }
+          }
+        };
+      } };
+    }
+  });
+  assert.equal(result.candidateMessages, 2);
+  assert.equal(result.acceptedMessages.length, 2);
+  assert.equal(result.queries[0].query.endsWith("after:2026/05/17"), true);
+  assert.equal(JSON.stringify(result).includes("private-token"), false);
+  assert.equal(JSON.stringify(result).includes("ONBOARDING SENT"), true);
+  assert.equal(JSON.stringify(result).includes("Email:"), false);
+});
+
+test("samples every undated legacy query in a bounded deep lead scan", async function () {
+  var listUrls = [];
+  var result = await delegation.scanGmailLeadMessages({
+    serviceAccountEmail: "runtime@example.iam.gserviceaccount.com",
+    delegatedUser: "marketing@timelesstech.io",
+    deepScan: true,
+    signJwt: async function () { return "signed-jwt"; },
+    fetchImpl: async function (url) {
+      if (url === delegation.OAUTH_TOKEN_URL) {
+        return { ok: true, json: async function () { return { access_token: "private-token" }; } };
+      }
+      var parsedUrl = new URL(url);
+      if (parsedUrl.pathname.endsWith("/messages")) {
+        listUrls.push(parsedUrl);
+        return { ok: true, json: async function () { return { messages: [] }; } };
+      }
+      throw new Error("Unexpected message fetch");
+    }
+  });
+  assert.equal(result.queries.length, 7);
+  assert.equal(result.candidateMessages, 0);
+  assert.equal(listUrls.every(function (url) { return url.searchParams.get("maxResults") === "3"; }), true);
+  assert.equal(listUrls.every(function (url) { return !url.searchParams.get("q").includes("after:"); }), true);
+});

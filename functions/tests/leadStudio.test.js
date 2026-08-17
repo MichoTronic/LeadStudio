@@ -297,6 +297,103 @@ test("keeps internal Gmail message IDs out of normal bootstrap responses", async
   assert.equal(result.leads[0].gmailMessageId, undefined);
 });
 
+test("requires settings scope for the safe onboarding Sheet probe", async function () {
+  var requiredScope;
+  var response = await leadStudio.runAction({
+    data: { action: "onboardingSheetProbe", studioAuthToken: "signed-token" }
+  }, {
+    fetchImpl: async function (_url, request) {
+      requiredScope = JSON.parse(request.body).requiredScope;
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["settings"] };
+      } };
+    },
+    onboardingSheetProbe: async function () {
+      return { sheetName: "OnboardingRequests", sampledRows: 1, columns: 12 };
+    }
+  });
+  assert.equal(requiredScope, "settings");
+  assert.deepEqual(response.onboardingSheet, { sheetName: "OnboardingRequests", sampledRows: 1, columns: 12 });
+});
+
+test("compares onboarding Gmail IDs without exposing contact data", async function () {
+  var headers = Object.keys(leadStudio.PUBLIC_FIELDS).concat(["Gmail Message ID", "Onboarding Message ID"]);
+  var row = headers.map(function (header) {
+    return ({
+      "Contact Email": "lead@example.com",
+      "Company Name": "Example",
+      "Lead Status": "Lead",
+      "Onboarding Message ID": "onboarding-old, onboarding-1"
+    })[header] || "";
+  });
+  var response = await leadStudio.runAction({
+    data: { action: "gmailOnboardingParity", studioAuthToken: "signed-token" }
+  }, {
+    fetchImpl: async function (_url, request) {
+      assert.equal(JSON.parse(request.body).requiredScope, "settings");
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["settings"] };
+      } };
+    },
+    spreadsheetId: "sheet-1",
+    sheetsClient: {
+      spreadsheets: { values: { get: async function () {
+        return { data: { values: [headers, row] } };
+      } } }
+    },
+    gmailOnboardingScan: async function () {
+      return {
+        queries: [{ query: "bounded", returned: 1 }],
+        candidateMessages: 1,
+        acceptedMessages: [{ messageId: "onboarding-1", contactEmail: "lead@example.com", countHint: 1 }]
+      };
+    }
+  });
+  assert.equal(response.gmailOnboardingParity.matchedMessages, 1);
+  assert.equal(JSON.stringify(response.gmailOnboardingParity).includes("lead@example.com"), false);
+  assert.equal(JSON.stringify(response.gmailOnboardingParity).includes("Example"), false);
+});
+
+test("compares onboarding Form rows without exposing contact data", async function () {
+  var headers = Object.keys(leadStudio.PUBLIC_FIELDS).concat(["Onboarding Sheet Row"]);
+  var row = headers.map(function (header) {
+    return ({
+      "Name": "Ada",
+      "Last Name": "Lovelace",
+      "Contact Email": "lead@example.com",
+      "Company Name": "Example",
+      "Lead Status": "Active",
+      "Jira Issue Key": "SF-10",
+      "Target Region": "ROW",
+      "Onboarding Sheet Row": "2"
+    })[header] || "";
+  });
+  var response = await leadStudio.runAction({
+    data: { action: "onboardingSheetParity", studioAuthToken: "signed-token" }
+  }, {
+    fetchImpl: async function (_url, request) {
+      assert.equal(JSON.parse(request.body).requiredScope, "settings");
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["settings"] };
+      } };
+    },
+    spreadsheetId: "sheet-1",
+    sheetsClient: { spreadsheets: { values: { get: async function () {
+      return { data: { values: [headers, row] } };
+    } } } },
+    onboardingSheetRows: async function () {
+      return [
+        ["Timestamp", "Operating Markets", "Responsible Person", "Email Address", "JIRA task ID"],
+        ["2026-08-01", "ROW", "Ada Lovelace", "lead@example.com", "SF-10"]
+      ];
+    }
+  });
+  assert.equal(response.onboardingSheetParity.matchedCachedRows, 1);
+  assert.equal(response.onboardingSheetParity.matchSources.email, 1);
+  assert.equal(JSON.stringify(response.onboardingSheetParity).includes("lead@example.com"), false);
+  assert.equal(JSON.stringify(response.onboardingSheetParity).includes("Ada"), false);
+});
+
 test("bootstrap requires authorization before reading Sheets", async function () {
   var reads = 0;
   await assert.rejects(

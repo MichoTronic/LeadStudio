@@ -46,12 +46,12 @@ Folder identity:
 
 ## Current Technical Boundary
 
-- GAS v60 currently owns operational Gmail scanning. The Firebase V4 pilot uses keyless domain-wide delegation through IAM `signJwt` and has verified bounded current/old/legacy lead search/parser parity against live Sheet rows; it stores no service-account JSON key or user OAuth access token.
+- GAS v60 currently owns operational Gmail scanning. The Firebase V4 pilot uses keyless domain-wide delegation through IAM `signJwt` and has verified bounded current/old/legacy, onboarding-notice, and seven-query deep-search parity against live Sheet rows; it stores no service-account JSON key or user OAuth access token.
 - Lead records are stored in the `Lead Studio Database` Google Sheet.
 - Gmail scans support fast recent refreshes and deeper historical scans.
 - Lead parsing supports current `New Contact`, old `Contact Form (TLT-Webpage-*)`, and legacy `Form submission from:` email formats.
 - Onboarding status comes from Gmail onboarding notices plus the onboarding request spreadsheet.
-- GAS v60 reads Jira through Script Properties: `JIRA_BASE_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN`. The Firebase V4 pilot stores its rotated token in Secret Manager and has verified settings-only profile, bulk-status, contact-discovery, and direct-issue reads. Live samples produced no key or status mismatches; refresh orchestration, Sheet mutation, and synchronization ownership remain on GAS.
+- GAS v60 reads Jira through Script Properties: `JIRA_BASE_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN`. The Firebase V4 pilot stores its rotated token in Secret Manager and has verified settings-only profile, bulk-status, contact-discovery, and direct-issue reads. It has also matched the Form-linked onboarding Sheet exactly without modifying the Google Form response connection. Refresh orchestration, Sheet mutation, and synchronization ownership remain on GAS.
 - Jira lifecycle buckets are mapped in `Config.js`.
 - The app reads and updates lead status; it does not create Jira issues.
 - Manual Jira issue linking is supported from the lead detail UI.
@@ -81,7 +81,7 @@ Current stable operational baseline: GAS `V3` version 60. A read-only Firebase V
 - V3 completion review reports: `Reports/2026_06_22_Phase_V3_*`
 - V3 decision: `GO WITH CONDITIONS`
 
-Keep GAS v60 as the operational baseline while V4 is migrated in controlled slices. The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing Sheet after central Auth and has verified keyless Gmail mailbox access plus Secret Manager-backed Jira authentication, but it owns no writes, Gmail scans, Jira issue synchronization, or scheduled triggers.
+Keep GAS v60 as the operational baseline while V4 is migrated in controlled slices. The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing lead and Form-linked onboarding Sheets after central Auth and has verified keyless Gmail/Jira read parity. These are bounded diagnostics only: Firebase owns no writes, operational scans, Jira synchronization, or scheduled triggers.
 
 V3 hotfix on 2026-07-20: version `57` uses `noreply@timelesstech.io` as the current `New Contact` notice sender; run `Settings > Refresh Leads` to verify/backfill post-2026-06-21 form notices.
 

@@ -85,6 +85,10 @@ Object.defineProperty(window, "__leadStudioDiagnostics", {
   value: Object.freeze({
     gmailProbe: () => callAction("gmailProbe"),
     gmailLeadParity: () => callAction("gmailLeadParity"),
+    gmailDeepLeadParity: () => callAction("gmailDeepLeadParity"),
+    gmailOnboardingParity: () => callAction("gmailOnboardingParity"),
+    onboardingSheetProbe: () => callAction("onboardingSheetProbe"),
+    onboardingSheetParity: () => callAction("onboardingSheetParity"),
     jiraProbe: () => callAction("jiraProbe"),
     jiraStatusParity: () => callAction("jiraStatusParity"),
     jiraDiscoveryParity: () => callAction("jiraDiscoveryParity"),

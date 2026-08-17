@@ -39,16 +39,16 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 
 ## Gmail Lead Parsing
 
-- [ ] Add parser smoke cases for current `New Contact`, old `Contact Form (TLT-Webpage-*)`, and legacy `Form submission from:` formats.
-- [ ] Add a small sample-based check for hidden body artifacts and HTML entity cleanup.
-- [ ] Review Gmail query limits for fast scan and deep scan after the next historical refresh.
+- [x] Add parser smoke cases for current `New Contact`, old `Contact Form (TLT-Webpage-*)`, and legacy `Form submission from:` formats.
+- [x] Add a small sample-based check for hidden body artifacts and HTML entity cleanup.
+- [x] Review Gmail query limits for fast scan and deep scan after the next historical refresh.
 - [ ] Decide whether rejected lead samples should be surfaced in UI diagnostics or only written to `Debug Log`.
 - [x] Use `noreply@timelesstech.io` as the current `New Contact` form sender while still rejecting external `Re: New Contact` replies.
 
 ## Onboarding And Jira
 
-- [ ] Verify email-based onboarding matches against a fresh sample of completed onboarding rows.
-- [ ] Verify responsible-person fallback matches do not create false positives.
+- [x] Verify email-based onboarding matches against a fresh sample of completed onboarding rows.
+- [x] Verify responsible-person fallback matches do not create false positives.
 - [ ] Add a conflict review path when manual Jira key differs from onboarding-sheet Jira key.
 - [ ] Add visibility for unmapped Jira statuses so new lifecycle statuses are not missed.
 - [ ] Confirm whether Jira status should refresh on every normal Gmail refresh or only through explicit Jira refresh actions.
@@ -118,14 +118,15 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Verify desktop filters, contact details, lifecycle metrics, and the GAS operations link.
 - [x] Verify 390px mobile layout has no horizontal overflow.
 - [x] Keep Gmail, Jira, writes, onboarding matching, exports, and the daily trigger on GAS.
-- [ ] Design audited Firebase write commands with optimistic row-version checks.
+- [x] Design audited Firebase write commands with optimistic row-version checks.
 - [x] Bind the rotated Jira token from Secret Manager and verify a settings-only Firebase Jira profile probe.
 - [x] Port bounded Jira bulk-status reads by key and compare all 48 Sheet-linked keys with live Jira; all 45 cached statuses matched and three blank-status historical keys remained unresolved.
 - [x] Port PII-minimized contact-email Jira discovery; a 12-contact sample produced 10 exact matches, two no-results, and zero mismatches.
 - [x] Port validated direct Jira issue lookup; a 12-key sample produced 11 exact status matches, one known 404, and zero mismatches.
 - [x] Configure keyless domain-wide Gmail delegation and prove mailbox-profile access from the signed Firebase preview.
 - [x] Port bounded Gmail lead searches and current/old/legacy parsing; all 7 accepted messages in the live 12-candidate sample matched existing Sheet rows and fields.
-- [ ] Port onboarding-notice reads and deep-query parity before moving Gmail refresh ownership.
+- [x] Port onboarding-notice reads, Form-linked onboarding matching, and deep-query parity before moving Gmail refresh ownership.
+- [ ] Select one test lead row for disabled-by-default Firebase write acceptance.
 - [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.
 - [ ] Port exports and manual Jira-link operations.
 - [ ] Run write/parity/rollback acceptance before changing the Console production tile.

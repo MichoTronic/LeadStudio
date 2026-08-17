@@ -19,7 +19,7 @@ Current status source of truth for Lead Studio.
 - Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
 - Firebase pilot mode: read-only; central Auth policy `studioPolicies/lead-studio`
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
-- Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; the settings-only connection probe is deployed, while Jira issue reads and synchronization remain on GAS v60
+- Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; settings-only profile and read-parity diagnostics are deployed, while synchronization remains on GAS v60
 - Current V3 review decision: `GO WITH CONDITIONS`
 - Current viable/stable baseline: `V3`
 - Current deployment inventory: stable version 60 web app deployment plus Apps Script read-only `@HEAD`
@@ -53,6 +53,7 @@ Current status source of truth for Lead Studio.
 - 2026-08-17: Added PII-minimized contact-email Jira discovery in revision `leadstudioactionv4-00005-peb`. A 12-contact sample rediscovered 10 exact Sheet issue keys with zero mismatches; `SF-226` and `SF-190` returned no search result. The diagnostic returns row numbers and issue keys only, never contact emails or Jira content.
 - 2026-08-17: Added validated direct Jira issue lookup in revision `leadstudioactionv4-00006-sam`. An independent 12-key sample matched 11 cached statuses exactly with zero mismatches; only the already-unresolved `SF-226` returned 404. The client rejects malformed keys and safely treats Jira 404 responses as missing records.
 - 2026-08-17: Added bounded keyless Gmail lead search and parser parity in revision `leadstudioactionv4-00007-pev`. The diagnostic mirrored the GAS three-month `New Contact` / `Contact Form` queries, fetched at most 12 unique messages, accepted 7 trusted lead notices, and matched all 7 to existing Sheet rows by message ID, contact email, and company name with zero missing rows or field mismatches. Message bodies, contact values, delegated tokens, and internal Gmail IDs remain absent from normal browser bootstrap data.
+- 2026-08-17: Deployed read-only onboarding and deep-query parity in revision `leadstudioactionv4-00011-zoy`. Twelve recent onboarding notices matched stored message IDs and contact fields exactly. The Form-linked `OnboardingRequests` comparison found 55 Lead Studio matches across 101 eligible rows (51 by email and four by responsible-person fallback), with all 55 cached Form rows, Jira keys, and regions exact. The bounded deep Gmail sample exercised all seven undated GAS queries; two trusted lead messages were accepted and both matched cached rows. No Form or Sheet values were changed, normal bootstrap still excludes internal IDs, and Chrome reported no browser errors.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -176,13 +177,19 @@ The first V4 slice is active in parallel and read-only. It proves standalone bil
 
 Next controlled slices:
 
-- Design backend-only write commands with row/version conflict checks and an audit trail.
-- Design audited Sheet mutation and Jira refresh orchestration with optimistic row-version checks. Do not enable Firebase refresh or writes while GAS owns those workflows.
-- Extend the verified keyless Gmail delegation from mailbox-profile diagnostics to bounded message searches and parser parity. Do not introduce a service-account JSON key or store user OAuth access tokens.
-- Port onboarding-notice reads and compare them with existing Sheet onboarding metadata, then prove deep-query behavior without writing rows.
+- Implement the approved backend-only write contract below, initially disabled and limited to a designated test row.
+- Add audited Sheet mutation and Jira refresh orchestration with optimistic row-version checks. Do not enable Firebase refresh or writes while GAS owns those workflows.
 - Recreate scheduled refresh with Cloud Scheduler only after duplicate execution is impossible.
 - Port export and manual Jira-link workflows, then run parity and rollback acceptance.
 - Switch the Console tile only after the Firebase runtime owns the full accepted workflow.
+
+### V4 Write Safety Contract
+
+- GAS v60 remains the only writer and scheduler until a documented cutover; Firebase write commands and Cloud Scheduler stay disabled by default.
+- Every command is backend-only, requires central Auth write/settings scope, accepts an idempotency key, and permits only an explicit field allowlist.
+- The client supplies an expected row version derived from stable persisted values. The Function rereads the row immediately before mutation and rejects stale versions without writing.
+- Each attempt records actor, command, row number, idempotency key, expected/observed versions, allowed changed fields, timestamp, and outcome. Contact values, tokens, message bodies, and Jira payloads are excluded from audit records.
+- Write acceptance begins on one owner-designated test lead. Cutover requires stopping the GAS trigger/writer first, running final read parity, enabling one Firebase writer, and proving rollback before any Console tile change.
 
 ## Documentation Rules
 
