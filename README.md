@@ -73,7 +73,7 @@ Open V2 conditions:
 
 ## Current Stable Baseline
 
-Current viable and stable baseline: `V3`.
+Current stable operational baseline: GAS `V3` version 60. A read-only Firebase V4 pilot runs in parallel.
 
 - Apps Script stable deployment: version `60`
 - Git rollback tag: `v3-stable`
@@ -81,7 +81,7 @@ Current viable and stable baseline: `V3`.
 - V3 completion review reports: `Reports/2026_06_22_Phase_V3_*`
 - V3 decision: `GO WITH CONDITIONS`
 
-Keep V3 as the baseline while planning V4. V4 work should start from the V4 backlog in `ProjectControl/CHECKLIST.md`, not from ad hoc notes.
+Keep GAS v60 as the operational baseline while V4 is migrated in controlled slices. The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing Sheet after central Auth but owns no writes, Gmail/Jira automation, or scheduled triggers.
 
 V3 hotfix on 2026-07-20: version `57` uses `noreply@timelesstech.io` as the current `New Contact` notice sender; run `Settings > Refresh Leads` to verify/backfill post-2026-06-21 form notices.
 
@@ -110,6 +110,17 @@ Shared auth cleanup on 2026-08-05: version `60` keeps browser calls protected wh
 |-- .gitignore
 |-- .clasp.json
 |-- .claspignore
+|-- firebase.json
+|-- .firebaserc
+|-- functions/
+|   |-- index.js
+|   |-- src/
+|   `-- tests/
+|-- public/
+|   |-- index.html
+|   |-- styles.css
+|   |-- config.js
+|   `-- app.js
 |-- AppsScript/
 |   |-- appsscript.json
 |   |-- Code.js

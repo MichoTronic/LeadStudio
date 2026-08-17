@@ -5,7 +5,8 @@ Current status source of truth for Lead Studio.
 ## Runtime Posture
 
 - Product: `Lead Studio`
-- Platform: Google Apps Script web app
+- Stable platform: Google Apps Script web app version 60
+- Parallel pilot: Firebase Hosting preview plus Node 22 Cloud Function in `timeless-lead-studio`
 - Storage: `Lead Studio Database` Google Sheet
 - Local folder: `D:\GoogleDrive\_Share\TimelessTech\Marketing\Optmizations\LeadStudio`
 - Parent Google Drive folder: `1keVmyWTXwqQM0cK5AWQzFPIKM7K7hyt1`
@@ -14,6 +15,9 @@ Current status source of truth for Lead Studio.
 - Official Version 1 checkpoint: Version 45
 - Current stable deployment: Version 60 - Auth phase cleanup
 - Current stable web app deployment ID: `AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA`
+- Firebase pilot preview: `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`
+- Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
+- Firebase pilot mode: read-only; central Auth policy `studioPolicies/lead-studio`
 - Current V3 review decision: `GO WITH CONDITIONS`
 - Current viable/stable baseline: `V3`
 - Current deployment inventory: stable version 60 web app deployment plus Apps Script read-only `@HEAD`
@@ -37,6 +41,10 @@ Current status source of truth for Lead Studio.
 
 ## Latest Change
 
+- 2026-08-17: Created and billed the standalone Firebase project `timeless-lead-studio` without changing the stable GAS deployment.
+- 2026-08-17: Deployed the read-only `leadStudioActionV4` Node 22 Function and an isolated Hosting preview. The Function verifies central Auth before reading the existing `Email Matches` Sheet and returns only curated UI fields.
+- 2026-08-17: Registered `lead-studio-v4` and `lead-studio-v4-test` with the central SSO broker. The preview completed signed Chrome acceptance with 302 contacts, lifecycle metrics `32 / 4 / 10 / 9 / 55`, working filters/details, no network or console errors, and no horizontal overflow at 390px.
+- 2026-08-17: Kept Gmail scanning, Jira synchronization, Sheet writes, onboarding matching, exports, and the installed daily trigger on GAS v60. Console remains only the access/authentication front door.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -78,6 +86,9 @@ Current status source of truth for Lead Studio.
 
 ## Current Risks
 
+- The Firebase pilot is intentionally read-only. Do not point the Console production tile to it or retire GAS until write, Gmail, Jira, scheduled-refresh, export, and rollback acceptance is complete.
+- The Hosting preview expires on 2026-08-31 unless renewed or replaced. Production Hosting has not been promoted.
+- The source Sheet is currently readable by link, matching its pre-migration state. Tightening Drive sharing should be a separate reviewed data-access change after a dedicated runtime identity can be granted access.
 - `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
 - Daily refresh trigger is installed and confirmed with `triggerCount: 1`; July 2026 scheduled runs are completing, and the 2026-07-20 noreply sender fix is deployed. Manual Refresh Leads backfilled the missing contacts; the remaining condition is observing the next automatic scheduled run after version 57.
 - Setup/test URL token handlers still exist in `Code.js`, but URL access is disabled by default unless `LEAD_STUDIO_SETUP_ENDPOINTS_ENABLED=true` or `LEAD_STUDIO_TEST_ENDPOINTS_ENABLED=true` is set temporarily.
@@ -95,6 +106,15 @@ Use this minimum check before code/config deployment:
 clasp status
 clasp deployments
 clasp versions
+npm run check
+```
+
+Firebase pilot checks:
+
+```text
+firebase functions:list --project timeless-lead-studio
+firebase hosting:channel:list --project timeless-lead-studio
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="leadstudioactionv4" AND severity>=ERROR' --project timeless-lead-studio --freshness=30m
 ```
 
 Use these runtime checks after deployment or when touching integrations:
@@ -140,17 +160,18 @@ getDailyRefreshLeadsTriggerStatus() => triggerCount: 1
 - Treat V3 as the current viable/stable Lead Studio baseline while V4 is planned.
 - Shared-auth integration is deployed at version 60; controlled live verification is still needed for Mitja, Gaja, Vanesa, and a denied external account.
 
-## V4 Planning Notes
+## V4 Firebase Pilot
 
-These are future-version tasks from the V3 completion review:
+The first V4 slice is active in parallel and read-only. It proves standalone billing/ownership, central SSO, protected Sheet reads, lifecycle metrics, filtering, contact details, and mobile layout. GAS v60 remains the stable operational baseline.
 
-- Bound Debug Log reads used by Settings Operations status.
-- Add refresh duration logging and display.
-- Add scheduled-refresh failure alerting.
-- Add Gmail scan candidate/accepted-count performance tracking and controls.
-- Add sheet-write smoke tests for update/persistence behavior.
-- Run live QA for Refresh Leads, CSV/XLSX export, manual Jira link save, and Deep Refresh Jira Matches.
-- Split client utilities from `Script.html` only after more tests exist.
+Next controlled slices:
+
+- Design backend-only write commands with row/version conflict checks and an audit trail.
+- Move Jira credentials to Secret Manager and port Jira reads before any write cutover.
+- Replace the delegated Gmail/Drive credential file with a managed secret and prove domain-wide delegation from the standalone project.
+- Recreate scheduled refresh with Cloud Scheduler only after duplicate execution is impossible.
+- Port export and manual Jira-link workflows, then run parity and rollback acceptance.
+- Switch the Console tile only after the Firebase runtime owns the full accepted workflow.
 
 ## Documentation Rules
 

@@ -8,6 +8,7 @@ Thumbs.db
 node_modules/
 dist/
 build/
+.firebase/
 
 # Local secrets and environment
 .env
@@ -25,4 +26,3 @@ Archive/
 # Local Google Drive shortcut files
 Resources/*.gsheet
 Resources/*.url
-

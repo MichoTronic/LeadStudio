@@ -109,6 +109,21 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Push safe V2 project files to `https://github.com/MichoTronic/LeadStudio.git`.
 ## V4 Backlog
 
+- [x] Create and bill standalone Firebase project `timeless-lead-studio`.
+- [x] Add Node 22 Firebase Functions and Hosting structure on `phase/v4-firebase-sso`.
+- [x] Register production and preview Lead Studio clients with central Auth.
+- [x] Deploy isolated read-only Firebase preview without changing GAS v60.
+- [x] Verify unsigned Function access is denied before Sheet reads.
+- [x] Complete signed Chrome acceptance against the real Sheet.
+- [x] Verify desktop filters, contact details, lifecycle metrics, and the GAS operations link.
+- [x] Verify 390px mobile layout has no horizontal overflow.
+- [x] Keep Gmail, Jira, writes, onboarding matching, exports, and the daily trigger on GAS.
+- [ ] Design audited Firebase write commands with optimistic row-version checks.
+- [ ] Move Jira credentials to Secret Manager and port Jira reads.
+- [ ] Migrate delegated Gmail credentials to managed secrets and prove mailbox access.
+- [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.
+- [ ] Port exports and manual Jira-link operations.
+- [ ] Run write/parity/rollback acceptance before changing the Console production tile.
 - [ ] Add bounded Debug Log reads for Operations status.
 - [ ] Add refresh duration logging and display.
 - [ ] Add scheduled-refresh failure alerting.

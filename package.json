@@ -1,0 +1,9 @@
+{
+  "name": "timeless-lead-studio",
+  "version": "4.0.0-pilot",
+  "private": true,
+  "scripts": {
+    "test": "npm --prefix functions test",
+    "check": "node --check public/config.js && node --check public/app.js && npm test"
+  }
+}
