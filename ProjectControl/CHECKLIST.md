@@ -124,7 +124,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Port PII-minimized contact-email Jira discovery; a 12-contact sample produced 10 exact matches, two no-results, and zero mismatches.
 - [x] Port validated direct Jira issue lookup; a 12-key sample produced 11 exact status matches, one known 404, and zero mismatches.
 - [x] Configure keyless domain-wide Gmail delegation and prove mailbox-profile access from the signed Firebase preview.
-- [ ] Port bounded Gmail searches and lead parsing, then compare results with GAS before moving refresh ownership.
+- [x] Port bounded Gmail lead searches and current/old/legacy parsing; all 7 accepted messages in the live 12-candidate sample matched existing Sheet rows and fields.
+- [ ] Port onboarding-notice reads and deep-query parity before moving Gmail refresh ownership.
 - [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.
 - [ ] Port exports and manual Jira-link operations.
 - [ ] Run write/parity/rollback acceptance before changing the Console production tile.

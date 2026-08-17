@@ -84,6 +84,7 @@ nodes.legacy.href = leadStudioConfig.legacyUrl;
 Object.defineProperty(window, "__leadStudioDiagnostics", {
   value: Object.freeze({
     gmailProbe: () => callAction("gmailProbe"),
+    gmailLeadParity: () => callAction("gmailLeadParity"),
     jiraProbe: () => callAction("jiraProbe"),
     jiraStatusParity: () => callAction("jiraStatusParity"),
     jiraDiscoveryParity: () => callAction("jiraDiscoveryParity"),

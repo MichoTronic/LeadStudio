@@ -243,6 +243,60 @@ test("runs bounded direct Jira lookup parity", async function () {
   assert.equal(response.jiraDirectLookupParity.matchedStatuses, 12);
 });
 
+test("compares Gmail parser results by message ID without returning contact values", async function () {
+  var headers = Object.keys(leadStudio.PUBLIC_FIELDS).concat(["Gmail Message ID"]);
+  var row = headers.map(function (header) {
+    return ({
+      "Contact Email": "lead@example.com",
+      "Company Name": "Example",
+      "Lead Status": "Lead",
+      "Gmail Message ID": "gmail-1"
+    })[header] || "";
+  });
+  var response = await leadStudio.runAction({
+    data: { action: "gmailLeadParity", studioAuthToken: "signed-token" }
+  }, {
+    fetchImpl: async function (_url, request) {
+      assert.equal(JSON.parse(request.body).requiredScope, "settings");
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["settings"] };
+      } };
+    },
+    spreadsheetId: "sheet-1",
+    sheetsClient: {
+      spreadsheets: { values: { get: async function () {
+        return { data: { values: [headers, row] } };
+      } } }
+    },
+    gmailLeadScan: async function () {
+      return {
+        queries: [{ query: "bounded", returned: 1 }],
+        candidateMessages: 1,
+        acceptedMessages: [{ messageId: "gmail-1", contactEmail: "lead@example.com", companyName: "Example" }]
+      };
+    }
+  });
+  assert.equal(response.gmailLeadParity.matchedMessages, 1);
+  assert.equal(JSON.stringify(response.gmailLeadParity).includes("lead@example.com"), false);
+  assert.equal(JSON.stringify(response.gmailLeadParity).includes("Example"), false);
+});
+
+test("keeps internal Gmail message IDs out of normal bootstrap responses", async function () {
+  var headers = Object.keys(leadStudio.PUBLIC_FIELDS).concat(["Gmail Message ID"]);
+  var row = headers.map(function (header) {
+    return ({
+      "Contact Email": "lead@example.com",
+      "Company Name": "Example",
+      "Lead Status": "Lead",
+      "Gmail Message ID": "private-gmail-id"
+    })[header] || "";
+  });
+  var result = await leadStudio.loadLeads({
+    spreadsheets: { values: { get: async function () { return { data: { values: [headers, row] } }; } } }
+  }, "sheet-1");
+  assert.equal(result.leads[0].gmailMessageId, undefined);
+});
+
 test("bootstrap requires authorization before reading Sheets", async function () {
   var reads = 0;
   await assert.rejects(

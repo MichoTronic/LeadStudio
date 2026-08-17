@@ -46,7 +46,7 @@ Folder identity:
 
 ## Current Technical Boundary
 
-- GAS v60 currently owns operational Gmail scanning. The Firebase V4 pilot has independently verified keyless domain-wide delegation to the marketing mailbox through IAM `signJwt`; it stores no service-account JSON key or user OAuth access token.
+- GAS v60 currently owns operational Gmail scanning. The Firebase V4 pilot uses keyless domain-wide delegation through IAM `signJwt` and has verified bounded current/old/legacy lead search/parser parity against live Sheet rows; it stores no service-account JSON key or user OAuth access token.
 - Lead records are stored in the `Lead Studio Database` Google Sheet.
 - Gmail scans support fast recent refreshes and deeper historical scans.
 - Lead parsing supports current `New Contact`, old `Contact Form (TLT-Webpage-*)`, and legacy `Form submission from:` email formats.

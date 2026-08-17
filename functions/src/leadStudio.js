@@ -8,8 +8,9 @@ var LEAD_SHEET = "Email Matches";
 var LEAD_RANGE = `'${LEAD_SHEET}'!A1:AI600`;
 var MAX_LEADS = 500;
 var SETTINGS_ACTIONS = new Set([
-  "gmailProbe", "jiraProbe", "jiraStatusParity", "jiraDiscoveryParity", "jiraDirectLookupParity"
+  "gmailProbe", "gmailLeadParity", "jiraProbe", "jiraStatusParity", "jiraDiscoveryParity", "jiraDirectLookupParity"
 ]);
+var INTERNAL_FIELDS = Object.freeze({ "Gmail Message ID": "gmailMessageId" });
 var PUBLIC_FIELDS = Object.freeze({
   "Email Date": "emailDate",
   "Name": "name",
@@ -102,6 +103,18 @@ async function runAction(request, dependencies) {
       authorization: publicAuthorization(authorization)
     };
   }
+  if (action === "gmailLeadParity") {
+    if (typeof dependencies.gmailLeadScan !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio Gmail scanning is not configured.");
+    }
+    var gmailSheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
+    var gmailScan = await dependencies.gmailLeadScan();
+    return {
+      mode: "read-only-pilot",
+      gmailLeadParity: compareGmailLeads(gmailSheetResult.leads, gmailScan),
+      authorization: publicAuthorization(authorization)
+    };
+  }
   if (action === "jiraProbe") {
     if (typeof dependencies.jiraProbe !== "function") {
       throw new HttpsError("failed-precondition", "Lead Studio Jira access is not configured.");
@@ -170,7 +183,8 @@ async function runAction(request, dependencies) {
   throw new HttpsError("invalid-argument", "Unsupported Lead Studio action.");
 }
 
-async function loadLeads(sheetsClient, spreadsheetId) {
+async function loadLeads(sheetsClient, spreadsheetId, options) {
+  options = options || {};
   assertSheetDependencies(sheetsClient, spreadsheetId);
   var response = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: spreadsheetId,
@@ -183,7 +197,7 @@ async function loadLeads(sheetsClient, spreadsheetId) {
   var headers = values[0].map(normalize);
   assertRequiredHeaders(headers);
   var leads = values.slice(1).map(function (row, index) {
-    return mapLead(headers, row, index + 2);
+    return mapLead(headers, row, index + 2, options.includeInternal === true);
   }).filter(function (lead) {
     return lead.name || lead.lastName || lead.contactEmail || lead.companyName;
   }).slice(0, MAX_LEADS);
@@ -200,12 +214,18 @@ async function loadLeads(sheetsClient, spreadsheetId) {
   };
 }
 
-function mapLead(headers, row, rowNumber) {
+function mapLead(headers, row, rowNumber, includeInternal) {
   var lead = { rowNumber: rowNumber };
   Object.keys(PUBLIC_FIELDS).forEach(function (header) {
     var index = headers.indexOf(header);
     lead[PUBLIC_FIELDS[header]] = index >= 0 ? normalize(row[index]) : "";
   });
+  if (includeInternal) {
+    Object.keys(INTERNAL_FIELDS).forEach(function (header) {
+      var index = headers.indexOf(header);
+      lead[INTERNAL_FIELDS[header]] = index >= 0 ? normalize(row[index]) : "";
+    });
+  }
   return lead;
 }
 
@@ -325,6 +345,43 @@ function normalizeIssueKey(value) {
   return match ? match[0] : "";
 }
 
+function compareGmailLeads(sheetLeads, scan) {
+  var sheetByMessageId = {};
+  (Array.isArray(sheetLeads) ? sheetLeads : []).forEach(function (lead) {
+    var messageId = normalize(lead && lead.gmailMessageId);
+    if (messageId && !Object.hasOwn(sheetByMessageId, messageId)) sheetByMessageId[messageId] = lead;
+  });
+  var matched = 0;
+  var notInSheet = [];
+  var fieldMismatches = [];
+  var accepted = scan && Array.isArray(scan.acceptedMessages) ? scan.acceptedMessages : [];
+  accepted.forEach(function (parsed) {
+    var messageId = normalize(parsed && parsed.messageId);
+    var sheetLead = sheetByMessageId[messageId];
+    if (!sheetLead) {
+      notInSheet.push(messageId);
+      return;
+    }
+    var fields = [];
+    if (normalize(parsed.contactEmail).toLowerCase() !== normalize(sheetLead.contactEmail).toLowerCase()) fields.push("contactEmail");
+    if (normalize(parsed.companyName).toLowerCase() !== normalize(sheetLead.companyName).toLowerCase()) fields.push("companyName");
+    if (fields.length) {
+      fieldMismatches.push({ messageId: messageId, rowNumber: sheetLead.rowNumber, fields: fields });
+    } else {
+      matched += 1;
+    }
+  });
+  return {
+    queries: scan && Array.isArray(scan.queries) ? scan.queries : [],
+    candidateMessages: Number(scan && scan.candidateMessages) || 0,
+    acceptedMessages: accepted.length,
+    matchedMessages: matched,
+    notInSheet: notInSheet,
+    fieldMismatches: fieldMismatches,
+    checkedAt: new Date().toISOString()
+  };
+}
+
 function normalize(value) {
   return String(value == null ? "" : value).trim();
 }
@@ -333,11 +390,13 @@ module.exports = {
   CENTRAL_VERIFIER_URL,
   LEAD_RANGE,
   LEAD_SHEET,
+  INTERNAL_FIELDS,
   MAX_LEADS,
   PUBLIC_FIELDS,
   SETTINGS_ACTIONS,
   STUDIO_ID,
   assertRequiredHeaders,
+  compareGmailLeads,
   compareJiraDiscovery,
   compareJiraStatuses,
   jiraDiscoveryCandidates,

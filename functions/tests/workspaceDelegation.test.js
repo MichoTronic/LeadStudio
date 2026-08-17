@@ -67,3 +67,44 @@ test("rejects a failed delegated token exchange without returning provider paylo
     /Workspace delegation failed/
   );
 });
+
+test("runs a bounded delegated Gmail lead scan without returning bodies or tokens", async function () {
+  var listCalls = 0;
+  var result = await delegation.scanGmailLeadMessages({
+    serviceAccountEmail: "runtime@example.iam.gserviceaccount.com",
+    delegatedUser: "marketing@timelesstech.io",
+    nowMs: Date.UTC(2026, 7, 17),
+    signJwt: async function () { return "signed-jwt"; },
+    fetchImpl: async function (url) {
+      if (url === delegation.OAUTH_TOKEN_URL) {
+        return { ok: true, json: async function () { return { access_token: "private-token" }; } };
+      }
+      var parsedUrl = new URL(url);
+      if (parsedUrl.pathname.endsWith("/messages")) {
+        listCalls += 1;
+        return { ok: true, json: async function () {
+          return { messages: listCalls === 1 ? [{ id: "gmail-1" }] : [{ id: "gmail-1" }, { id: "gmail-2" }] };
+        } };
+      }
+      var id = parsedUrl.pathname.split("/").pop();
+      return { ok: true, json: async function () {
+        return {
+          id: id,
+          payload: {
+            headers: [
+              { name: "From", value: "noreply@timelesstech.io" },
+              { name: "To", value: "marketing@timelesstech.io" },
+              { name: "Subject", value: "New Contact" }
+            ],
+            body: { data: Buffer.from(`New Contact Email: ${id}@example.com Phone: 1 Address: EU Business Type: Other Company Name: ${id} Interested in: Other Inquiry: Hi Language: en`).toString("base64url") }
+          }
+        };
+      } };
+    }
+  });
+  assert.equal(result.candidateMessages, 2);
+  assert.equal(result.acceptedMessages.length, 2);
+  assert.equal(result.queries[0].query.endsWith("after:2026/05/17"), true);
+  assert.equal(JSON.stringify(result).includes("private-token"), false);
+  assert.equal(JSON.stringify(result).includes("New Contact Email"), false);
+});

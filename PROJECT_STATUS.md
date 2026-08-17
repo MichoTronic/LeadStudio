@@ -52,6 +52,7 @@ Current status source of truth for Lead Studio.
 - 2026-08-17: Deployed bounded Firebase Jira bulk-status reads in Function revision `leadstudioactionv4-00004-weh`. The settings-only parity run checked 48 unique Sheet-linked keys: all 45 records with cached Jira statuses matched live Jira exactly, with no mismatches; `SF-226`, `SF-248`, and `SF-34` had blank cached statuses and were not returned by Jira. The diagnostic caps runs at 100 validated keys, batches at 50, and returns no contact data.
 - 2026-08-17: Added PII-minimized contact-email Jira discovery in revision `leadstudioactionv4-00005-peb`. A 12-contact sample rediscovered 10 exact Sheet issue keys with zero mismatches; `SF-226` and `SF-190` returned no search result. The diagnostic returns row numbers and issue keys only, never contact emails or Jira content.
 - 2026-08-17: Added validated direct Jira issue lookup in revision `leadstudioactionv4-00006-sam`. An independent 12-key sample matched 11 cached statuses exactly with zero mismatches; only the already-unresolved `SF-226` returned 404. The client rejects malformed keys and safely treats Jira 404 responses as missing records.
+- 2026-08-17: Added bounded keyless Gmail lead search and parser parity in revision `leadstudioactionv4-00007-pev`. The diagnostic mirrored the GAS three-month `New Contact` / `Contact Form` queries, fetched at most 12 unique messages, accepted 7 trusted lead notices, and matched all 7 to existing Sheet rows by message ID, contact email, and company name with zero missing rows or field mismatches. Message bodies, contact values, delegated tokens, and internal Gmail IDs remain absent from normal browser bootstrap data.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -95,6 +96,7 @@ Current status source of truth for Lead Studio.
 
 - The Firebase pilot is intentionally read-only. Do not point the Console production tile to it or retire GAS until write, Gmail, Jira, scheduled-refresh, export, and rollback acceptance is complete.
 - Firebase Jira support now proves credentials, profile access, bounded bulk status reads, contact-email discovery, and direct issue lookup. Keep refresh orchestration, Sheet mutation, and synchronization ownership on GAS until audited write commands and rollback controls are accepted.
+- Firebase Gmail support now proves keyless mailbox access plus bounded current/old/legacy lead parsing against live data. Onboarding-notice parsing, full/deep scan behavior, refresh orchestration, and Sheet mutation remain on GAS.
 - The Hosting preview expires on 2026-08-31 unless renewed or replaced. Production Hosting has not been promoted.
 - The source Sheet is currently readable by link, matching its pre-migration state. Tightening Drive sharing should be a separate reviewed data-access change after a dedicated runtime identity can be granted access.
 - `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
@@ -177,6 +179,7 @@ Next controlled slices:
 - Design backend-only write commands with row/version conflict checks and an audit trail.
 - Design audited Sheet mutation and Jira refresh orchestration with optimistic row-version checks. Do not enable Firebase refresh or writes while GAS owns those workflows.
 - Extend the verified keyless Gmail delegation from mailbox-profile diagnostics to bounded message searches and parser parity. Do not introduce a service-account JSON key or store user OAuth access tokens.
+- Port onboarding-notice reads and compare them with existing Sheet onboarding metadata, then prove deep-query behavior without writing rows.
 - Recreate scheduled refresh with Cloud Scheduler only after duplicate execution is impossible.
 - Port export and manual Jira-link workflows, then run parity and rollback acceptance.
 - Switch the Console tile only after the Firebase runtime owns the full accepted workflow.

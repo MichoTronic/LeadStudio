@@ -72,6 +72,13 @@ exports.leadStudioActionV4 = functions.onCall({
           signJwt: signWorkspaceJwt
         });
       },
+      gmailLeadScan: function () {
+        return workspaceDelegation.scanGmailLeadMessages({
+          delegatedUser: leadStudioGmailUser.value(),
+          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
+          signJwt: signWorkspaceJwt
+        });
+      },
       jiraProbe: function () {
         return jiraClient.probeJiraConnection({
           baseUrl: leadStudioJiraBaseUrl.value(),
