@@ -145,6 +145,9 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [ ] Observe the first natural 06:00 Firebase scheduled refresh and confirm its COMPLETE audit before retiring the GAS refresh code.
 - [x] Run live Firebase QA for CSV/XLSX export after filters on desktop and 390px mobile.
 - [x] Run live Firebase manual Jira write/verify/restore/replay acceptance on row 6 and redeploy the gate disabled.
+- [x] Exercise the operational Firebase manual Jira path on row 6 with its existing issue key and verify idempotent replay, then return both gates/editor to disabled.
+- [ ] Add shared serialization between manual Jira writes and the scheduled whole-Sheet writer before enabling the editor operationally.
+- [ ] Complete signed desktop and 390px mobile browser QA for the Firebase manual Jira editor; no controllable browser was connected during backend acceptance.
 - [ ] Run live QA for Deep Refresh Jira Matches.
 - [ ] Review web app access settings before broader team/external use.
 - [ ] Review whether setup/test endpoint functions should remain present or be removed entirely.

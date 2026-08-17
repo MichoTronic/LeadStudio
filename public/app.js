@@ -399,6 +399,7 @@ function buildManualJiraEditor(lead) {
   button.type = "submit";
   button.className = "button button-primary";
   button.textContent = "Save Jira link";
+  const status = document.createElement("p");
   status.className = "manual-jira-status";
   status.setAttribute("aria-live", "polite");
   label.append(input);

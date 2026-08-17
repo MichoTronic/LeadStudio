@@ -41,6 +41,9 @@ var leadStudioWriteAcceptanceRow = params.defineString("LEAD_STUDIO_WRITE_ACCEPT
 var leadStudioManualJiraEnabled = params.defineString("LEAD_STUDIO_MANUAL_JIRA_ENABLED", {
   default: "false"
 });
+var leadStudioManualJiraAcceptanceEnabled = params.defineString("LEAD_STUDIO_MANUAL_JIRA_ACCEPTANCE_ENABLED", {
+  default: "false"
+});
 var leadStudioManualJiraAcceptanceRow = params.defineString("LEAD_STUDIO_MANUAL_JIRA_ACCEPTANCE_ROW", {
   default: "2"
 });
@@ -465,12 +468,15 @@ exports.leadStudioManualJiraV4 = functions.onCall({
   maxInstances: 1
 }, async function (request) {
   try {
-    if (leadStudioManualJiraEnabled.value().toLowerCase() !== "true") {
-      throw new functions.HttpsError("failed-precondition", "Lead Studio manual Jira writes are disabled.");
-    }
     var data = request && request.data || {};
     var actionName = String(data.action || "").trim();
     var acceptanceAction = actionName === "prepareAcceptance" || actionName === "executeAcceptance";
+    if (acceptanceAction && leadStudioManualJiraAcceptanceEnabled.value().toLowerCase() !== "true") {
+      throw new functions.HttpsError("failed-precondition", "Lead Studio manual Jira acceptance is disabled.");
+    }
+    if (!acceptanceAction && leadStudioManualJiraEnabled.value().toLowerCase() !== "true") {
+      throw new functions.HttpsError("failed-precondition", "Lead Studio manual Jira writes are disabled.");
+    }
     var authorization = await leadStudio.verifyAccess(data.studioAuthToken, acceptanceAction ? "settings" : "write");
     var rowNumber = acceptanceAction ? Number(leadStudioManualJiraAcceptanceRow.value()) : Number(data.rowNumber);
     var options = {
@@ -493,14 +499,14 @@ exports.leadStudioManualJiraV4 = functions.onCall({
     };
     if (actionName === "prepareManualJiraLink") {
       return {
-        mode: "manual-jira-disabled-pilot",
+        mode: "manual-jira-operational",
         manualJira: await manualJiraLink.prepareManualJiraLink(options),
         authorization: leadStudio.publicAuthorization(authorization)
       };
     }
     if (actionName === "saveManualJiraLink") {
       return {
-        mode: "manual-jira-disabled-pilot",
+        mode: "manual-jira-operational",
         manualJira: await manualJiraLink.executeManualJiraLink(options),
         authorization: leadStudio.publicAuthorization(authorization)
       };
