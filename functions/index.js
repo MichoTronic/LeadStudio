@@ -11,6 +11,7 @@ var manualJiraLink = require("./src/manualJiraLink");
 var onboardingSheet = require("./src/onboardingSheet");
 var refreshMutation = require("./src/refreshMutation");
 var writeAcceptance = require("./src/writeAcceptance");
+var writerLock = require("./src/writerLock");
 var workspaceDelegation = require("./src/workspaceDelegation");
 
 initializeApp();
@@ -56,6 +57,9 @@ var leadStudioRefreshAcceptanceEnabled = params.defineString("LEAD_STUDIO_REFRES
 var leadStudioScheduledRefreshEnabled = params.defineString("LEAD_STUDIO_SCHEDULED_REFRESH_ENABLED", {
   default: "false"
 });
+var leadStudioWriterLockBucket = params.defineString("LEAD_STUDIO_WRITER_LOCK_BUCKET", {
+  default: "timeless-lead-studio-writer-locks"
+});
 var LEAD_STUDIO_ORIGINS = [
   "https://timeless-lead-studio.web.app",
   "https://timeless-lead-studio.firebaseapp.com",
@@ -81,6 +85,15 @@ function createWriteSheetsClient() {
       scopes: ["https://www.googleapis.com/auth/spreadsheets"]
     })
   });
+}
+
+function withLeadStudioWriterLock(owner, callback) {
+  return writerLock.withWriterLock({
+    bucketName: leadStudioWriterLockBucket.value(),
+    owner: owner,
+    ttlMs: 5 * 60 * 1000,
+    waitMs: 5000
+  }, callback);
 }
 
 async function loadOnboardingRows() {
@@ -318,22 +331,25 @@ exports.leadStudioRefreshV4 = functions.onCall({
     if (actionName === "execute" && leadStudioRefreshEnabled.value() !== "true") {
       throw new functions.HttpsError("failed-precondition", "Lead Studio operational refresh is disabled.");
     }
-    var prepared = await buildLiveRefreshPlan();
     if (prepare) {
+      var prepared = await buildLiveRefreshPlan();
       return {
         mode: "refresh-disabled",
         refresh: refreshMutation.publicPlan(prepared.plan),
         authorization: leadStudio.publicAuthorization(authorization)
       };
     }
-    var result = await refreshMutation.executeRefreshPlan({
-      plan: prepared.plan,
-      sheetsClient: prepared.sheetsClient,
-      spreadsheetId: prepared.spreadsheetId,
-      actor: authorization.email,
-      idempotencyKey: data.idempotencyKey,
-      expectedVersion: data.expectedVersion,
-      restoreAfterVerify: acceptance
+    var result = await withLeadStudioWriterLock("refresh-callable", async function () {
+      var lockedPlan = await buildLiveRefreshPlan();
+      return refreshMutation.executeRefreshPlan({
+        plan: lockedPlan.plan,
+        sheetsClient: lockedPlan.sheetsClient,
+        spreadsheetId: lockedPlan.spreadsheetId,
+        actor: authorization.email,
+        idempotencyKey: data.idempotencyKey,
+        expectedVersion: data.expectedVersion,
+        restoreAfterVerify: acceptance
+      });
     });
     logger.info("Lead Studio Firebase refresh completed", {
       actor: authorization.email,
@@ -373,15 +389,17 @@ exports.leadStudioScheduledRefreshV4 = scheduler.onSchedule({
     return;
   }
   try {
-    var prepared = await buildLiveRefreshPlan();
-    var result = await refreshMutation.executeRefreshPlan({
-      plan: prepared.plan,
-      sheetsClient: prepared.sheetsClient,
-      spreadsheetId: prepared.spreadsheetId,
-      actor: "firebase-scheduler",
-      idempotencyKey: refreshMutation.scheduledIdempotencyKey(event && event.scheduleTime),
-      expectedVersion: prepared.plan.originalVersion,
-      restoreAfterVerify: false
+    var result = await withLeadStudioWriterLock("scheduled-refresh", async function () {
+      var prepared = await buildLiveRefreshPlan();
+      return refreshMutation.executeRefreshPlan({
+        plan: prepared.plan,
+        sheetsClient: prepared.sheetsClient,
+        spreadsheetId: prepared.spreadsheetId,
+        actor: "firebase-scheduler",
+        idempotencyKey: refreshMutation.scheduledIdempotencyKey(event && event.scheduleTime),
+        expectedVersion: prepared.plan.originalVersion,
+        restoreAfterVerify: false
+      });
     });
     logger.info("Lead Studio scheduled Firebase refresh completed", {
       changedRows: result.changedRows,
@@ -429,7 +447,9 @@ exports.leadStudioWriteAcceptanceV4 = functions.onCall({
       };
     }
     if (data.action === "executeNotesRoundTrip") {
-      var result = await writeAcceptance.executeNotesRoundTrip(options);
+      var result = await withLeadStudioWriterLock("notes-acceptance", function () {
+        return writeAcceptance.executeNotesRoundTrip(options);
+      });
       logger.info("Lead Studio write acceptance completed", {
         rowNumber: result.rowNumber,
         field: result.field,
@@ -507,7 +527,9 @@ exports.leadStudioManualJiraV4 = functions.onCall({
     if (actionName === "saveManualJiraLink") {
       return {
         mode: "manual-jira-operational",
-        manualJira: await manualJiraLink.executeManualJiraLink(options),
+        manualJira: await withLeadStudioWriterLock("manual-jira", function () {
+          return manualJiraLink.executeManualJiraLink(options);
+        }),
         authorization: leadStudio.publicAuthorization(authorization)
       };
     }
@@ -519,10 +541,12 @@ exports.leadStudioManualJiraV4 = functions.onCall({
       };
     }
     if (actionName === "executeAcceptance") {
-      var prepared = await manualJiraLink.prepareManualJiraLink(options);
-      options.issueKey = prepared.issueKey;
-      options.restoreAfterVerify = true;
-      var result = await manualJiraLink.executeManualJiraLink(options);
+      var result = await withLeadStudioWriterLock("manual-jira-acceptance", async function () {
+        var prepared = await manualJiraLink.prepareManualJiraLink(options);
+        options.issueKey = prepared.issueKey;
+        options.restoreAfterVerify = true;
+        return manualJiraLink.executeManualJiraLink(options);
+      });
       logger.info("Lead Studio manual Jira acceptance completed", {
         rowNumber: result.rowNumber,
         restored: result.restored,
