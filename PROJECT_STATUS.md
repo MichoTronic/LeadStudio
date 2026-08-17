@@ -22,13 +22,13 @@ Current status source of truth for Lead Studio.
 - Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00003-sup`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled
 - Firebase Hosting mode: preview; central Auth policy `studioPolicies/lead-studio`
 - Firebase write acceptance: `leadStudioWriteAcceptanceV4` revision `leadstudiowriteacceptancev4-00005-bey`, disabled by configuration and bound to dedicated `lead-studio-writer@timeless-lead-studio.iam.gserviceaccount.com`
-- Firebase manual Jira pilot: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00006-sed`, separate operational/acceptance gates both disabled, editor hidden, dedicated writer identity
+- Firebase manual Jira pilot: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00007-xiw`, operational gate enabled for signed preview QA, acceptance gate disabled, editor visible only in the preview release, dedicated writer identity
 - Firebase writer serialization: private `timeless-lead-studio-writer-locks` bucket with atomic object-generation acquisition shared by scheduled refresh, callable refresh, Notes acceptance, and manual Jira mutation paths
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
 - Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; scheduled synchronization is operational
 - Current V3 review decision: `GO WITH CONDITIONS`
 - Current viable/stable baseline: `V3`
-- Current deployment inventory: stable version 60 GAS web app plus read-only `@HEAD`, Firebase preview, disabled callable writers, and enabled Firebase scheduled refresh
+- Current deployment inventory: stable version 60 GAS web app plus read-only `@HEAD`, Firebase preview with manual Jira QA enabled, disabled acceptance/callable-refresh writers, and enabled Firebase scheduled refresh
 - Current V3 rollback tag: `v3-stable`
 - Current V57 hotfix rollback tag: `v57-noreply-hotfix`
 - V2 rollback tag: `v2-stable`
@@ -71,6 +71,7 @@ Current status source of truth for Lead Studio.
 - 2026-08-17: Deployed `leadStudioScheduledRefreshV4` as the sole automatic writer at 06:00 Europe/Ljubljana, with no retries, one instance/concurrency, and the dedicated writer identity. A disabled-gate invocation first returned HTTP 200 without writes. After enabling only the scheduler gate, a production run persisted the canonical 69-row plan with zero appends/conflicts; `Debug Log` rows 1588-1589 record STARTED/COMPLETE with `restored: false`. An independent read-only plan confirmed the current Sheet hash exactly matches the audited written hash and now requires only the expected 55 daily Jira timestamp updates. Final revision is `leadstudioscheduledrefreshv4-00002-fen`; the next automatic run is 2026-08-18 at 06:00 Ljubljana time.
 - 2026-08-17: Split manual Jira operational and acceptance gates, fixed the dormant preview editor status-element error, and briefly enabled the operational path for a real same-key save on test row 6. Provider validation passed, the row version changed, and idempotent replay caused no second write; `Debug Log` rows 1590-1591 contain metadata-only STARTED/COMPLETE records. Because no controllable browser was connected, the preview editor was hidden again and both gates were disabled.
 - 2026-08-17: Added a shared distributed writer lock for every Firebase mutation path. The dedicated writer atomically creates a generation-checked object in private bucket `timeless-lead-studio-writer-locks`, waits at most five seconds for contention, deletes only its acquired generation, and recovers locks after a five-minute expiry. All 57 tests pass. Revisions `leadstudiorefreshv4-00006-kab`, `leadstudioscheduledrefreshv4-00003-sup`, `leadstudiowriteacceptancev4-00005-bey`, and `leadstudiomanualjirav4-00006-sed` are live with only the scheduled gate enabled. A controlled Scheduler run returned HTTP 200 through the lock, replayed its existing idempotency key without mutation, released the lock object, and produced no service errors.
+- 2026-08-17: Opened the already accepted manual Jira workflow for signed preview browser QA. Preview config exposes the editor, operational backend revision `leadstudiomanualjirav4-00007-xiw` is enabled, and the acceptance gate remains false. The preview release expires 2026-08-31; production Hosting was not changed.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -114,7 +115,7 @@ Current status source of truth for Lead Studio.
 
 - Firebase Scheduler is the sole automatic refresh writer. GAS v60 still exposes manual refresh controls as a rollback path, so operators must not use them while the Firebase schedule is active.
 - The first natural 06:00 Firebase scheduled run still needs observation even though an identical manually launched production Scheduler run completed successfully.
-- Filtered exports and the reversible manual Jira-link command have passed Firebase acceptance. The Firebase manual Jira endpoint/editor remain disabled; GAS continues to provide the manual rollback workflow until Hosting promotion.
+- Filtered exports and the reversible manual Jira-link command have passed Firebase acceptance. The Firebase manual Jira endpoint/editor are temporarily enabled only for signed preview QA; GAS continues to provide the manual rollback workflow until Hosting promotion.
 - Before enabling Firebase manual Jira, complete signed desktop/mobile browser acceptance of the preview editor. Shared serialization with the Scheduler writer is complete.
 - The Hosting preview expires on 2026-08-31 unless renewed or replaced. Production Hosting has not been promoted.
 - The source Sheet is currently readable by link, matching its pre-migration state. Tightening Drive sharing should be a separate reviewed data-access change after a dedicated runtime identity can be granted access.
