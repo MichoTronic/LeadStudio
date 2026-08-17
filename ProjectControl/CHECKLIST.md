@@ -77,13 +77,13 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 ## Operations
 
 - [x] Run `Settings > Refresh Leads` after version 57 and confirm post-2026-06-21 `noreply@timelesstech.io` form notices are appended.
-- [ ] Observe the next scheduled daily Refresh Leads run after version 57 and confirm it writes `SCHEDULED_REFRESH_COMPLETE`.
+- [x] Retire the GAS scheduled-refresh observation condition after removing its trigger during the V4 Firebase Scheduler cutover.
 - [x] Add a scheduled Refresh Leads wrapper with overlap protection.
 - [x] Add install/status/remove helpers for the daily 06:00 project-time refresh trigger.
 - [x] Add visible Apps Script execution-log output for daily refresh trigger install/status/remove helpers.
 - [x] Owner authorization required: run `installDailyRefreshLeadsTrigger()` once successfully.
 - [x] Confirm the daily refresh trigger is installed and visible in Apps Script triggers after deployment.
-- [x] Confirm `getDailyRefreshLeadsTriggerStatus()` reports `triggerCount: 1`.
+- [x] Historical V2 checkpoint: confirmed `triggerCount: 1`; V4 cutover later removed it and now requires zero Apps Script triggers.
 - [x] Tag V2 rollback state as `v2-stable`.
 - [x] Create `../Archive/Snapshots/Lead Studio V2 Stable/` before V3 changes.
 - [x] Add Apps Script smoke tests for parser formats, Jira lifecycle mapping, date range boundaries, and export row shaping.
@@ -130,18 +130,19 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Produce the complete GAS-compatible 35-column Gmail lead append payload and add operational Gmail pagination while the refresh path remains read-only; live acceptance completed 95 lead candidates and 27 onboarding candidates with no parity gaps.
 - [x] Add new-lead Jira discovery/onboarding enrichment and an audited, disabled refresh mutation command with snapshot versioning, idempotency, metadata-only audit records, and exact rollback support.
 - [x] Deploy the disabled dedicated refresh writer and verify its canonical read-only plan matches `leadStudioActionV4`: 302 rows, 69 planned updates, zero appends/conflicts, no Sheet or audit writes.
-- [ ] Stop and verify removal of the GAS daily refresh trigger, then run live Firebase whole-refresh write/verify/restore/replay acceptance before enabling either operational writer or scheduler.
+- [x] Stop and verify removal of the GAS daily refresh trigger, then run live Firebase whole-refresh write/verify/restore/replay acceptance; all 69 rows restored exactly and replay caused no second mutation.
 - [x] Select row 2 and complete disabled-by-default Firebase Notes write/verify/restore/replay acceptance.
-- [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.
+- [x] Replace the GAS scheduled trigger with the single-instance Firebase 06:00 Europe/Ljubljana schedule; verify disabled-gate invocation and one persistent production run.
 - [x] Port filtered exports and manual Jira-link operations; keep the Jira command/editor disabled while GAS owns writes.
-- [ ] Run write/parity/rollback acceptance before changing the Console production tile.
+- [x] Run refresh write/parity/rollback acceptance before changing the Console production tile.
 - [ ] Add bounded Debug Log reads for Operations status.
 - [ ] Add refresh duration logging and display.
 - [ ] Add scheduled-refresh failure alerting.
 - [ ] Add Gmail scan candidate/accepted-count performance tracking.
 - [ ] Add Gmail scan controls if candidate count grows.
 - [x] Add sheet-write smoke tests for exact restoration, stale-version rejection, audit events, and idempotent replay.
-- [ ] Run live QA for Refresh Leads.
+- [x] Run live Firebase QA for Refresh Leads through the production Scheduler path and verify the final whole-Sheet hash.
+- [ ] Observe the first natural 06:00 Firebase scheduled refresh and confirm its COMPLETE audit before retiring the GAS refresh code.
 - [x] Run live Firebase QA for CSV/XLSX export after filters on desktop and 390px mobile.
 - [x] Run live Firebase manual Jira write/verify/restore/replay acceptance on row 6 and redeploy the gate disabled.
 - [ ] Run live QA for Deep Refresh Jira Matches.

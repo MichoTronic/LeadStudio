@@ -46,19 +46,19 @@ Folder identity:
 
 ## Current Technical Boundary
 
-- GAS v60 currently owns operational Gmail scanning. The Firebase V4 pilot uses keyless domain-wide delegation through IAM `signJwt` and has verified bounded current/old/legacy, onboarding-notice, and seven-query deep-search parity against live Sheet rows; it stores no service-account JSON key or user OAuth access token.
+- Firebase V4 now owns the automatic Gmail/onboarding/Jira refresh through keyless domain-wide delegation and Secret Manager. GAS v60 has zero installed triggers and is retained only as a manual rollback path; do not run its manual refresh while the Firebase scheduler is active.
 - Lead records are stored in the `Lead Studio Database` Google Sheet.
 - Gmail scans support fast recent refreshes and deeper historical scans.
 - Lead parsing supports current `New Contact`, old `Contact Form (TLT-Webpage-*)`, and legacy `Form submission from:` email formats.
 - Onboarding status comes from Gmail onboarding notices plus the onboarding request spreadsheet.
-- GAS v60 reads Jira through Script Properties: `JIRA_BASE_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN`. The Firebase V4 pilot stores its rotated token in Secret Manager and has verified settings-only profile, bulk-status, contact-discovery, and direct-issue reads. It has also matched the Form-linked onboarding Sheet exactly without modifying the Google Form response connection. Refresh orchestration, Sheet mutation, and synchronization ownership remain on GAS.
-- Firebase Function revision `leadstudioactionv4-00014-jek` and dedicated writer revision `leadstudiorefreshv4-00003-bet` now share one canonical, PII-minimized refresh planner. Live read-only acceptance loaded 302 leads, completed the Gmail scans, planned 69 existing-row updates and zero appends, and returned identical snapshot hashes and summaries from both endpoints. Both refresh mutation gates and scheduling remain disabled; the Sheet and `Debug Log` were unchanged.
+- Firebase stores the rotated Jira token in Secret Manager and owns scheduled status synchronization. It reads the Form-linked onboarding Sheet without modifying its Google Form response connection.
+- Function revision `leadstudioactionv4-00014-jek` and disabled callable writer `leadstudiorefreshv4-00005-hem` share one canonical, PII-minimized refresh planner. The 69-row write/verify/restore/replay acceptance passed exactly. Scheduled writer `leadstudioscheduledrefreshv4-00002-fen` then persisted the same plan and verified its final 302-row snapshot hash.
 - Firebase write acceptance is isolated in `leadStudioWriteAcceptanceV4`, requires central settings authorization, uses optimistic row versions and idempotency keys, and audits only metadata to `Debug Log`. Its dedicated writer service account has Sheet Editor access; the normal runtime remains Viewer. The endpoint is deployed disabled after a successful write/verify/restore/replay test.
 - The Firebase preview exports its currently filtered contacts as CSV or XLSX with the legacy visible-column contract. `leadStudioManualJiraV4` ports manual Jira linking behind a separate disabled gate on the dedicated writer identity; its live row-6 acceptance wrote, verified, restored the exact original row, and suppressed an idempotent replay. GAS v60 still owns operational Jira writes.
 - Jira lifecycle buckets are mapped in `Config.js`.
 - The app reads and updates lead status; it does not create Jira issues.
 - Manual Jira issue linking is supported from the lead detail UI.
-- Daily refresh trigger helpers exist in Apps Script, but the trigger requires one-time owner authorization before it is considered active.
+- Apps Script daily-trigger helpers remain for rollback, but the Apps Script project has zero installed triggers. Firebase Scheduler runs `leadStudioScheduledRefreshV4` daily at 06:00 Europe/Ljubljana with no retries and one concurrent instance.
 - Lead Studio uses shared `TimelessStudioAuth` integration so Marketing Studio Console policy `studioPolicies/lead-studio` controls access.
 
 ## V2 Completion Review
@@ -67,16 +67,11 @@ V2 completion review was run on 2026-06-22 and saved under `Reports/` as `2026_0
 
 Current V2 decision: `GO WITH CONDITIONS`.
 
-Open V2 conditions:
-
-- Owner must authorize and install the daily Refresh Leads trigger once.
-- Confirm `getDailyRefreshLeadsTriggerStatus()` reports exactly one active trigger.
-- Verify the first scheduled run writes the expected Debug Log/status entries.
-- Keep historical notes and rollback snapshots outside GitHub commits.
+The original V2 GAS-trigger conditions are superseded by the V4 cutover. Apps Script must remain at zero triggers while the Firebase Scheduler is enabled. Historical notes and rollback snapshots remain outside GitHub commits.
 
 ## Current Stable Baseline
 
-Current stable operational baseline: GAS `V3` version 60. A read-only Firebase V4 pilot runs in parallel.
+Current operational baseline: Firebase V4 owns the daily refresh; GAS `V3` version 60 remains the stable UI and manual rollback deployment while Hosting promotion is pending.
 
 - Apps Script stable deployment: version `60`
 - Git rollback tag: `v3-stable`
@@ -84,7 +79,7 @@ Current stable operational baseline: GAS `V3` version 60. A read-only Firebase V
 - V3 completion review reports: `Reports/2026_06_22_Phase_V3_*`
 - V3 decision: `GO WITH CONDITIONS`
 
-Keep GAS v60 as the operational baseline while V4 is migrated in controlled slices. The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing lead and Form-linked onboarding Sheets after central Auth, has verified keyless Gmail/Jira read parity, supports client-side filtered exports, and builds the same canonical read-only refresh plan as the dedicated writer. Firebase write callables remain disabled: Firebase owns no operational writes, Jira synchronization, or scheduled triggers until the GAS trigger is stopped and reversible whole-refresh acceptance passes.
+The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing lead and Form-linked onboarding Sheets after central Auth, supports filtered exports, and shares the production refresh planner. The Firebase manual and acceptance mutation gates remain disabled. Only the dedicated 06:00 Scheduler writer is operational; GAS v60 has no trigger and must be treated as rollback-only for refreshes.
 
 V3 hotfix on 2026-07-20: version `57` uses `noreply@timelesstech.io` as the current `New Contact` notice sender; run `Settings > Refresh Leads` to verify/backfill post-2026-06-21 form notices.
 

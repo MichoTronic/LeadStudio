@@ -403,6 +403,12 @@ function snapshotVersion(headers, rows) {
   return crypto.createHash("sha256").update(JSON.stringify([headers, rows])).digest("hex");
 }
 
+function scheduledIdempotencyKey(scheduleTime) {
+  var valueToHash = normalize(scheduleTime);
+  if (!valueToHash) throw codedError("invalid-argument", "A scheduled refresh time is required.");
+  return `scheduled_${crypto.createHash("sha256").update(valueToHash).digest("hex").slice(0, 32)}`;
+}
+
 function formatTimestamp(date, timeZone) {
   var parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: timeZone,
@@ -468,5 +474,6 @@ module.exports = {
   executeRefreshPlan,
   publicPlan,
   readSnapshot,
+  scheduledIdempotencyKey,
   snapshotVersion
 };

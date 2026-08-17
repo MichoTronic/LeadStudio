@@ -192,3 +192,11 @@ test("restores when a write commits but its request reports failure", async func
   assert.equal(refresh.snapshotVersion(state[0], state.slice(1)), plan.originalVersion);
   assert.equal(JSON.parse(audits[audits.length - 1][4]).restored, true);
 });
+
+test("builds deterministic scheduler idempotency keys", function () {
+  var first = refresh.scheduledIdempotencyKey("2026-08-18T04:00:00.000Z");
+  var second = refresh.scheduledIdempotencyKey("2026-08-18T04:00:00.000Z");
+  assert.equal(first, second);
+  assert.match(first, /^scheduled_[a-f0-9]{32}$/);
+  assert.throws(function () { refresh.scheduledIdempotencyKey(""); }, /scheduled refresh time/);
+});

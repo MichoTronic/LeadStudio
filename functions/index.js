@@ -2,6 +2,7 @@
 
 var initializeApp = require("firebase-admin/app").initializeApp;
 var functions = require("firebase-functions/v2/https");
+var scheduler = require("firebase-functions/v2/scheduler");
 var logger = require("firebase-functions/logger");
 var params = require("firebase-functions/params");
 var jiraClient = require("./src/jiraClient");
@@ -47,6 +48,9 @@ var leadStudioRefreshEnabled = params.defineString("LEAD_STUDIO_REFRESH_ENABLED"
   default: "false"
 });
 var leadStudioRefreshAcceptanceEnabled = params.defineString("LEAD_STUDIO_REFRESH_ACCEPTANCE_ENABLED", {
+  default: "false"
+});
+var leadStudioScheduledRefreshEnabled = params.defineString("LEAD_STUDIO_SCHEDULED_REFRESH_ENABLED", {
   default: "false"
 });
 var LEAD_STUDIO_ORIGINS = [
@@ -346,6 +350,48 @@ exports.leadStudioRefreshV4 = functions.onCall({
       ? error.code : "internal";
     logger.error("leadStudioRefreshV4 failed", { name: error && error.name, code: code, message: error && error.message });
     throw new functions.HttpsError(code, code === "internal" ? "Lead Studio refresh failed." : error.message);
+  }
+});
+
+exports.leadStudioScheduledRefreshV4 = scheduler.onSchedule({
+  region: "europe-west1",
+  schedule: "0 6 * * *",
+  timeZone: "Europe/Ljubljana",
+  retryCount: 0,
+  secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
+  timeoutSeconds: 180,
+  memory: "512MiB",
+  maxInstances: 1,
+  concurrency: 1,
+  serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT
+}, async function (event) {
+  if (leadStudioScheduledRefreshEnabled.value() !== "true") {
+    logger.info("Lead Studio scheduled refresh skipped because its gate is disabled.");
+    return;
+  }
+  try {
+    var prepared = await buildLiveRefreshPlan();
+    var result = await refreshMutation.executeRefreshPlan({
+      plan: prepared.plan,
+      sheetsClient: prepared.sheetsClient,
+      spreadsheetId: prepared.spreadsheetId,
+      actor: "firebase-scheduler",
+      idempotencyKey: refreshMutation.scheduledIdempotencyKey(event && event.scheduleTime),
+      expectedVersion: prepared.plan.originalVersion,
+      restoreAfterVerify: false
+    });
+    logger.info("Lead Studio scheduled Firebase refresh completed", {
+      changedRows: result.changedRows,
+      appendedRows: result.appendedRows,
+      replayed: result.replayed
+    });
+  } catch (error) {
+    logger.error("leadStudioScheduledRefreshV4 failed", {
+      name: error && error.name,
+      code: error && error.code,
+      message: error && error.message
+    });
+    throw error;
   }
 });
 

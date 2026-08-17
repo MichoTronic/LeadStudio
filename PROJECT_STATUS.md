@@ -5,8 +5,8 @@ Current status source of truth for Lead Studio.
 ## Runtime Posture
 
 - Product: `Lead Studio`
-- Stable platform: Google Apps Script web app version 60
-- Parallel pilot: Firebase Hosting preview plus Node 22 Cloud Function in `timeless-lead-studio`
+- Stable UI/rollback platform: Google Apps Script web app version 60
+- Operational refresh platform: Firebase Node 22 Functions and Cloud Scheduler in `timeless-lead-studio`
 - Storage: `Lead Studio Database` Google Sheet
 - Local folder: `D:\GoogleDrive\_Share\TimelessTech\Marketing\Optmizations\LeadStudio`
 - Parent Google Drive folder: `1keVmyWTXwqQM0cK5AWQzFPIKM7K7hyt1`
@@ -18,15 +18,16 @@ Current status source of truth for Lead Studio.
 - Firebase pilot preview: `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`
 - Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
 - Firebase pilot function revision: `leadstudioactionv4-00014-jek`; canonical operational refresh planner deployed read-only
-- Firebase refresh writer: `leadStudioRefreshV4` revision `leadstudiorefreshv4-00003-bet`, dedicated writer identity, one instance/concurrency, both mutation gates disabled
-- Firebase pilot mode: read-only; central Auth policy `studioPolicies/lead-studio`
+- Firebase refresh callable: `leadStudioRefreshV4` revision `leadstudiorefreshv4-00005-hem`, dedicated writer identity, one instance/concurrency, operational and acceptance gates disabled
+- Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00002-fen`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled
+- Firebase Hosting mode: preview; central Auth policy `studioPolicies/lead-studio`
 - Firebase write acceptance: `leadStudioWriteAcceptanceV4` revision `leadstudiowriteacceptancev4-00004-vad`, disabled by configuration and bound to dedicated `lead-studio-writer@timeless-lead-studio.iam.gserviceaccount.com`
 - Firebase manual Jira pilot: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00003-tep`, disabled by configuration and bound to the same dedicated writer identity
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
-- Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; settings-only profile and read-parity diagnostics are deployed, while synchronization remains on GAS v60
+- Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; scheduled synchronization is operational
 - Current V3 review decision: `GO WITH CONDITIONS`
 - Current viable/stable baseline: `V3`
-- Current deployment inventory: stable version 60 web app deployment plus Apps Script read-only `@HEAD`
+- Current deployment inventory: stable version 60 GAS web app plus read-only `@HEAD`, Firebase preview, disabled callable writers, and enabled Firebase scheduled refresh
 - Current V3 rollback tag: `v3-stable`
 - Current V57 hotfix rollback tag: `v57-noreply-hotfix`
 - V2 rollback tag: `v2-stable`
@@ -65,6 +66,8 @@ Current status source of truth for Lead Studio.
 - 2026-08-17: Closed the refresh parser/pagination blockers in `leadstudioactionv4-00013-lax`. The backend now produces all 35 GAS `Email Matches` columns privately and follows Gmail page tokens with 100-message pages up to the existing 500-result per-query fast-refresh limit. Live operational acceptance completed both lead-query pages and both onboarding-query pages: 95 lead candidates yielded 18 trusted notices, all 18 matched the Sheet exactly; 27 onboarding candidates yielded 27 exact matches. The public plan exposed counts only, reported `appendPayloadReady: true` and `gmailPaginationComplete: true`, and retained only the disabled mutation/acceptance gate plus active GAS ownership as blockers. Sheet allocation and `Debug Log` remained unchanged, and no recent Cloud Run errors were present.
 - 2026-08-17: Added the disabled `leadStudioRefreshV4` whole-refresh writer with whole-Sheet snapshot versions, idempotency, metadata-only audit events, exact post-write verification, and acceptance rollback. Its dedicated service account can read delegated Gmail and write the Lead Sheet, while the normal action runtime remains read-only. The writer is limited to one instance and one concurrent request; both acceptance and operational gates are false.
 - 2026-08-17: Replaced the earlier lightweight dry-run with the canonical mutation planner in `leadstudioactionv4-00014-jek` and the disabled writer now at `leadstudiorefreshv4-00003-bet`. Live central-auth acceptance produced the same snapshot hash and summary from both endpoints: 302 source/target rows, 69 planned row updates, zero appends, zero Jira conflicts, complete 95/18 lead and 27/27 onboarding scans, and no PII in either response. Planned fields are Last Jira Check (55), Last Checked (55), Onboarding Submitted At (55), Info Sheet (34), Onboarding Doc (34), and Onboarding Sent At (25). This supersedes the narrower dry-run's zero-change conclusion. No mutation or audit event occurred; `Email Matches` remains 483x35 and `Debug Log` remains 1585x8. Revision 00003 also restores an exact target snapshot after an ambiguous write-response failure.
+- 2026-08-17: Removed the Apps Script `scheduledRefreshLeads` trigger and verified the project shows zero triggers. Enabled only the Firebase acceptance gate long enough to write all 69 planned rows, verify the target hash, restore the exact original 302-row hash, and suppress an idempotent replay. `Debug Log` rows 1586-1587 contain metadata-only STARTED/COMPLETE events with `restored: true`. The callable returned to revision `leadstudiorefreshv4-00005-hem` with both mutation gates false and the temporary central-auth signing grant removed.
+- 2026-08-17: Deployed `leadStudioScheduledRefreshV4` as the sole automatic writer at 06:00 Europe/Ljubljana, with no retries, one instance/concurrency, and the dedicated writer identity. A disabled-gate invocation first returned HTTP 200 without writes. After enabling only the scheduler gate, a production run persisted the canonical 69-row plan with zero appends/conflicts; `Debug Log` rows 1588-1589 record STARTED/COMPLETE with `restored: false`. An independent read-only plan confirmed the current Sheet hash exactly matches the audited written hash and now requires only the expected 55 daily Jira timestamp updates. Final revision is `leadstudioscheduledrefreshv4-00002-fen`; the next automatic run is 2026-08-18 at 06:00 Ljubljana time.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -106,14 +109,13 @@ Current status source of truth for Lead Studio.
 
 ## Current Risks
 
-- The Firebase pilot is operationally read-only. Its whole-refresh writer is deployed but both gates are false. Do not enable acceptance or operational mutation while the GAS daily trigger is active; stop and verify the GAS trigger first, run reversible whole-refresh acceptance, and only then perform the one-writer cutover.
-- Firebase Jira support now proves credentials, profile access, bounded bulk status reads, contact-email discovery, and direct issue lookup. Keep refresh orchestration, Sheet mutation, and synchronization ownership on GAS until audited write commands and rollback controls are accepted.
-- Filtered exports and the reversible manual Jira-link command have passed Firebase acceptance. The manual Jira endpoint and editor remain disabled; do not enable them operationally until the GAS writer is stopped at cutover.
-- Firebase Gmail support proves keyless mailbox access, current/old/legacy parsing, onboarding notices, and complete fast-refresh pagination against live data. Operational Sheet mutation and scheduling remain on GAS until the one-writer cutover.
+- Firebase Scheduler is the sole automatic refresh writer. GAS v60 still exposes manual refresh controls as a rollback path, so operators must not use them while the Firebase schedule is active.
+- The first natural 06:00 Firebase scheduled run still needs observation even though an identical manually launched production Scheduler run completed successfully.
+- Filtered exports and the reversible manual Jira-link command have passed Firebase acceptance. The Firebase manual Jira endpoint/editor remain disabled; GAS continues to provide the manual rollback workflow until Hosting promotion.
 - The Hosting preview expires on 2026-08-31 unless renewed or replaced. Production Hosting has not been promoted.
 - The source Sheet is currently readable by link, matching its pre-migration state. Tightening Drive sharing should be a separate reviewed data-access change after a dedicated runtime identity can be granted access.
 - `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
-- Daily refresh trigger is installed and confirmed with `triggerCount: 1`; July 2026 scheduled runs are completing, and the 2026-07-20 noreply sender fix is deployed. Manual Refresh Leads backfilled the missing contacts; the remaining condition is observing the next automatic scheduled run after version 57.
+- Apps Script shows zero installed triggers. Do not reinstall its daily trigger unless explicitly rolling back and first disabling the Firebase scheduled-refresh gate.
 - Setup/test URL token handlers still exist in `Code.js`, but URL access is disabled by default unless `LEAD_STUDIO_SETUP_ENDPOINTS_ENABLED=true` or `LEAD_STUDIO_TEST_ENDPOINTS_ENABLED=true` is set temporarily.
 - There is a lightweight Apps Script smoke-test harness for parser, Jira mapping, date-range, and export-row behavior; sheet-update behavior still needs deeper automated coverage later.
 - `Script.html` and `GmailScanner.js` are large modules; future changes should stay focused or be split only after behavior is covered.
@@ -158,10 +160,10 @@ removeDailyRefreshLeadsTrigger()
 runLeadStudioSmokeTests()
 ```
 
-Expected V2 scheduled-refresh readiness state after owner authorization:
+Current Apps Script trigger state after the V4 cutover:
 
 ```text
-getDailyRefreshLeadsTriggerStatus() => triggerCount: 1
+Apps Script Triggers => 0 triggers
 ```
 
 ## Completion Review Rules
@@ -180,24 +182,23 @@ getDailyRefreshLeadsTriggerStatus() => triggerCount: 1
 - V57 hotfix completion review decision is `GO WITH CONDITIONS`.
 - `clasp run runLeadStudioSmokeTests` is blocked by the local Apps Script execution permission context, so use Apps Script editor or Settings > Run Smoke Tests for runtime validation.
 - Full V3 completion review decision is `GO WITH CONDITIONS`.
-- Treat V3 as the current viable/stable Lead Studio baseline while V4 is planned.
+- Treat V3 as the stable UI/rollback baseline while V4 owns the operational daily refresh.
 - Shared-auth integration is deployed at version 60; controlled live verification is still needed for Mitja, Gaja, Vanesa, and a denied external account.
 
-## V4 Firebase Pilot
+## V4 Firebase Runtime
 
-The first V4 slice is active in parallel and read-only. It proves standalone billing/ownership, central SSO, protected Sheet reads, lifecycle metrics, filtering, contact details, and mobile layout. GAS v60 remains the stable operational baseline.
+V4 owns the operational daily refresh and continues to serve its Hosting preview. It proves standalone billing/ownership, central SSO, protected Sheet reads, lifecycle metrics, filtering, contact details, exports, mobile layout, Gmail/onboarding/Jira parity, audited whole-Sheet writes, and Cloud Scheduler execution. GAS v60 remains the stable UI and explicit rollback deployment.
 
 Next controlled slices:
 
-- Add an audited, disabled-by-default refresh mutation command with a whole-snapshot version, idempotency, explicit row/field plans, and exact rollback acceptance. Keep every mutation gate disabled while GAS owns those workflows.
-- Complete new-lead Jira discovery and onboarding enrichment inside that mutation plan before any append can be accepted.
-- Recreate scheduled refresh with Cloud Scheduler only after duplicate execution is impossible.
-- Run final write/parity/rollback acceptance after the full refresh plan is exact; filtered exports, reversible manual Jira linking, and read-only refresh planning are complete.
-- Switch the Console tile only after the Firebase runtime owns the full accepted workflow.
+- Observe the first natural 06:00 Scheduler run and verify its COMPLETE audit.
+- Add bounded Debug Log reads, refresh duration, and scheduled-failure visibility to Operations.
+- Promote the Hosting/Console tile only after final production QA and rollback review.
+- Enable the already accepted Firebase manual Jira workflow only as part of the UI promotion, then retire the equivalent GAS write path.
 
 ### V4 Write Safety Contract
 
-- GAS v60 remains the only writer and scheduler until a documented cutover; Firebase write commands and Cloud Scheduler stay disabled by default.
+- Firebase Scheduler is the only automatic writer. GAS v60 must remain trigger-free while it is enabled.
 - Every command is backend-only, requires central Auth write/settings scope, accepts an idempotency key, and permits only an explicit field allowlist.
 - The client supplies an expected row version derived from stable persisted values. The Function rereads the row immediately before mutation and rejects stale versions without writing.
 - Each attempt records actor, command, row number, idempotency key, expected/observed versions, allowed changed fields, timestamp, and outcome. Contact values, tokens, message bodies, and Jira payloads are excluded from audit records.
