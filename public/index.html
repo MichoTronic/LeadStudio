@@ -8,7 +8,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://timeless-studio-auth.web.app" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=4.0.1">
+  <link rel="stylesheet" href="/styles.css?v=4.0.3">
 </head>
 <body class="auth-locked">
   <section class="auth-gate" aria-live="polite">
@@ -55,7 +55,16 @@
           <h1>Contacts</h1>
           <p id="result-count" class="result-count">Loading...</p>
         </div>
-        <span class="mode-badge">Read only</span>
+        <div class="workspace-actions">
+          <details id="export-menu" class="export-menu">
+            <summary class="icon-button" title="Export filtered contacts" aria-label="Export filtered contacts"><i data-lucide="download"></i></summary>
+            <div class="export-options">
+              <button id="export-csv-button" type="button"><i data-lucide="file-text"></i><span>Download CSV</span></button>
+              <button id="export-xlsx-button" type="button"><i data-lucide="sheet"></i><span>Download XLSX</span></button>
+            </div>
+          </details>
+          <span class="mode-badge">Read only</span>
+        </div>
       </header>
 
       <div class="filters" aria-label="Lead filters">
@@ -112,6 +121,7 @@
 
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
   <script src="https://timeless-studio-auth.web.app/studio-sso-client.js"></script>
-  <script type="module" src="/app.js?v=4.0.12"></script>
+  <script src="/export-utils.js?v=4.0.1"></script>
+  <script type="module" src="/app.js?v=4.0.15"></script>
 </body>
 </html>

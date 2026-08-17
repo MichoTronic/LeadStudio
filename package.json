@@ -4,6 +4,6 @@
   "private": true,
   "scripts": {
     "test": "npm --prefix functions test",
-    "check": "node --check public/config.js && node --check public/app.js && npm test"
+    "check": "node --check public/config.js && node --check public/export-utils.js && node --check public/app.js && npm test"
   }
 }

@@ -6,6 +6,7 @@ var logger = require("firebase-functions/logger");
 var params = require("firebase-functions/params");
 var jiraClient = require("./src/jiraClient");
 var leadStudio = require("./src/leadStudio");
+var manualJiraLink = require("./src/manualJiraLink");
 var writeAcceptance = require("./src/writeAcceptance");
 var workspaceDelegation = require("./src/workspaceDelegation");
 
@@ -32,6 +33,12 @@ var leadStudioWriteAcceptanceEnabled = params.defineString("LEAD_STUDIO_WRITE_AC
   default: "false"
 });
 var leadStudioWriteAcceptanceRow = params.defineString("LEAD_STUDIO_WRITE_ACCEPTANCE_ROW", {
+  default: "2"
+});
+var leadStudioManualJiraEnabled = params.defineString("LEAD_STUDIO_MANUAL_JIRA_ENABLED", {
+  default: "false"
+});
+var leadStudioManualJiraAcceptanceRow = params.defineString("LEAD_STUDIO_MANUAL_JIRA_ACCEPTANCE_ROW", {
   default: "2"
 });
 var LEAD_STUDIO_ORIGINS = [
@@ -235,5 +242,93 @@ exports.leadStudioWriteAcceptanceV4 = functions.onCall({
       providerMessage: error && error.message
     });
     throw new functions.HttpsError(code, code === "internal" ? "Lead Studio write acceptance failed." : error.message);
+  }
+});
+
+exports.leadStudioManualJiraV4 = functions.onCall({
+  region: "europe-west1",
+  cors: LEAD_STUDIO_ORIGINS,
+  secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
+  serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT,
+  timeoutSeconds: 30,
+  memory: "256MiB",
+  maxInstances: 1
+}, async function (request) {
+  try {
+    if (leadStudioManualJiraEnabled.value().toLowerCase() !== "true") {
+      throw new functions.HttpsError("failed-precondition", "Lead Studio manual Jira writes are disabled.");
+    }
+    var data = request && request.data || {};
+    var actionName = String(data.action || "").trim();
+    var acceptanceAction = actionName === "prepareAcceptance" || actionName === "executeAcceptance";
+    var authorization = await leadStudio.verifyAccess(data.studioAuthToken, acceptanceAction ? "settings" : "write");
+    var rowNumber = acceptanceAction ? Number(leadStudioManualJiraAcceptanceRow.value()) : Number(data.rowNumber);
+    var options = {
+      sheetsClient: createWriteSheetsClient(),
+      spreadsheetId: leadStudioSpreadsheetId.value().trim(),
+      rowNumber: rowNumber,
+      actor: authorization.email,
+      idempotencyKey: data.idempotencyKey,
+      expectedVersion: data.expectedVersion,
+      issueKey: data.issueKey,
+      jiraBaseUrl: leadStudioJiraBaseUrl.value(),
+      jiraIssueByKey: function (issueKey) {
+        return jiraClient.loadJiraIssueByKey({
+          baseUrl: leadStudioJiraBaseUrl.value(),
+          email: leadStudioJiraEmail.value(),
+          apiToken: leadStudioJiraApiToken.value(),
+          issueKey: issueKey
+        });
+      }
+    };
+    if (actionName === "prepareManualJiraLink") {
+      return {
+        mode: "manual-jira-disabled-pilot",
+        manualJira: await manualJiraLink.prepareManualJiraLink(options),
+        authorization: leadStudio.publicAuthorization(authorization)
+      };
+    }
+    if (actionName === "saveManualJiraLink") {
+      return {
+        mode: "manual-jira-disabled-pilot",
+        manualJira: await manualJiraLink.executeManualJiraLink(options),
+        authorization: leadStudio.publicAuthorization(authorization)
+      };
+    }
+    if (actionName === "prepareAcceptance") {
+      return {
+        mode: "manual-jira-acceptance",
+        manualJira: await manualJiraLink.prepareManualJiraLink(options),
+        authorization: leadStudio.publicAuthorization(authorization)
+      };
+    }
+    if (actionName === "executeAcceptance") {
+      var prepared = await manualJiraLink.prepareManualJiraLink(options);
+      options.issueKey = prepared.issueKey;
+      options.restoreAfterVerify = true;
+      var result = await manualJiraLink.executeManualJiraLink(options);
+      logger.info("Lead Studio manual Jira acceptance completed", {
+        rowNumber: result.rowNumber,
+        restored: result.restored,
+        replayed: result.replayed,
+        idempotencyKey: result.idempotencyKey
+      });
+      return {
+        mode: "manual-jira-acceptance",
+        manualJira: result,
+        authorization: leadStudio.publicAuthorization(authorization)
+      };
+    }
+    throw new functions.HttpsError("invalid-argument", "Unsupported manual Jira action.");
+  } catch (error) {
+    if (error instanceof functions.HttpsError) throw error;
+    var safeCodes = new Set(["aborted", "data-loss", "failed-precondition", "invalid-argument"]);
+    var code = safeCodes.has(error && error.code) ? error.code : "internal";
+    logger.error("leadStudioManualJiraV4 failed", {
+      code: code,
+      name: error && error.name,
+      providerStatus: Number(error && error.response && error.response.status) || 0
+    });
+    throw new functions.HttpsError(code, code === "internal" ? "Lead Studio manual Jira update failed." : error.message);
   }
 });

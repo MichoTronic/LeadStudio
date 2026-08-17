@@ -71,7 +71,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Make New Lead metric/filter include onboarded Jira-key rows with missing Jira status so lifecycle chips reconcile with Onboarding.
 - [ ] Review table density and column order after the first real user feedback round.
 - [ ] Add clearer empty/error states for missing Jira credentials, Gmail delegation failure, and onboarding sheet access failure.
-- [ ] Verify CSV/XLSX export output for filtered rows, Jira links, and special characters.
+- [x] Verify Firebase CSV/XLSX export output for filtered rows, Jira links, quoting, and special characters.
 - [ ] Consider saving active filter/search state between sessions if repeated use needs it.
 
 ## Operations
@@ -128,7 +128,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Port onboarding-notice reads, Form-linked onboarding matching, and deep-query parity before moving Gmail refresh ownership.
 - [x] Select row 2 and complete disabled-by-default Firebase Notes write/verify/restore/replay acceptance.
 - [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.
-- [ ] Port exports and manual Jira-link operations.
+- [x] Port filtered exports and manual Jira-link operations; keep the Jira command/editor disabled while GAS owns writes.
 - [ ] Run write/parity/rollback acceptance before changing the Console production tile.
 - [ ] Add bounded Debug Log reads for Operations status.
 - [ ] Add refresh duration logging and display.
@@ -137,8 +137,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [ ] Add Gmail scan controls if candidate count grows.
 - [x] Add sheet-write smoke tests for exact restoration, stale-version rejection, audit events, and idempotent replay.
 - [ ] Run live QA for Refresh Leads.
-- [ ] Run live QA for CSV/XLSX export after filters.
-- [ ] Run live QA for manual Jira link save on a safe row.
+- [x] Run live Firebase QA for CSV/XLSX export after filters on desktop and 390px mobile.
+- [x] Run live Firebase manual Jira write/verify/restore/replay acceptance on row 6 and redeploy the gate disabled.
 - [ ] Run live QA for Deep Refresh Jira Matches.
 - [ ] Review web app access settings before broader team/external use.
 - [ ] Review whether setup/test endpoint functions should remain present or be removed entirely.

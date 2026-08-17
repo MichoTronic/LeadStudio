@@ -12,6 +12,10 @@ const writeAcceptanceAction = httpsCallable(
   backendFunctions,
   leadStudioConfig.writeAcceptanceFunctionName
 );
+const manualJiraAction = httpsCallable(
+  backendFunctions,
+  leadStudioConfig.manualJiraFunctionName
+);
 const previewDeployment = window.location.hostname.includes("--");
 const authConfig = {
   clientId: previewDeployment ? "lead-studio-v4-test" : "lead-studio-v4",
@@ -54,6 +58,9 @@ const nodes = {
   onboarding: document.getElementById("onboarding-filter"),
   date: document.getElementById("date-filter"),
   clear: document.getElementById("clear-filters"),
+  exportMenu: document.getElementById("export-menu"),
+  exportCsv: document.getElementById("export-csv-button"),
+  exportXlsx: document.getElementById("export-xlsx-button"),
   count: document.getElementById("result-count"),
   table: document.getElementById("desktop-table"),
   tableBody: document.getElementById("lead-table-body"),
@@ -81,9 +88,14 @@ nodes.status.addEventListener("change", applyFilters);
 nodes.onboarding.addEventListener("change", applyFilters);
 nodes.date.addEventListener("change", applyFilters);
 nodes.clear.addEventListener("click", clearFilters);
+nodes.exportCsv.addEventListener("click", () => exportVisible("csv"));
+nodes.exportXlsx.addEventListener("click", () => exportVisible("xlsx"));
 nodes.dialogClose.addEventListener("click", () => nodes.dialog.close());
 nodes.dialog.addEventListener("click", (event) => {
   if (event.target === nodes.dialog) nodes.dialog.close();
+});
+document.addEventListener("click", (event) => {
+  if (nodes.exportMenu.open && !nodes.exportMenu.contains(event.target)) nodes.exportMenu.open = false;
 });
 nodes.legacy.href = leadStudioConfig.legacyUrl;
 Object.defineProperty(window, "__leadStudioDiagnostics", {
@@ -98,7 +110,8 @@ Object.defineProperty(window, "__leadStudioDiagnostics", {
     jiraStatusParity: () => callAction("jiraStatusParity"),
     jiraDiscoveryParity: () => callAction("jiraDiscoveryParity"),
     jiraDirectLookupParity: () => callAction("jiraDirectLookupParity"),
-    notesWriteAcceptance: runNotesWriteAcceptance
+    notesWriteAcceptance: runNotesWriteAcceptance,
+    manualJiraRoundTrip: runManualJiraRoundTrip
   }),
   configurable: false,
   enumerable: false,
@@ -187,6 +200,18 @@ async function runNotesWriteAcceptance(idempotencyKey = crypto.randomUUID().repl
     studioAuthToken,
     idempotencyKey,
     expectedVersion: prepared.data.acceptance.rowVersion
+  });
+}
+
+async function runManualJiraRoundTrip(idempotencyKey = crypto.randomUUID().replaceAll("-", "")) {
+  const studioAuthToken = await state.authClient.refreshToken();
+  if (!studioAuthToken) throw new Error("Timeless Studio authorization expired.");
+  const prepared = await manualJiraAction({ action: "prepareAcceptance", studioAuthToken });
+  return manualJiraAction({
+    action: "executeAcceptance",
+    studioAuthToken,
+    idempotencyKey,
+    expectedVersion: prepared.data.manualJira.rowVersion
   });
 }
 
@@ -331,6 +356,7 @@ function jiraCell(lead) {
 function detailButtonCell(lead) {
   const td = document.createElement("td");
   const button = document.createElement("button");
+  const status = document.createElement("p");
   button.type = "button";
   button.className = "icon-button row-button";
   button.title = "View contact";
@@ -354,7 +380,60 @@ function openDetails(lead) {
     ["Submitted", lead.onboardingSubmittedAt], ["Last checked", lead.lastChecked]
   ];
   nodes.dialogContent.replaceChildren(...details.map(([label, value, url]) => detailNode(label, value, url)));
+  if (leadStudioConfig.manualJiraEnabled) nodes.dialogContent.append(buildManualJiraEditor(lead));
   nodes.dialog.showModal();
+}
+
+function buildManualJiraEditor(lead) {
+  const form = document.createElement("form");
+  form.className = "manual-jira-form";
+  const label = document.createElement("label");
+  label.textContent = "Jira issue key";
+  const input = document.createElement("input");
+  input.name = "issueKey";
+  input.required = true;
+  input.placeholder = "SF-127";
+  input.value = lead.jiraIssueKey || "";
+  const button = document.createElement("button");
+  button.type = "submit";
+  button.className = "button button-primary";
+  button.textContent = "Save Jira link";
+  status.className = "manual-jira-status";
+  status.setAttribute("aria-live", "polite");
+  label.append(input);
+  form.append(label, button, status);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    button.disabled = true;
+    status.textContent = "";
+    try {
+      await saveManualJiraLink(lead.rowNumber, input.value);
+      nodes.dialog.close();
+      await loadLeads();
+    } catch (error) {
+      status.textContent = errorMessage(error, "Unable to save the Jira link.");
+      button.disabled = false;
+    }
+  });
+  return form;
+}
+
+async function saveManualJiraLink(rowNumber, issueKey) {
+  const studioAuthToken = await state.authClient.refreshToken();
+  if (!studioAuthToken) throw new Error("Timeless Studio authorization expired.");
+  const prepared = await manualJiraAction({
+    action: "prepareManualJiraLink",
+    studioAuthToken,
+    rowNumber
+  });
+  return manualJiraAction({
+    action: "saveManualJiraLink",
+    studioAuthToken,
+    rowNumber,
+    issueKey,
+    idempotencyKey: crypto.randomUUID().replaceAll("-", ""),
+    expectedVersion: prepared.data.manualJira.rowVersion
+  });
 }
 
 function detailNode(label, value, url) {
@@ -375,6 +454,28 @@ function clearFilters() {
   nodes.onboarding.value = "";
   nodes.date.value = "";
   applyFilters();
+}
+
+function exportVisible(format) {
+  const exporter = window.LeadStudioExport;
+  if (!exporter || !state.visible.length) return;
+  const exported = exporter.buildExportRows(state.visible);
+  const blob = format === "xlsx"
+    ? exporter.createXlsxBlob(exported.headers, exported.rows)
+    : exporter.createCsvBlob(exported.headers, exported.rows);
+  const filename = exporter.buildExportFilename(
+    format,
+    nodes.status.value ? nodes.status.selectedOptions[0]?.textContent : ""
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  nodes.exportMenu.open = false;
 }
 
 function setBusy(busy) {
