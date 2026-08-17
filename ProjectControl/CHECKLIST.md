@@ -23,7 +23,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 
 ## Security And Secrets
 
-- [ ] Rotate any Jira/API credentials that were stored in historical notes or exposed outside Script Properties.
+- [ ] Revoke the Jira API token exposed on 2026-08-17, create a replacement, and set it directly as the Firebase secret `LEAD_STUDIO_JIRA_API_TOKEN` without placing it in chat, source, docs, or env files.
 - [ ] Move all operational secrets into Apps Script Script Properties or managed secret storage.
 - [ ] Confirm `DocumentationArchive/NOTES.md` remains excluded from `clasp` pushes and external sharing.
 - [ ] Review `appsscript.json` web app access and execution API settings before broader team use.
@@ -34,7 +34,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [ ] Browser-test Mitja access through shared auth on the live Lead Studio URL.
 - [ ] Browser-test Gaja and Vanesa access after deployment.
 - [ ] Browser-test a denied account after deployment.
-- [ ] Document who owns the Gmail service-account JSON file and who can rotate it.
+- [x] Replace the Firebase Gmail credential-file plan with keyless IAM `signJwt` domain-wide delegation; Firebase stores no service-account JSON key or user OAuth access token.
 - [x] Disable setup/test URL endpoints by default behind explicit Script Properties.
 
 ## Gmail Lead Parsing
@@ -120,7 +120,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Keep Gmail, Jira, writes, onboarding matching, exports, and the daily trigger on GAS.
 - [ ] Design audited Firebase write commands with optimistic row-version checks.
 - [ ] Move Jira credentials to Secret Manager and port Jira reads.
-- [ ] Migrate delegated Gmail credentials to managed secrets and prove mailbox access.
+- [x] Configure keyless domain-wide Gmail delegation and prove mailbox-profile access from the signed Firebase preview.
+- [ ] Port bounded Gmail searches and lead parsing, then compare results with GAS before moving refresh ownership.
 - [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.
 - [ ] Port exports and manual Jira-link operations.
 - [ ] Run write/parity/rollback acceptance before changing the Console production tile.

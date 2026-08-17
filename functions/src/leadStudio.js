@@ -7,6 +7,7 @@ var STUDIO_ID = "lead-studio";
 var LEAD_SHEET = "Email Matches";
 var LEAD_RANGE = `'${LEAD_SHEET}'!A1:AI600`;
 var MAX_LEADS = 500;
+var SETTINGS_ACTIONS = new Set(["gmailProbe"]);
 var PUBLIC_FIELDS = Object.freeze({
   "Email Date": "emailDate",
   "Name": "name",
@@ -29,7 +30,7 @@ var PUBLIC_FIELDS = Object.freeze({
   "Target Region": "targetRegion"
 });
 
-async function verifyAccess(idToken, options) {
+async function verifyAccess(idToken, requiredScope, options) {
   options = options || {};
   var fetchImpl = options.fetchImpl || fetch;
   var verifierUrl = options.verifierUrl || CENTRAL_VERIFIER_URL;
@@ -46,7 +47,7 @@ async function verifyAccess(idToken, options) {
       body: JSON.stringify({
         idToken: token,
         studioId: STUDIO_ID,
-        requiredScope: "read"
+        requiredScope: requiredScope || "read"
       }),
       signal: controller ? controller.signal : undefined
     });
@@ -67,7 +68,11 @@ async function runAction(request, dependencies) {
   dependencies = dependencies || {};
   var data = request && request.data || {};
   var action = normalize(data.action);
-  var authorization = await verifyAccess(data.studioAuthToken, dependencies);
+  var authorization = await verifyAccess(
+    data.studioAuthToken,
+    SETTINGS_ACTIONS.has(action) ? "settings" : "read",
+    dependencies
+  );
 
   if (action === "probe") {
     return {
@@ -82,6 +87,16 @@ async function runAction(request, dependencies) {
       mode: "read-only-pilot",
       leads: result.leads,
       metadata: result.metadata,
+      authorization: publicAuthorization(authorization)
+    };
+  }
+  if (action === "gmailProbe") {
+    if (typeof dependencies.gmailProbe !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio Gmail access is not configured.");
+    }
+    return {
+      mode: "read-only-pilot",
+      mailbox: await dependencies.gmailProbe(),
       authorization: publicAuthorization(authorization)
     };
   }
@@ -159,6 +174,7 @@ module.exports = {
   LEAD_SHEET,
   MAX_LEADS,
   PUBLIC_FIELDS,
+  SETTINGS_ACTIONS,
   STUDIO_ID,
   assertRequiredHeaders,
   loadLeads,

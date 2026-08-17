@@ -5,10 +5,17 @@ var functions = require("firebase-functions/v2/https");
 var logger = require("firebase-functions/logger");
 var params = require("firebase-functions/params");
 var leadStudio = require("./src/leadStudio");
+var workspaceDelegation = require("./src/workspaceDelegation");
 
 initializeApp();
 
 var leadStudioSpreadsheetId = params.defineSecret("LEAD_STUDIO_SPREADSHEET_ID");
+var leadStudioGmailUser = params.defineString("LEAD_STUDIO_GMAIL_USER", {
+  default: "marketing@timelesstech.io"
+});
+var leadStudioServiceAccountEmail = params.defineString("LEAD_STUDIO_SERVICE_ACCOUNT_EMAIL", {
+  default: "819383433430-compute@developer.gserviceaccount.com"
+});
 var LEAD_STUDIO_ORIGINS = [
   "https://timeless-lead-studio.web.app",
   "https://timeless-lead-studio.firebaseapp.com",
@@ -25,6 +32,19 @@ function createSheetsClient() {
   });
 }
 
+async function signWorkspaceJwt(payload) {
+  var google = require("googleapis").google;
+  var auth = new google.auth.GoogleAuth({
+    scopes: ["https://www.googleapis.com/auth/cloud-platform"]
+  });
+  var iamcredentials = google.iamcredentials({ version: "v1", auth: auth });
+  var response = await iamcredentials.projects.serviceAccounts.signJwt({
+    name: `projects/-/serviceAccounts/${leadStudioServiceAccountEmail.value()}`,
+    requestBody: { payload: JSON.stringify(payload) }
+  });
+  return response && response.data && response.data.signedJwt;
+}
+
 exports.leadStudioActionV4 = functions.onCall({
   region: "europe-west1",
   cors: LEAD_STUDIO_ORIGINS,
@@ -36,7 +56,14 @@ exports.leadStudioActionV4 = functions.onCall({
   try {
     return await leadStudio.runAction(request, {
       sheetsClient: createSheetsClient(),
-      spreadsheetId: leadStudioSpreadsheetId.value().trim()
+      spreadsheetId: leadStudioSpreadsheetId.value().trim(),
+      gmailProbe: function () {
+        return workspaceDelegation.probeGmailMailbox({
+          delegatedUser: leadStudioGmailUser.value(),
+          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
+          signJwt: signWorkspaceJwt
+        });
+      }
     });
   } catch (error) {
     if (error instanceof functions.HttpsError) throw error;

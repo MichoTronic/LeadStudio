@@ -46,7 +46,7 @@ Folder identity:
 
 ## Current Technical Boundary
 
-- Lead Studio reads the delegated marketing Gmail mailbox through a service-account OAuth flow.
+- GAS v60 currently owns operational Gmail scanning. The Firebase V4 pilot has independently verified keyless domain-wide delegation to the marketing mailbox through IAM `signJwt`; it stores no service-account JSON key or user OAuth access token.
 - Lead records are stored in the `Lead Studio Database` Google Sheet.
 - Gmail scans support fast recent refreshes and deeper historical scans.
 - Lead parsing supports current `New Contact`, old `Contact Form (TLT-Webpage-*)`, and legacy `Form submission from:` email formats.
@@ -81,7 +81,7 @@ Current stable operational baseline: GAS `V3` version 60. A read-only Firebase V
 - V3 completion review reports: `Reports/2026_06_22_Phase_V3_*`
 - V3 decision: `GO WITH CONDITIONS`
 
-Keep GAS v60 as the operational baseline while V4 is migrated in controlled slices. The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing Sheet after central Auth but owns no writes, Gmail/Jira automation, or scheduled triggers.
+Keep GAS v60 as the operational baseline while V4 is migrated in controlled slices. The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing Sheet after central Auth and has verified keyless Gmail mailbox access, but it owns no writes, Gmail scans, Jira automation, or scheduled triggers.
 
 V3 hotfix on 2026-07-20: version `57` uses `noreply@timelesstech.io` as the current `New Contact` notice sender; run `Settings > Refresh Leads` to verify/backfill post-2026-06-21 form notices.
 

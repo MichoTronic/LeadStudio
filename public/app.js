@@ -81,6 +81,12 @@ nodes.dialog.addEventListener("click", (event) => {
   if (event.target === nodes.dialog) nodes.dialog.close();
 });
 nodes.legacy.href = leadStudioConfig.legacyUrl;
+Object.defineProperty(window, "__leadStudioDiagnostics", {
+  value: Object.freeze({ gmailProbe: () => callAction("gmailProbe") }),
+  configurable: false,
+  enumerable: false,
+  writable: false
+});
 window.lucide?.createIcons();
 startStudioAuth();
 

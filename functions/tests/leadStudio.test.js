@@ -55,7 +55,7 @@ test("rejects a changed sheet contract", function () {
 
 test("verifies central read access without exposing the token", async function () {
   var captured;
-  var authorization = await leadStudio.verifyAccess("signed-token", {
+  var authorization = await leadStudio.verifyAccess("signed-token", "read", {
     fetchImpl: async function (_url, request) {
       captured = JSON.parse(request.body);
       return { ok: true, json: async function () {
@@ -66,6 +66,25 @@ test("verifies central read access without exposing the token", async function (
   assert.equal(captured.studioId, "lead-studio");
   assert.equal(captured.requiredScope, "read");
   assert.equal(authorization.email, "ada@example.com");
+});
+
+test("Gmail diagnostics require settings scope", async function () {
+  var captured;
+  var response = await leadStudio.runAction({
+    data: { action: "gmailProbe", studioAuthToken: "signed-token" }
+  }, {
+    fetchImpl: async function (_url, request) {
+      captured = JSON.parse(request.body);
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["read", "settings"] };
+      } };
+    },
+    gmailProbe: async function () {
+      return { emailAddress: "marketing@example.com", messagesTotal: 12, threadsTotal: 8 };
+    }
+  });
+  assert.equal(captured.requiredScope, "settings");
+  assert.equal(response.mailbox.emailAddress, "marketing@example.com");
 });
 
 test("bootstrap requires authorization before reading Sheets", async function () {
