@@ -7,7 +7,7 @@ var STUDIO_ID = "lead-studio";
 var LEAD_SHEET = "Email Matches";
 var LEAD_RANGE = `'${LEAD_SHEET}'!A1:AI600`;
 var MAX_LEADS = 500;
-var SETTINGS_ACTIONS = new Set(["gmailProbe", "jiraProbe"]);
+var SETTINGS_ACTIONS = new Set(["gmailProbe", "jiraProbe", "jiraStatusParity"]);
 var PUBLIC_FIELDS = Object.freeze({
   "Email Date": "emailDate",
   "Name": "name",
@@ -110,6 +110,19 @@ async function runAction(request, dependencies) {
       authorization: publicAuthorization(authorization)
     };
   }
+  if (action === "jiraStatusParity") {
+    if (typeof dependencies.jiraIssueStatuses !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio Jira status access is not configured.");
+    }
+    var sheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId);
+    var baseline = jiraStatusBaseline(sheetResult.leads);
+    var liveStatuses = await dependencies.jiraIssueStatuses(baseline.issueKeys);
+    return {
+      mode: "read-only-pilot",
+      jiraParity: compareJiraStatuses(baseline.statuses, liveStatuses),
+      authorization: publicAuthorization(authorization)
+    };
+  }
   throw new HttpsError("invalid-argument", "Unsupported Lead Studio action.");
 }
 
@@ -174,6 +187,55 @@ function assertSheetDependencies(sheetsClient, spreadsheetId) {
   }
 }
 
+function jiraStatusBaseline(leads) {
+  var statuses = {};
+  (Array.isArray(leads) ? leads : []).forEach(function (lead) {
+    var key = normalizeIssueKey(lead && lead.jiraIssueKey);
+    if (!key || Object.hasOwn(statuses, key)) return;
+    statuses[key] = normalize(lead && lead.jiraStatus);
+  });
+  var issueKeys = Object.keys(statuses).slice(0, 100);
+  return {
+    issueKeys: issueKeys,
+    statuses: Object.fromEntries(issueKeys.map(function (key) { return [key, statuses[key]]; }))
+  };
+}
+
+function compareJiraStatuses(sheetStatuses, liveStatuses) {
+  sheetStatuses = sheetStatuses || {};
+  liveStatuses = liveStatuses || {};
+  var matched = 0;
+  var blankInSheet = [];
+  var missingInJira = [];
+  var mismatches = [];
+  Object.keys(sheetStatuses).slice(0, 100).forEach(function (key) {
+    var sheetStatus = normalize(sheetStatuses[key]);
+    var live = liveStatuses[key];
+    if (!live) {
+      missingInJira.push(key);
+    } else if (!sheetStatus) {
+      blankInSheet.push({ issueKey: key, jiraStatus: normalize(live.status) });
+    } else if (sheetStatus.toLowerCase() === normalize(live.status).toLowerCase()) {
+      matched += 1;
+    } else {
+      mismatches.push({ issueKey: key, sheetStatus: sheetStatus, jiraStatus: normalize(live.status) });
+    }
+  });
+  return {
+    checkedKeys: Object.keys(sheetStatuses).slice(0, 100).length,
+    matchedStatuses: matched,
+    blankInSheet: blankInSheet,
+    missingInJira: missingInJira,
+    mismatches: mismatches,
+    checkedAt: new Date().toISOString()
+  };
+}
+
+function normalizeIssueKey(value) {
+  var match = normalize(value).toUpperCase().match(/^[A-Z][A-Z0-9]+-\d+$/);
+  return match ? match[0] : "";
+}
+
 function normalize(value) {
   return String(value == null ? "" : value).trim();
 }
@@ -187,6 +249,8 @@ module.exports = {
   SETTINGS_ACTIONS,
   STUDIO_ID,
   assertRequiredHeaders,
+  compareJiraStatuses,
+  jiraStatusBaseline,
   loadLeads,
   mapLead,
   publicAuthorization,

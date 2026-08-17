@@ -2,22 +2,65 @@
 
 async function probeJiraConnection(options) {
   options = options || {};
+  var config = createConfig(options);
+  var response = await jiraFetch(config, "/rest/api/3/myself", options.fetchImpl);
+  var body = await safeJson(response);
+  assertJiraResponse(response);
+  if (!normalize(body.accountId)) throw new Error("Jira connection returned an invalid profile.");
+  return {
+    accountId: normalize(body.accountId),
+    displayName: normalize(body.displayName),
+    active: body.active !== false
+  };
+}
+
+async function loadJiraIssueStatuses(options) {
+  options = options || {};
+  var config = createConfig(options);
+  var issueKeys = uniqueIssueKeys(options.issueKeys).slice(0, 100);
+  var statuses = {};
+  for (var offset = 0; offset < issueKeys.length; offset += 50) {
+    var batch = issueKeys.slice(offset, offset + 50);
+    var query = new URLSearchParams({
+      jql: `key in (${batch.join(",")})`,
+      fields: "status",
+      maxResults: String(batch.length)
+    });
+    var response = await jiraFetch(config, `/rest/api/3/search/jql?${query.toString()}`, options.fetchImpl);
+    var body = await safeJson(response);
+    assertJiraResponse(response);
+    (Array.isArray(body.issues) ? body.issues : []).forEach(function (issue) {
+      var key = normalizeIssueKey(issue && issue.key);
+      if (!key) return;
+      statuses[key] = {
+        issueKey: key,
+        status: normalize(issue && issue.fields && issue.fields.status && issue.fields.status.name)
+      };
+    });
+  }
+  return statuses;
+}
+
+function createConfig(options) {
   var baseUrl = normalizeBaseUrl(options.baseUrl);
   var email = normalize(options.email).toLowerCase();
   var apiToken = normalize(options.apiToken);
-  if (!email || !email.includes("@") || !apiToken) {
-    throw new Error("Jira access is not configured.");
-  }
+  if (!email || !email.includes("@") || !apiToken) throw new Error("Jira access is not configured.");
+  return {
+    baseUrl: baseUrl,
+    authorization: `Basic ${Buffer.from(`${email}:${apiToken}`, "utf8").toString("base64")}`
+  };
+}
 
+async function jiraFetch(config, path, fetchImpl) {
   var controller = typeof AbortController === "function" ? new AbortController() : null;
   var timeout = controller ? setTimeout(function () { controller.abort(); }, 10000) : null;
-  var response;
   try {
-    response = await (options.fetchImpl || fetch)(`${baseUrl}/rest/api/3/myself`, {
+    return await (fetchImpl || fetch)(`${config.baseUrl}${path}`, {
       method: "GET",
       headers: {
         Accept: "application/json",
-        Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`, "utf8").toString("base64")}`
+        Authorization: config.authorization
       },
       signal: controller ? controller.signal : undefined
     });
@@ -26,19 +69,25 @@ async function probeJiraConnection(options) {
   } finally {
     if (timeout) clearTimeout(timeout);
   }
+}
 
-  var body = await response.json().catch(function () { return {}; });
-  if (!response.ok) {
-    throw new Error(`Jira connection failed (HTTP ${Number(response.status) || 0}).`);
+function assertJiraResponse(response) {
+  if (!response || !response.ok) {
+    throw new Error(`Jira connection failed (HTTP ${Number(response && response.status) || 0}).`);
   }
-  if (!normalize(body.accountId)) {
-    throw new Error("Jira connection returned an invalid profile.");
-  }
-  return {
-    accountId: normalize(body.accountId),
-    displayName: normalize(body.displayName),
-    active: body.active !== false
-  };
+}
+
+async function safeJson(response) {
+  return response && response.json ? response.json().catch(function () { return {}; }) : {};
+}
+
+function uniqueIssueKeys(values) {
+  return Array.from(new Set((Array.isArray(values) ? values : []).map(normalizeIssueKey).filter(Boolean)));
+}
+
+function normalizeIssueKey(value) {
+  var match = normalize(value).toUpperCase().match(/^[A-Z][A-Z0-9]+-\d+$/);
+  return match ? match[0] : "";
 }
 
 function normalizeBaseUrl(value) {
@@ -64,6 +113,8 @@ function normalize(value) {
 }
 
 module.exports = {
+  loadJiraIssueStatuses,
   normalizeBaseUrl,
+  normalizeIssueKey,
   probeJiraConnection
 };

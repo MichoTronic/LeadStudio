@@ -120,7 +120,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Keep Gmail, Jira, writes, onboarding matching, exports, and the daily trigger on GAS.
 - [ ] Design audited Firebase write commands with optimistic row-version checks.
 - [x] Bind the rotated Jira token from Secret Manager and verify a settings-only Firebase Jira profile probe.
-- [ ] Port bounded Jira issue lookup/search reads and compare their results with GAS before moving synchronization ownership.
+- [x] Port bounded Jira bulk-status reads by key and compare all 48 Sheet-linked keys with live Jira; all 45 cached statuses matched and three blank-status historical keys remained unresolved.
+- [ ] Port contact-email Jira discovery and direct single-issue lookup before moving refresh or synchronization ownership.
 - [x] Configure keyless domain-wide Gmail delegation and prove mailbox-profile access from the signed Firebase preview.
 - [ ] Port bounded Gmail searches and lead parsing, then compare results with GAS before moving refresh ownership.
 - [ ] Replace the GAS scheduled trigger only after duplicate execution is prevented.

@@ -78,6 +78,14 @@ exports.leadStudioActionV4 = functions.onCall({
           email: leadStudioJiraEmail.value(),
           apiToken: leadStudioJiraApiToken.value()
         });
+      },
+      jiraIssueStatuses: function (issueKeys) {
+        return jiraClient.loadJiraIssueStatuses({
+          baseUrl: leadStudioJiraBaseUrl.value(),
+          email: leadStudioJiraEmail.value(),
+          apiToken: leadStudioJiraApiToken.value(),
+          issueKeys: issueKeys
+        });
       }
     });
   } catch (error) {

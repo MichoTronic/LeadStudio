@@ -106,6 +106,59 @@ test("Jira diagnostics require settings scope", async function () {
   assert.deepEqual(response.jira, { accountId: "account-1", displayName: "Admin", active: true });
 });
 
+test("compares bounded live Jira statuses with the Sheet baseline", async function () {
+  var headers = Object.keys(leadStudio.PUBLIC_FIELDS);
+  var row = headers.map(function (header) {
+    return ({
+      "Contact Email": "lead@example.com",
+      "Company Name": "Example",
+      "Lead Status": "Lead",
+      "Jira Issue Key": "SF-42",
+      "Jira Status": "01 New Lead"
+    })[header] || "";
+  });
+  var response = await leadStudio.runAction({
+    data: { action: "jiraStatusParity", studioAuthToken: "signed-token" }
+  }, {
+    fetchImpl: async function (_url, request) {
+      var body = JSON.parse(request.body);
+      assert.equal(body.requiredScope, "settings");
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["settings"] };
+      } };
+    },
+    spreadsheetId: "sheet-1",
+    sheetsClient: {
+      spreadsheets: { values: { get: async function () {
+        return { data: { values: [headers, row] } };
+      } } }
+    },
+    jiraIssueStatuses: async function (keys) {
+      assert.deepEqual(keys, ["SF-42"]);
+      return { "SF-42": { issueKey: "SF-42", status: "01 New Lead" } };
+    }
+  });
+  assert.equal(response.jiraParity.checkedKeys, 1);
+  assert.equal(response.jiraParity.matchedStatuses, 1);
+  assert.deepEqual(response.jiraParity.mismatches, []);
+});
+
+test("reports Jira parity gaps without exposing contact data", function () {
+  var result = leadStudio.compareJiraStatuses(
+    { "SF-1": "01 New Lead", "SF-2": "", "SF-3": "06 Active" },
+    {
+      "SF-1": { status: "02 Qualified Lead" },
+      "SF-2": { status: "01 New Lead" }
+    }
+  );
+  assert.deepEqual(result.mismatches, [
+    { issueKey: "SF-1", sheetStatus: "01 New Lead", jiraStatus: "02 Qualified Lead" }
+  ]);
+  assert.deepEqual(result.blankInSheet, [{ issueKey: "SF-2", jiraStatus: "01 New Lead" }]);
+  assert.deepEqual(result.missingInJira, ["SF-3"]);
+  assert.equal(JSON.stringify(result).includes("lead@example.com"), false);
+});
+
 test("bootstrap requires authorization before reading Sheets", async function () {
   var reads = 0;
   await assert.rejects(

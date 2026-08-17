@@ -77,3 +77,33 @@ test("does not expose Jira provider payloads or credentials on failure", async f
     }
   );
 });
+
+test("loads validated Jira issue statuses in bounded batches", async function () {
+  var requests = [];
+  var issueKeys = Array.from({ length: 55 }, function (_, index) { return `SF-${index + 1}`; });
+  issueKeys.push("invalid key", "SF-1");
+  var statuses = await jiraClient.loadJiraIssueStatuses({
+    baseUrl: "https://gaming-universe.atlassian.net",
+    email: "admin@example.com",
+    apiToken: "replacement-secret",
+    issueKeys: issueKeys,
+    fetchImpl: async function (url) {
+      requests.push(url);
+      var parsed = new URL(url);
+      var keys = parsed.searchParams.get("jql").replace("key in (", "").replace(")", "").split(",");
+      return {
+        ok: true,
+        status: 200,
+        json: async function () {
+          return { issues: keys.map(function (key) {
+            return { key: key, fields: { status: { name: "01 New Lead" } } };
+          }) };
+        }
+      };
+    }
+  });
+  assert.equal(requests.length, 2);
+  assert.equal(Object.keys(statuses).length, 55);
+  assert.equal(statuses["SF-55"].status, "01 New Lead");
+  assert.equal(Object.hasOwn(statuses, "INVALID KEY"), false);
+});
