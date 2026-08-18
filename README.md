@@ -80,7 +80,7 @@ Current operational baseline: Firebase V4 owns the daily refresh; GAS `V3` versi
 - V3 completion review reports: `Reports/2026_06_22_Phase_V3_*`
 - V3 decision: `GO WITH CONDITIONS`
 
-The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing lead and Form-linked onboarding Sheets after central Auth, restores the useful GAS list/filter/sort workflow with Console-aligned blue accents, supports filtered exports, and shares the production refresh planner. Its manual Jira editor remains enabled in the preview; all acceptance and callable refresh gates remain disabled. The dedicated 06:00 Scheduler remains the only automatic writer; its first natural run passed on 2026-08-18. GAS v60 has no trigger and must be treated as rollback-only for refreshes.
+The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing lead and Form-linked onboarding Sheets after central Auth, restores the useful GAS list/filter/sort workflow in the full dark navy Marketing Studio Console visual system, supports filtered exports, and shares the production refresh planner. Its manual Jira editor remains enabled in the preview; all acceptance and callable refresh gates remain disabled. The dedicated 06:00 Scheduler remains the only automatic writer; its first natural run passed on 2026-08-18. GAS v60 has no trigger and must be treated as rollback-only for refreshes.
 
 V3 hotfix on 2026-07-20: version `57` uses `noreply@timelesstech.io` as the current `New Contact` notice sender; run `Settings > Refresh Leads` to verify/backfill post-2026-06-21 form notices.
 
@@ -97,7 +97,7 @@ Shared auth cleanup on 2026-08-05: version `60` keeps browser calls protected wh
 - Add scheduled-refresh failure alerting.
 - Add Gmail scan performance counters and controls.
 - Add sheet-write smoke tests.
-- Run final signed preview QA for the canonical Jira browse URL, fixed Interested in choices, custom dates, Inquiry, list controls, row opening, and responsive blue styling; Deep Refresh Jira Matches remains a later controlled slice.
+- Run final signed preview QA for the canonical Jira browse URL, fixed Interested in choices, custom dates, Inquiry, list controls, row opening, and responsive dark Console styling; Deep Refresh Jira Matches remains a later controlled slice.
 - Split large client utilities from `Script.html` only after more test coverage exists.
 
 ## Folder Layout
