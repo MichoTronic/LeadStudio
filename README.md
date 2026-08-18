@@ -62,6 +62,18 @@ Folder identity:
 - Apps Script daily-trigger helpers remain for rollback, but the Apps Script project has zero installed triggers. Firebase Scheduler runs `leadStudioScheduledRefreshV4` daily at 06:00 Europe/Ljubljana with no retries and one concurrent instance.
 - Lead Studio uses shared `TimelessStudioAuth` integration so Marketing Studio Console policy `studioPolicies/lead-studio` controls access.
 
+## Gmail Ingestion Direction
+
+The current daily operational scan remains active until the event-driven path completes acceptance. The approved next architecture is:
+
+1. Gmail API `users.watch` publishes mailbox-change notifications to a dedicated Cloud Pub/Sub topic.
+2. A Firebase Function reads only changes after the last committed Gmail `historyId` with `users.history.list`, fetches the added messages, and reuses the existing trusted-message parsers.
+3. New contacts are appended through the existing writer lock, snapshot verification, Gmail-message-ID idempotency, and metadata-only audit controls.
+4. A daily job renews the Gmail watch before its seven-day expiry. The 06:00 reconciliation remains as a safety net for delayed/dropped notifications and continues Jira/onboarding synchronization; it should no longer perform a broad three-month inbox scan after push acceptance.
+5. An expired history checkpoint or Gmail `404` triggers the bounded full reconciliation path before a new checkpoint is committed.
+
+Gmail notifications do not contain message bodies or contact data; they contain the mailbox and a new history position. Pub/Sub is therefore the event signal, while the Gmail API remains the source for the exact added messages.
+
 ## V2 Completion Review
 
 V2 completion review was run on 2026-06-22 and saved under `Reports/` as `2026_06_22_Phase_V2_*`.
@@ -96,6 +108,7 @@ Shared auth cleanup on 2026-08-05: version `60` keeps browser calls protected wh
 - Add refresh duration logging and display.
 - Add scheduled-refresh failure alerting.
 - Add Gmail scan performance counters and controls.
+- Replace broad scheduled Gmail discovery with Gmail API watch + Pub/Sub incremental history processing, retaining a daily reconciliation fallback and scheduled Jira synchronization.
 - Add sheet-write smoke tests.
 - Run final signed preview QA for the canonical Jira browse URL, fixed Interested in choices, custom dates, Inquiry, list controls, row opening, and responsive dark Console styling; Deep Refresh Jira Matches remains a later controlled slice.
 - Split large client utilities from `Script.html` only after more test coverage exists.
