@@ -5,19 +5,19 @@ Current status source of truth for Lead Studio.
 ## Runtime Posture
 
 - Product: `Lead Studio`
-- Stable UI/rollback platform: Google Apps Script web app version 60
+- Inactive rollback platform: Google Apps Script web app version 60; zero triggers, source retained in git, final deployment retirement deferred to ecosystem promotion
 - Operational refresh platform: Firebase Node 22 Functions and Cloud Scheduler in `timeless-lead-studio`
 - Storage: `Lead Studio Database` Google Sheet
 - Local folder: `D:\GoogleDrive\_Share\TimelessTech\Marketing\Optmizations\LeadStudio`
 - Parent Google Drive folder: `1keVmyWTXwqQM0cK5AWQzFPIKM7K7hyt1`
-- Current local code line: V4 Firebase pilot, with the dark Console UI, responsive lead workflow, protected Gmail contact activity, and the accepted Firebase scheduled-refresh runtime
-- Apps Script source root: `AppsScript/`
+- Current local code line: V4 Firebase pilot, with the dark Console UI, responsive lead workflow, protected Gmail contact activity, event-driven Gmail ingestion, and accepted Firebase scheduled-refresh runtime
+- Legacy Apps Script rollback source: `AppsScript/`
 - Official Version 1 checkpoint: Version 45
 - Current stable deployment: Version 60 - Auth phase cleanup
 - Current stable web app deployment ID: `AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA`
 - Firebase pilot preview: `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`
 - Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
-- Firebase pilot function revision: `leadstudioactionv4-00016-dux`; canonical operational refresh planner plus authorized, read-only Gmail contact activity
+- Firebase action Function: `leadStudioActionV4`; canonical operational refresh planner, authorized Gmail contact activity, and settings-authorized metadata-only operations status
 - Firebase refresh callable: `leadStudioRefreshV4` revision `leadstudiorefreshv4-00006-kab`, dedicated writer identity, one instance/concurrency, operational and acceptance gates disabled
 - Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00003-sup`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled
 - Firebase Hosting mode: preview; central Auth policy `studioPolicies/lead-studio`
@@ -25,10 +25,12 @@ Current status source of truth for Lead Studio.
 - Firebase manual Jira pilot: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00009-rof`, signed key-based preview QA passed, issue-key/API-host/custom-browser-host input enabled, canonical `jira.at.semper7.net` links stored, operational gate enabled, acceptance gate disabled, editor visible only in the preview release, dedicated writer identity
 - Firebase writer serialization: private `timeless-lead-studio-writer-locks` bucket with atomic object-generation acquisition shared by scheduled refresh, callable refresh, Notes acceptance, and manual Jira mutation paths
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
+- Firebase Gmail push: topic `lead-studio-gmail-changes`, daily 03:00 watch renewal, durable private history cursor, retrying single-instance `leadStudioGmailPushV4`, shared writer lock, and topic-only Gmail publisher IAM; watch/push gates enabled
+- Firebase health: `leadStudioHealthCheckV4` every six hours plus enabled `Lead Studio runtime failures` log-match alert policy to `mitja@timelesstech.io`
 - Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; scheduled synchronization is operational
 - Current V3 review decision: `GO WITH CONDITIONS`
 - Current viable/stable baseline: `V3`
-- Current deployment inventory: stable version 60 GAS web app plus read-only `@HEAD`, Firebase preview with manual Jira QA enabled, disabled acceptance/callable-refresh writers, and enabled Firebase scheduled refresh
+- Current deployment inventory: inactive GAS v60 rollback deployment with zero triggers, Firebase Hosting preview, enabled manual Jira workflow, disabled acceptance/callable-refresh writers, enabled 06:00 refresh, enabled Gmail watch/push, and enabled health monitoring; production Hosting/Console tile unchanged
 - Current V3 rollback tag: `v3-stable`
 - Current V57 hotfix rollback tag: `v57-noreply-hotfix`
 - V2 rollback tag: `v2-stable`
@@ -80,6 +82,7 @@ Current status source of truth for Lead Studio.
 - 2026-08-18: Adopted the Gmail API watch + Cloud Pub/Sub direction for near-real-time lead ingestion. The planned Function will consume incremental Gmail history under the existing writer lock and message-ID idempotency controls; a daily watch renewal and the 06:00 reconcile/Jira job remain for reliability. The active Gmail schedule was not changed in this step. Preview version `fea9e9cd86d3322e` now keeps desktop controls visible around a viewport-contained scrolling table with sticky headers and uses the canonical white-on-Console-blue Timeless Tech favicon; mobile retains its responsive contact-card layout.
 - 2026-08-18: Added protected, on-demand Gmail contact activity to the Firebase preview. `leadStudioActionV4` revision `leadstudioactionv4-00016-dux` resolves a browser-supplied Sheet row only after central read authorization, then combines the stored original thread, onboarding threads, and exact participant-matched related threads. The response is capped at eight conversations, 40 messages, and 12,000 plain-text characters per message; it excludes Gmail IDs and delegated tokens, strips quoted history/unsafe HTML, and does not persist message bodies. Preview version `84976f8054e38660` presents a wide two-panel desktop dialog and mobile `Details` / `Conversation` tabs with compact message accordions; a follow-up layout fix gives direction, timestamp, subject, and excerpt independent rows so native disclosure rendering cannot overlap them. All 68 automated checks pass, preview assets return HTTP 200, production Hosting was unchanged, and signed desktop/mobile conversation acceptance remains open.
 - 2026-08-18: Extended the filtered CSV/XLSX sales export from 14 to 19 columns while preserving every legacy column position. The appended fields are Lead Status, Inquiry, Onboarding Sent At, Onboarding Submitted At, and Last Contacted / Last Activity At. Activity prefers an exact timestamp when supplied and otherwise selects the latest parseable Email Date/onboarding event across ISO and day-first Sheet formats; Last Checked is intentionally not treated as customer activity. Preview version `9b46cb12635f5e1a` is active, all 69 automated checks pass, and production Hosting/backend/Sheet/scheduler state was unchanged.
+- 2026-08-18: Implemented and enabled Gmail `users.watch` plus Pub/Sub incremental history ingestion. The topic grants publisher only to Google's Gmail push identity; Eventarc uses the dedicated writer identity with explicit receiver/invoker access. Watch renewal passed, current-cursor delivery passed end to end, queued retries completed with zero mutations, and idempotent replay passed. A private GCS cursor, expired-history reconciliation, narrow Gmail-only mutation planner, bounded Operations status, refresh duration metadata, six-hour health check, and Cloud Monitoring email policy are active. All 79 automated checks pass. The daily scan remains broad until one natural trusted form lead is observed through push; Hosting and the Console tile remain unchanged.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -204,9 +207,9 @@ V4 owns the operational daily refresh and continues to serve its Hosting preview
 Next controlled slices:
 
 - Continue monitoring daily Scheduler runs; the first natural 06:00 run and COMPLETE audit passed on 2026-08-18.
-- Complete signed operator QA for the canonical Jira browse URL, fixed Interested in normalization, custom dates, Inquiry, All leads, facets, Date/Company sorting, row opening, and responsive dark Console styling.
-- Complete the Gmail watch/Pub/Sub incremental-ingestion implementation and acceptance before narrowing the scheduled Gmail scan; retain scheduled Jira synchronization and a bounded reconciliation fallback.
-- Add bounded Debug Log reads, refresh duration, and scheduled-failure visibility to Operations.
+- Treat the signed desktop/mobile Lead Studio UI and functional pass as accepted.
+- Observe one naturally arriving trusted form lead through Gmail push, verify its metadata-only audit and Sheet append, then enable the 14-day reconciliation fallback.
+- Keep bounded Operations metadata and Cloud Monitoring failure email active.
 - Promote the Hosting/Console tile only after final production QA and rollback review.
 - Enable the already accepted Firebase manual Jira workflow only as part of the UI promotion, then retire the equivalent GAS write path.
 
@@ -215,7 +218,7 @@ Next controlled slices:
 - Retained: secure list load, view refresh, lifecycle metrics, search, canonical attribute filters, preset/custom dates, Date/Company sorting, filtered CSV/XLSX export, contact details, manual Jira editing, responsive cards, and keyboard-accessible row opening.
 - Replaced: the GAS automatic/manual refresh model is owned by the single Firebase Scheduler and audited Firebase writer; no second refresh writer is exposed in the preview.
 - Intentionally excluded: raw Gmail IDs, delegated tokens, phone/address fields, setup/service-account details, and direct smoke-test buttons remain outside browser responses. Sanitized Gmail message text is returned only by the authorized, on-demand contact-activity action and is not persisted by Lead Studio.
-- Deferred Operations UI: bounded Debug Log status, duration, and failure alerts remain planned; current diagnostics stay settings-authorized and non-user-facing.
+- Operations: bounded Debug Log status and duration metadata are settings-authorized and non-user-facing; six-hour health checks and email failure alerts are active.
 
 ### V4 Write Safety Contract
 

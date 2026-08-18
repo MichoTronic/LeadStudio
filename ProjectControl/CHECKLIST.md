@@ -143,14 +143,14 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Replace the GAS scheduled trigger with the single-instance Firebase 06:00 Europe/Ljubljana schedule; verify disabled-gate invocation and one persistent production run.
 - [x] Port filtered exports and manual Jira-link operations; keep the Jira command/editor disabled while GAS owns writes.
 - [x] Run refresh write/parity/rollback acceptance before changing the Console production tile.
-- [ ] Add bounded Debug Log reads for Operations status.
-- [ ] Add refresh duration logging and display.
-- [ ] Add scheduled-refresh failure alerting.
-- [ ] Add Gmail scan candidate/accepted-count performance tracking.
+- [x] Add bounded Debug Log reads for settings-authorized Operations status.
+- [x] Add refresh duration logging and metadata-only status output.
+- [x] Add six-hour runtime health checks and Cloud Monitoring email alerting for scheduler/watch/push failures.
+- [x] Add Gmail candidate/accepted/change performance tracking to structured logs and private watch state.
 - [ ] Add Gmail scan controls if candidate count grows.
-- [ ] Create the Lead Studio Gmail Pub/Sub topic and grant publisher access only to `gmail-api-push@system.gserviceaccount.com`.
-- [ ] Implement idempotent Gmail `history.list` processing from a durable committed `historyId`, including bounded recovery from an expired checkpoint.
-- [ ] Add daily Gmail `watch` renewal and keep the 06:00 reconciliation/Jira job as the dropped-notification safety net.
+- [x] Create the Lead Studio Gmail Pub/Sub topic and grant publisher access only to `gmail-api-push@system.gserviceaccount.com`.
+- [x] Implement idempotent Gmail `history.list` processing from a durable committed `historyId`, including bounded recovery from an expired checkpoint.
+- [x] Add daily Gmail `watch` renewal and keep the 06:00 reconciliation/Jira job as the dropped-notification safety net.
 - [ ] Run write/verify/replay acceptance for one push-delivered lead before removing the broad three-month scan from the daily path.
 - [x] Add sheet-write smoke tests for exact restoration, stale-version rejection, audit events, and idempotent replay.
 - [x] Run live Firebase QA for Refresh Leads through the production Scheduler path and verify the final whole-Sheet hash.
@@ -162,8 +162,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Complete signed browser QA for the Firebase manual Jira editor and correct its desktop/mobile field layout after operator acceptance.
 - [x] Accept either a Jira issue key or a configured Atlassian HTTPS browse URL in the Firebase manual editor; reject unrelated hosts and paths.
 - [x] Preserve the historical Jira API/browser host split: validate through the Atlassian API tenant and accept/store `jira.at.semper7.net/browse/KEY` links.
-- [ ] Run signed operator QA for the canonical Jira URL, Inquiry, fixed Interested in values, custom dates, list filters/sorting, row opening, and responsive dark Console styling.
-- [ ] Confirm desktop viewport-contained table scrolling and sticky headers, plus the existing 390px card/filter layout, in signed Chrome QA.
+- [x] Run signed operator QA for the canonical Jira URL, Inquiry, fixed Interested in values, custom dates, list filters/sorting, row opening, and responsive dark Console styling.
+- [x] Confirm desktop viewport-contained table scrolling and sticky headers, plus the existing 390px card/filter layout, in signed Chrome QA.
 - [ ] Run live QA for Deep Refresh Jira Matches.
 - [ ] Review web app access settings before broader team/external use.
 - [ ] Review whether setup/test endpoint functions should remain present or be removed entirely.

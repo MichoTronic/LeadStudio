@@ -89,6 +89,26 @@ test("Gmail diagnostics require settings scope", async function () {
   assert.equal(response.mailbox.emailAddress, "marketing@example.com");
 });
 
+test("operations status requires settings scope and returns the bounded runtime view", async function () {
+  var requiredScope;
+  var result = await leadStudio.runAction({
+    data: { action: "operationsStatus", studioAuthToken: "signed-token" }
+  }, {
+    fetchImpl: async function (_, request) {
+      requiredScope = JSON.parse(request.body).requiredScope;
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "admin@example.com", role: "admin", scopes: ["settings"] };
+      } };
+    },
+    operationsStatus: async function () {
+      return { checkedAt: "2026-08-18T10:00:00.000Z", debugLog: { inspectedRows: 12 } };
+    }
+  });
+  assert.equal(requiredScope, "settings");
+  assert.equal(result.mode, "read-only-operations");
+  assert.equal(result.operationsStatus.debugLog.inspectedRows, 12);
+});
+
 test("Jira diagnostics require settings scope", async function () {
   var captured;
   var response = await leadStudio.runAction({

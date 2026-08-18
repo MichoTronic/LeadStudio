@@ -3,13 +3,17 @@
 var initializeApp = require("firebase-admin/app").initializeApp;
 var functions = require("firebase-functions/v2/https");
 var scheduler = require("firebase-functions/v2/scheduler");
+var pubsub = require("firebase-functions/v2/pubsub");
 var logger = require("firebase-functions/logger");
 var params = require("firebase-functions/params");
+var gmailIncrementalMutation = require("./src/gmailIncrementalMutation");
 var jiraClient = require("./src/jiraClient");
 var gmailContactActivity = require("./src/gmailContactActivity");
+var gmailWatchState = require("./src/gmailWatchState");
 var leadStudio = require("./src/leadStudio");
 var manualJiraLink = require("./src/manualJiraLink");
 var onboardingSheet = require("./src/onboardingSheet");
+var operationsStatus = require("./src/operationsStatus");
 var refreshMutation = require("./src/refreshMutation");
 var writeAcceptance = require("./src/writeAcceptance");
 var writerLock = require("./src/writerLock");
@@ -64,6 +68,21 @@ var leadStudioScheduledRefreshEnabled = params.defineString("LEAD_STUDIO_SCHEDUL
 var leadStudioWriterLockBucket = params.defineString("LEAD_STUDIO_WRITER_LOCK_BUCKET", {
   default: "timeless-lead-studio-writer-locks"
 });
+var leadStudioGmailTopicName = params.defineString("LEAD_STUDIO_GMAIL_TOPIC_NAME", {
+  default: "projects/timeless-lead-studio/topics/lead-studio-gmail-changes"
+});
+var leadStudioGmailWatchEnabled = params.defineString("LEAD_STUDIO_GMAIL_WATCH_ENABLED", {
+  default: "false"
+});
+var leadStudioGmailPushEnabled = params.defineString("LEAD_STUDIO_GMAIL_PUSH_ENABLED", {
+  default: "false"
+});
+var leadStudioGmailReconciliationDays = params.defineString("LEAD_STUDIO_GMAIL_RECONCILIATION_DAYS", {
+  default: "14"
+});
+var leadStudioGmailNarrowReconciliationEnabled = params.defineString("LEAD_STUDIO_GMAIL_NARROW_RECONCILIATION_ENABLED", {
+  default: "false"
+});
 var LEAD_STUDIO_ORIGINS = [
   "https://timeless-lead-studio.web.app",
   "https://timeless-lead-studio.firebaseapp.com",
@@ -98,6 +117,19 @@ function withLeadStudioWriterLock(owner, callback) {
     ttlMs: 5 * 60 * 1000,
     waitMs: 5000
   }, callback);
+}
+
+function gmailWorkspaceOptions(overrides) {
+  return Object.assign({
+    delegatedUser: leadStudioGmailUser.value(),
+    serviceAccountEmail: leadStudioServiceAccountEmail.value(),
+    signJwt: signWorkspaceJwt,
+    timeZone: "Europe/Ljubljana"
+  }, overrides || {});
+}
+
+function watchStateOptions() {
+  return { bucketName: leadStudioWriterLockBucket.value() };
 }
 
 async function loadOnboardingRows() {
@@ -244,6 +276,20 @@ exports.leadStudioActionV4 = functions.onCall({
       refreshPlan: async function () {
         var prepared = await buildLiveRefreshPlan(createSheetsClient());
         return refreshMutation.publicPlan(prepared.plan);
+      },
+      operationsStatus: async function () {
+        return operationsStatus.loadOperationsStatus({
+          sheetsClient: createSheetsClient(),
+          spreadsheetId: leadStudioSpreadsheetId.value().trim(),
+          watchState: await gmailWatchState.readWatchState(watchStateOptions()),
+          runtime: {
+            scheduledRefreshEnabled: leadStudioScheduledRefreshEnabled.value() === "true",
+            gmailWatchEnabled: leadStudioGmailWatchEnabled.value() === "true",
+            gmailPushEnabled: leadStudioGmailPushEnabled.value() === "true",
+            narrowReconciliationEnabled: leadStudioGmailNarrowReconciliationEnabled.value() === "true",
+            reconciliationDays: Number(leadStudioGmailReconciliationDays.value()) || 14
+          }
+        });
       }
     });
   } catch (error) {
@@ -256,7 +302,8 @@ exports.leadStudioActionV4 = functions.onCall({
   }
 });
 
-async function buildLiveRefreshPlan(sheetsClient) {
+async function buildLiveRefreshPlan(sheetsClient, options) {
+  options = options || {};
   sheetsClient = sheetsClient || createWriteSheetsClient();
   var spreadsheetId = leadStudioSpreadsheetId.value().trim();
   var workspaceOptions = {
@@ -264,7 +311,9 @@ async function buildLiveRefreshPlan(sheetsClient) {
     serviceAccountEmail: leadStudioServiceAccountEmail.value(),
     signJwt: signWorkspaceJwt,
     operational: true,
-    timeZone: "Europe/Ljubljana"
+    timeZone: "Europe/Ljubljana",
+    lookbackDays: options.forceFullGmailScan === true || leadStudioGmailNarrowReconciliationEnabled.value() !== "true"
+      ? undefined : (Number(leadStudioGmailReconciliationDays.value()) || 14)
   };
   var initial = await Promise.all([
     refreshMutation.readSnapshot({ sheetsClient: sheetsClient, spreadsheetId: spreadsheetId }),
@@ -422,6 +471,243 @@ exports.leadStudioScheduledRefreshV4 = scheduler.onSchedule({
     logger.error("leadStudioScheduledRefreshV4 failed", {
       name: error && error.name,
       code: error && error.code,
+      message: error && error.message
+    });
+    throw error;
+  }
+});
+
+async function renewGmailWatch() {
+  return withLeadStudioWriterLock("gmail-watch-renewal", async function () {
+    var current = await gmailWatchState.readWatchState(watchStateOptions());
+    var watch = await workspaceDelegation.renewGmailWatch(gmailWorkspaceOptions({
+      topicName: leadStudioGmailTopicName.value()
+    }));
+    var now = new Date().toISOString();
+    return gmailWatchState.writeWatchState(watchStateOptions(), Object.assign({}, current || {}, {
+      emailAddress: watch.emailAddress,
+      processedHistoryId: current && current.processedHistoryId || watch.historyId,
+      watchHistoryId: watch.historyId,
+      watchExpiration: watch.expiration,
+      renewedAt: now,
+      lastFailureAt: "",
+      lastFailureCode: ""
+    }));
+  });
+}
+
+exports.leadStudioRenewGmailWatchV4 = scheduler.onSchedule({
+  region: "europe-west1",
+  schedule: "0 3 * * *",
+  timeZone: "Europe/Ljubljana",
+  retryCount: 2,
+  timeoutSeconds: 60,
+  memory: "256MiB",
+  maxInstances: 1,
+  concurrency: 1,
+  serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT
+}, async function () {
+  if (leadStudioGmailWatchEnabled.value() !== "true") {
+    logger.info("Lead Studio Gmail watch renewal skipped because its gate is disabled.");
+    return;
+  }
+  try {
+    var state = await renewGmailWatch();
+    logger.info("Lead Studio Gmail watch renewed", {
+      emailAddress: state.emailAddress,
+      expiration: state.watchExpiration
+    });
+  } catch (error) {
+    logger.error("leadStudioRenewGmailWatchV4 failed", {
+      name: error && error.name,
+      code: error && error.code,
+      statusCode: error && error.statusCode,
+      message: error && error.message
+    });
+    throw error;
+  }
+});
+
+exports.leadStudioHealthCheckV4 = scheduler.onSchedule({
+  region: "europe-west1",
+  schedule: "15 */6 * * *",
+  timeZone: "Europe/Ljubljana",
+  retryCount: 0,
+  secrets: [leadStudioSpreadsheetId],
+  timeoutSeconds: 30,
+  memory: "256MiB",
+  maxInstances: 1,
+  concurrency: 1,
+  serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT
+}, async function () {
+  var status = await operationsStatus.loadOperationsStatus({
+    sheetsClient: createSheetsClient(),
+    spreadsheetId: leadStudioSpreadsheetId.value().trim(),
+    watchState: await gmailWatchState.readWatchState(watchStateOptions()),
+    runtime: {
+      scheduledRefreshEnabled: leadStudioScheduledRefreshEnabled.value() === "true",
+      gmailWatchEnabled: leadStudioGmailWatchEnabled.value() === "true",
+      gmailPushEnabled: leadStudioGmailPushEnabled.value() === "true"
+    }
+  });
+  var failures = operationsStatus.healthFailures(status);
+  if (failures.length) {
+    logger.error("Lead Studio runtime health check failed", { failures: failures });
+    var error = new Error("Lead Studio runtime health check failed.");
+    error.code = "failed-precondition";
+    throw error;
+  }
+  logger.info("Lead Studio runtime health check passed", {
+    scheduledEvent: status.debugLog.latestScheduled && status.debugLog.latestScheduled.timestamp,
+    gmailWatchConfigured: status.gmailWatch.configured === true
+  });
+});
+
+function gmailNotification(event) {
+  var message = event && event.data && event.data.message || {};
+  try {
+    if (message.json) return message.json;
+  } catch (_) {}
+  try {
+    return JSON.parse(Buffer.from(String(message.data || ""), "base64").toString("utf8"));
+  } catch (_) {
+    return {};
+  }
+}
+
+async function recordGmailPushFailure(error) {
+  try {
+    await withLeadStudioWriterLock("gmail-push-failure", async function () {
+      var current = await gmailWatchState.readWatchState(watchStateOptions());
+      if (!current) return;
+      await gmailWatchState.writeWatchState(watchStateOptions(), Object.assign({}, current, {
+        lastFailureAt: new Date().toISOString(),
+        lastFailureCode: String(error && (error.code || error.statusCode) || "internal")
+      }));
+    });
+  } catch (_) {}
+}
+
+exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
+  topic: "lead-studio-gmail-changes",
+  region: "europe-west1",
+  retry: true,
+  timeoutSeconds: 360,
+  memory: "512MiB",
+  maxInstances: 1,
+  concurrency: 1,
+  secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
+  serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT
+}, async function (event) {
+  if (leadStudioGmailPushEnabled.value() !== "true") {
+    logger.info("Lead Studio Gmail push skipped because its gate is disabled.");
+    return;
+  }
+  var notification = gmailNotification(event);
+  var expectedMailbox = leadStudioGmailUser.value().trim().toLowerCase();
+  if (String(notification.emailAddress || "").trim().toLowerCase() !== expectedMailbox) {
+    logger.warn("Ignored Gmail notification for an unexpected mailbox.");
+    return;
+  }
+  try {
+    var output = await withLeadStudioWriterLock("gmail-push", async function () {
+      var state = await gmailWatchState.readWatchState(watchStateOptions());
+      if (!state || !state.processedHistoryId) {
+        var missingStateError = new Error("Gmail watch state has not been initialized.");
+        missingStateError.code = "failed-precondition";
+        throw missingStateError;
+      }
+      var history;
+      try {
+        history = await workspaceDelegation.loadGmailHistory(gmailWorkspaceOptions({
+          startHistoryId: state.processedHistoryId
+        }));
+      } catch (historyError) {
+        if (Number(historyError && historyError.statusCode) !== 404) throw historyError;
+        var recoveryPlan = await buildLiveRefreshPlan(createWriteSheetsClient(), { forceFullGmailScan: true });
+        var recoveryEnd = String(notification.historyId || state.watchHistoryId || state.processedHistoryId).trim();
+        var recoveryResult = await refreshMutation.executeRefreshPlan({
+          plan: recoveryPlan.plan,
+          sheetsClient: recoveryPlan.sheetsClient,
+          spreadsheetId: recoveryPlan.spreadsheetId,
+          actor: "firebase-gmail-recovery",
+          idempotencyKey: gmailIncrementalMutation.pushIdempotencyKey(state.processedHistoryId, recoveryEnd),
+          expectedVersion: recoveryPlan.plan.originalVersion,
+          restoreAfterVerify: false,
+          auditEventPrefix: "FIREBASE_GMAIL_RECOVERY",
+          auditSource: "leadStudioGmailPushV4",
+          command: "gmail_history_recovery"
+        });
+        var renewed = await workspaceDelegation.renewGmailWatch(gmailWorkspaceOptions({
+          topicName: leadStudioGmailTopicName.value()
+        }));
+        var recoveredAt = new Date().toISOString();
+        await gmailWatchState.writeWatchState(watchStateOptions(), Object.assign({}, state, {
+          emailAddress: renewed.emailAddress,
+          processedHistoryId: renewed.historyId,
+          watchHistoryId: renewed.historyId,
+          watchExpiration: renewed.expiration,
+          renewedAt: recoveredAt,
+          lastPushAt: recoveredAt,
+          lastSuccessAt: recoveredAt,
+          lastFailureAt: "",
+          lastFailureCode: "",
+          lastCandidateMessages: 0,
+          lastAcceptedLeads: 0,
+          lastAcceptedOnboarding: 0
+        }));
+        return { recovered: true, result: recoveryResult };
+      }
+      var sheetsClient = createWriteSheetsClient();
+      var snapshot = await refreshMutation.readSnapshot({
+        sheetsClient: sheetsClient,
+        spreadsheetId: leadStudioSpreadsheetId.value().trim()
+      });
+      var plan = gmailIncrementalMutation.buildIncrementalPlan({
+        snapshot: snapshot,
+        leadMessages: history.acceptedLeadMessages,
+        onboardingMessages: history.acceptedOnboardingMessages
+      });
+      var result = await refreshMutation.executeRefreshPlan({
+        plan: plan,
+        sheetsClient: sheetsClient,
+        spreadsheetId: leadStudioSpreadsheetId.value().trim(),
+        actor: "firebase-gmail-push",
+        idempotencyKey: gmailIncrementalMutation.pushIdempotencyKey(history.startHistoryId, history.historyId),
+        expectedVersion: plan.originalVersion,
+        restoreAfterVerify: false,
+        auditEventPrefix: "FIREBASE_GMAIL_PUSH",
+        auditSource: "leadStudioGmailPushV4",
+        command: "gmail_history_ingestion"
+      });
+      var now = new Date().toISOString();
+      await gmailWatchState.writeWatchState(watchStateOptions(), Object.assign({}, state, {
+        processedHistoryId: history.historyId,
+        lastPushAt: now,
+        lastSuccessAt: now,
+        lastFailureAt: "",
+        lastFailureCode: "",
+        lastCandidateMessages: history.candidateMessages,
+        lastAcceptedLeads: history.acceptedLeadMessages.length,
+        lastAcceptedOnboarding: history.acceptedOnboardingMessages.length
+      }));
+      return { recovered: false, history: history, result: result };
+    });
+    logger.info(output.recovered ? "Lead Studio Gmail history cursor recovered" : "Lead Studio Gmail history ingestion completed", {
+      recovered: output.recovered,
+      candidateMessages: output.history ? output.history.candidateMessages : 0,
+      acceptedLeads: output.history ? output.history.acceptedLeadMessages.length : 0,
+      acceptedOnboarding: output.history ? output.history.acceptedOnboardingMessages.length : 0,
+      changedRows: output.result.changedRows,
+      appendedRows: output.result.appendedRows,
+      replayed: output.result.replayed
+    });
+  } catch (error) {
+    await recordGmailPushFailure(error);
+    logger.error("leadStudioGmailPushV4 failed", {
+      name: error && error.name,
+      code: error && error.code,
+      statusCode: error && error.statusCode,
       message: error && error.message
     });
     throw error;

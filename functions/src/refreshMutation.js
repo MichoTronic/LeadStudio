@@ -141,6 +141,7 @@ function buildRefreshPlan(options) {
 }
 
 async function executeRefreshPlan(options) {
+  var startedMs = Date.now();
   var plan = options.plan;
   var actor = normalize(options.actor).toLowerCase();
   var idempotencyKey = normalize(options.idempotencyKey);
@@ -150,11 +151,14 @@ async function executeRefreshPlan(options) {
   if (!/^[a-f0-9]{64}$/.test(expectedVersion)) throw codedError("invalid-argument", "A valid expected snapshot version is required.");
   if (!plan || expectedVersion !== plan.originalVersion) throw codedError("aborted", "The prepared refresh snapshot is stale.");
 
-  var replay = await findCompletedAudit(options, idempotencyKey);
+  var auditEventPrefix = normalize(options.auditEventPrefix) || "FIREBASE_REFRESH";
+  var auditSource = normalize(options.auditSource) || "leadStudioRefreshV4";
+  var command = normalize(options.command) || (options.restoreAfterVerify === true ? "refresh_round_trip" : "refresh");
+  var replay = await findCompletedAudit(options, idempotencyKey, `${auditEventPrefix}_COMPLETE`);
   if (replay) return replay;
   var auditBase = {
     actor: actor,
-    command: options.restoreAfterVerify === true ? "refresh_round_trip" : "refresh",
+    command: command,
     idempotencyKey: idempotencyKey,
     expectedVersion: expectedVersion,
     observedVersion: plan.originalVersion,
@@ -162,14 +166,14 @@ async function executeRefreshPlan(options) {
     appendedRows: plan.summary.appendedRows,
     changedFields: plan.summary.changedFields
   };
-  await appendAudit(options, "FIREBASE_REFRESH_STARTED", "Started optimistic Firebase refresh command.", Object.assign({}, auditBase, { outcome: "started" }));
+  await appendAudit(options, `${auditEventPrefix}_STARTED`, "Started optimistic Firebase refresh command.", Object.assign({}, auditBase, { outcome: "started" }), auditSource);
 
   var prewrite = await readSnapshot(options);
   if (prewrite.version !== expectedVersion) {
-    await appendAudit(options, "FIREBASE_REFRESH_REJECTED", "Rejected stale Sheet snapshot before mutation.", Object.assign({}, auditBase, {
+    await appendAudit(options, `${auditEventPrefix}_REJECTED`, "Rejected stale Sheet snapshot before mutation.", Object.assign({}, auditBase, {
       outcome: "conflict",
       observedVersion: prewrite.version
-    }));
+    }), auditSource);
     throw codedError("aborted", "The Lead Studio Sheet changed before the refresh and was not modified.");
   }
 
@@ -197,12 +201,13 @@ async function executeRefreshPlan(options) {
       appendedRows: plan.summary.appendedRows,
       idempotencyKey: idempotencyKey
     };
-    await appendAudit(options, "FIREBASE_REFRESH_COMPLETE", "Completed optimistic Firebase refresh command.", Object.assign({}, auditBase, {
+    await appendAudit(options, `${auditEventPrefix}_COMPLETE`, "Completed optimistic Firebase refresh command.", Object.assign({}, auditBase, {
       outcome: "complete",
       restored: result.restored,
       writtenVersion: result.writtenVersion,
-      restoredVersion: result.restoredVersion
-    }));
+      restoredVersion: result.restoredVersion,
+      durationMs: Date.now() - startedMs
+    }), auditSource);
     return result;
   } catch (error) {
     var restoredAfterFailure = false;
@@ -219,11 +224,12 @@ async function executeRefreshPlan(options) {
         restoredAfterFailure = false;
       }
     }
-    await appendAudit(options, "FIREBASE_REFRESH_FAILED", "Firebase refresh command failed.", Object.assign({}, auditBase, {
+    await appendAudit(options, `${auditEventPrefix}_FAILED`, "Firebase refresh command failed.", Object.assign({}, auditBase, {
       outcome: "failed",
       restored: restoredAfterFailure,
-      errorCode: normalize(error && error.code) || "internal"
-    })).catch(function () {});
+      errorCode: normalize(error && error.code) || "internal",
+      durationMs: Date.now() - startedMs
+    }), auditSource).catch(function () {});
     throw error;
   }
 }
@@ -341,7 +347,7 @@ async function restorePlan(options, plan) {
   }
 }
 
-async function findCompletedAudit(options, idempotencyKey) {
+async function findCompletedAudit(options, idempotencyKey, completeEventName) {
   var response = await options.sheetsClient.spreadsheets.values.get({
     spreadsheetId: options.spreadsheetId,
     range: `'${DEBUG_LOG_SHEET}'!A1:E5000`,
@@ -349,7 +355,7 @@ async function findCompletedAudit(options, idempotencyKey) {
   });
   var values = response && response.data && response.data.values || [];
   for (var index = values.length - 1; index >= 0; index -= 1) {
-    if (normalize(values[index][1]) !== "FIREBASE_REFRESH_COMPLETE") continue;
+    if (normalize(values[index][1]) !== (normalize(completeEventName) || "FIREBASE_REFRESH_COMPLETE")) continue;
     var details;
     try { details = JSON.parse(values[index][4] || "{}"); } catch (_) { details = {}; }
     if (normalize(details.idempotencyKey) !== idempotencyKey) continue;
@@ -367,13 +373,13 @@ async function findCompletedAudit(options, idempotencyKey) {
   return null;
 }
 
-async function appendAudit(options, eventName, message, details) {
+async function appendAudit(options, eventName, message, details, source) {
   await options.sheetsClient.spreadsheets.values.append({
     spreadsheetId: options.spreadsheetId,
     range: `'${DEBUG_LOG_SHEET}'!A:E`,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
-    requestBody: { values: [[new Date().toISOString(), eventName, "leadStudioRefreshV4", message, JSON.stringify(details)]] }
+    requestBody: { values: [[new Date().toISOString(), eventName, normalize(source) || "leadStudioRefreshV4", message, JSON.stringify(details)]] }
   });
 }
 

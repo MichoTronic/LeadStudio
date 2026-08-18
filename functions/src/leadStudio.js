@@ -10,7 +10,7 @@ var LEAD_RANGE = `'${LEAD_SHEET}'!A1:AI600`;
 var MAX_LEADS = 500;
 var SETTINGS_ACTIONS = new Set([
   "gmailProbe", "gmailLeadParity", "gmailDeepLeadParity", "gmailOnboardingParity", "onboardingSheetProbe", "onboardingSheetParity", "jiraProbe", "jiraStatusParity",
-  "jiraDiscoveryParity", "jiraDirectLookupParity", "refreshDryRun"
+  "jiraDiscoveryParity", "jiraDirectLookupParity", "refreshDryRun", "operationsStatus"
 ]);
 var INTERNAL_FIELDS = Object.freeze({
   "Gmail Message ID": "gmailMessageId",
@@ -258,6 +258,16 @@ async function runAction(request, dependencies) {
     return {
       mode: "read-only-refresh-dry-run",
       refreshDryRun: await dependencies.refreshPlan(),
+      authorization: publicAuthorization(authorization)
+    };
+  }
+  if (action === "operationsStatus") {
+    if (typeof dependencies.operationsStatus !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio operations status is not configured.");
+    }
+    return {
+      mode: "read-only-operations",
+      operationsStatus: await dependencies.operationsStatus(),
       authorization: publicAuthorization(authorization)
     };
   }

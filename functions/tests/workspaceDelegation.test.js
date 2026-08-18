@@ -206,3 +206,108 @@ test("follows Gmail page tokens and reports a complete operational listing", asy
   assert.equal(listing.stats[0].hasMore, false);
   assert.equal(listUrls[1].searchParams.get("pageToken"), "next");
 });
+
+test("renews a Gmail watch with the delegated mailbox and qualified topic", async function () {
+  var watchRequest;
+  var result = await delegation.renewGmailWatch({
+    serviceAccountEmail: "runtime@example.iam.gserviceaccount.com",
+    delegatedUser: "marketing@timelesstech.io",
+    topicName: "projects/timeless-lead-studio/topics/lead-studio-gmail-changes",
+    signJwt: async function () { return "signed-jwt"; },
+    fetchImpl: async function (url, request) {
+      if (url === delegation.OAUTH_TOKEN_URL) {
+        return { ok: true, json: async function () { return { access_token: "private-token" }; } };
+      }
+      watchRequest = { url: url, request: request };
+      return { ok: true, json: async function () { return { historyId: "12345", expiration: "1787100000000" }; } };
+    }
+  });
+  assert.equal(result.historyId, "12345");
+  assert.equal(result.emailAddress, "marketing@timelesstech.io");
+  assert.match(watchRequest.url, /users\/marketing%40timelesstech.io\/watch$/);
+  assert.deepEqual(JSON.parse(watchRequest.request.body), {
+    topicName: "projects/timeless-lead-studio/topics/lead-studio-gmail-changes"
+  });
+  assert.equal(watchRequest.request.headers.Authorization, "Bearer private-token");
+});
+
+test("loads paginated Gmail history and parses each added message only once", async function () {
+  var historyCalls = 0;
+  var result = await delegation.loadGmailHistory({
+    serviceAccountEmail: "runtime@example.iam.gserviceaccount.com",
+    delegatedUser: "marketing@timelesstech.io",
+    startHistoryId: "100",
+    nowMs: Date.UTC(2026, 7, 18, 10, 0),
+    timeZone: "Europe/Ljubljana",
+    signJwt: async function () { return "signed-jwt"; },
+    fetchImpl: async function (url) {
+      if (url === delegation.OAUTH_TOKEN_URL) {
+        return { ok: true, json: async function () { return { access_token: "private-token" }; } };
+      }
+      var parsedUrl = new URL(url);
+      if (parsedUrl.pathname.endsWith("/history")) {
+        historyCalls += 1;
+        if (historyCalls === 1) {
+          return { ok: true, json: async function () { return {
+            history: [{ messagesAdded: [{ message: { id: "lead-1" } }, { message: { id: "shared" } }] }],
+            nextPageToken: "page-2",
+            historyId: "105"
+          }; } };
+        }
+        assert.equal(parsedUrl.searchParams.get("pageToken"), "page-2");
+        return { ok: true, json: async function () { return {
+          history: [{ messagesAdded: [{ message: { id: "shared" } }, { message: { id: "onboarding-1" } }] }],
+          historyId: "110"
+        }; } };
+      }
+      var id = parsedUrl.pathname.split("/").pop();
+      if (id === "onboarding-1") {
+        return { ok: true, json: async function () { return {
+          id: id,
+          threadId: "thread-2",
+          payload: {
+            headers: [{ name: "Subject", value: "Onboarding form sent" }, { name: "Date", value: "Tue, 18 Aug 2026 08:00:00 +0000" }],
+            body: { data: Buffer.from("ONBOARDING SENT 1 TIME Email: lead@example.com Phone: 1").toString("base64url") }
+          }
+        }; } };
+      }
+      return { ok: true, json: async function () { return {
+        id: id,
+        threadId: "thread-1",
+        payload: {
+          headers: [
+            { name: "From", value: "noreply@timelesstech.io" },
+            { name: "To", value: "marketing@timelesstech.io" },
+            { name: "Subject", value: id === "lead-1" ? "New Contact" : "Unrelated" }
+          ],
+          body: { data: Buffer.from(id === "lead-1"
+            ? "New Contact Email: lead@example.com Phone: 1 Address: EU Business Type: Other Company Name: Lead Interested in: Other Inquiry: Hi Language: en"
+            : "A regular mailbox update").toString("base64url") }
+        }
+      }; } };
+    }
+  });
+  assert.equal(result.startHistoryId, "100");
+  assert.equal(result.historyId, "110");
+  assert.equal(result.pages, 2);
+  assert.equal(result.candidateMessages, 3);
+  assert.equal(result.acceptedLeadMessages.length, 1);
+  assert.equal(result.acceptedOnboardingMessages.length, 1);
+});
+
+test("uses an explicit reconciliation lookback when requested", async function () {
+  var queries = [];
+  await delegation.scanGmailLeadMessages({
+    serviceAccountEmail: "runtime@example.iam.gserviceaccount.com",
+    delegatedUser: "marketing@timelesstech.io",
+    nowMs: Date.UTC(2026, 7, 18),
+    lookbackDays: 14,
+    signJwt: async function () { return "signed-jwt"; },
+    fetchImpl: async function (url) {
+      if (url === delegation.OAUTH_TOKEN_URL) return { ok: true, json: async function () { return { access_token: "token" }; } };
+      queries.push(new URL(url).searchParams.get("q"));
+      return { ok: true, json: async function () { return { messages: [] }; } };
+    }
+  });
+  assert.equal(queries.every(function (query) { return query.endsWith("after:2026/08/04"); }), true);
+});

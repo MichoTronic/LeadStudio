@@ -81,7 +81,7 @@ async function scanGmailLeadMessages(options) {
   ];
   var deepScan = options.deepScan === true;
   var operational = options.operational === true;
-  var afterDate = formatAfterDate(options.nowMs == null ? Date.now() : options.nowMs);
+  var afterDate = formatAfterDate(options.nowMs == null ? Date.now() : options.nowMs, options.lookbackDays);
   var queries = deepScan ? baseQueries.concat(deepQueries) : baseQueries.map(function (query) {
     return `${query} after:${afterDate}`;
   });
@@ -121,7 +121,7 @@ async function scanGmailOnboardingMessages(options) {
   var accessToken = await createDelegatedAccessToken(options);
   var fetchImpl = options.fetchImpl || fetch;
   var operational = options.operational === true;
-  var afterDate = formatAfterDate(options.nowMs == null ? Date.now() : options.nowMs);
+  var afterDate = formatAfterDate(options.nowMs == null ? Date.now() : options.nowMs, options.lookbackDays);
   var queries = [
     `in:anywhere "ONBOARDING SENT" after:${afterDate}`,
     `in:anywhere subject:"Onboarding form sent" after:${afterDate}`
@@ -199,6 +199,90 @@ async function listGmailMessagesForQueries(options) {
   };
 }
 
+async function renewGmailWatch(options) {
+  options = options || {};
+  var delegatedUser = normalize(options.delegatedUser).toLowerCase();
+  var topicName = normalize(options.topicName);
+  if (!/^projects\/[a-z][a-z0-9-]{4,28}[a-z0-9]\/topics\/[A-Za-z][A-Za-z0-9._~-]{2,254}$/.test(topicName)) {
+    throw new Error("A fully qualified Gmail Pub/Sub topic is required.");
+  }
+  var accessToken = await createDelegatedAccessToken(options);
+  var fetchImpl = options.fetchImpl || fetch;
+  var response = await gmailFetch(
+    fetchImpl,
+    `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/watch`,
+    accessToken,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topicName: topicName })
+    }
+  );
+  if (!normalize(response.historyId) || !normalize(response.expiration)) {
+    throw new Error("Gmail watch did not return a history cursor and expiration.");
+  }
+  return {
+    emailAddress: delegatedUser,
+    historyId: normalize(response.historyId),
+    expiration: normalize(response.expiration)
+  };
+}
+
+async function loadGmailHistory(options) {
+  options = options || {};
+  var delegatedUser = normalize(options.delegatedUser).toLowerCase();
+  var startHistoryId = normalize(options.startHistoryId);
+  if (!startHistoryId) throw new Error("A Gmail history cursor is required.");
+  var accessToken = await createDelegatedAccessToken(options);
+  var fetchImpl = options.fetchImpl || fetch;
+  var messageIds = [];
+  var seen = new Set();
+  var nextPageToken = "";
+  var pages = 0;
+  var latestHistoryId = startHistoryId;
+  do {
+    var historyUrl = new URL(
+      `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/history`
+    );
+    historyUrl.searchParams.set("startHistoryId", startHistoryId);
+    historyUrl.searchParams.set("historyTypes", "messageAdded");
+    historyUrl.searchParams.set("maxResults", "500");
+    if (nextPageToken) historyUrl.searchParams.set("pageToken", nextPageToken);
+    var historyResponse = await gmailFetch(fetchImpl, historyUrl.toString(), accessToken);
+    (Array.isArray(historyResponse.history) ? historyResponse.history : []).forEach(function (record) {
+      (Array.isArray(record.messagesAdded) ? record.messagesAdded : []).forEach(function (added) {
+        var id = normalize(added && added.message && added.message.id);
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        messageIds.push(id);
+      });
+    });
+    latestHistoryId = normalize(historyResponse.historyId) || latestHistoryId;
+    nextPageToken = normalize(historyResponse.nextPageToken);
+    pages += 1;
+  } while (nextPageToken);
+
+  var parsed = await mapWithConcurrency(messageIds, MESSAGE_FETCH_CONCURRENCY, async function (messageId) {
+    var messageUrl = new URL(
+      `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageId)}`
+    );
+    messageUrl.searchParams.set("format", "full");
+    var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken);
+    return {
+      lead: gmailLeadParser.parseGmailLeadMessage(message, { nowMs: options.nowMs, timeZone: options.timeZone }),
+      onboarding: gmailLeadParser.parseGmailOnboardingMessage(message, { timeZone: options.timeZone })
+    };
+  });
+  return {
+    startHistoryId: startHistoryId,
+    historyId: latestHistoryId,
+    pages: pages,
+    candidateMessages: messageIds.length,
+    acceptedLeadMessages: parsed.map(function (item) { return item.lead; }).filter(Boolean),
+    acceptedOnboardingMessages: parsed.map(function (item) { return item.onboarding; }).filter(Boolean)
+  };
+}
+
 async function mapWithConcurrency(values, concurrency, worker) {
   var results = new Array(values.length);
   var cursor = 0;
@@ -220,16 +304,24 @@ function hasCompleteAppendPayload(message) {
   }) && normalize(values["Gmail Message ID"]) === normalize(message.messageId);
 }
 
-async function gmailFetch(fetchImpl, url, accessToken) {
-  var response = await fetchImpl(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+async function gmailFetch(fetchImpl, url, accessToken, request) {
+  request = request || {};
+  var headers = Object.assign({}, request.headers || {}, { Authorization: `Bearer ${accessToken}` });
+  var response = await fetchImpl(url, Object.assign({}, request, { headers: headers }));
   var body = await response.json().catch(function () { return {}; });
-  if (!response.ok) throw new Error(`Gmail API request failed (HTTP ${Number(response.status) || 0}).`);
+  if (!response.ok) {
+    var error = new Error(`Gmail API request failed (HTTP ${Number(response.status) || 0}).`);
+    error.statusCode = Number(response.status) || 0;
+    throw error;
+  }
   return body;
 }
 
-function formatAfterDate(nowMs) {
+function formatAfterDate(nowMs, lookbackDays) {
   var date = new Date(Number(nowMs));
-  date.setUTCMonth(date.getUTCMonth() - 3);
+  var days = Number(lookbackDays);
+  if (Number.isFinite(days) && days > 0) date.setUTCDate(date.getUTCDate() - Math.floor(days));
+  else date.setUTCMonth(date.getUTCMonth() - 3);
   return [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, "0"), String(date.getUTCDate()).padStart(2, "0")].join("/");
 }
 
@@ -249,8 +341,10 @@ module.exports = {
   OPERATIONAL_MAX_RESULTS_PER_QUERY,
   OPERATIONAL_PAGE_SIZE,
   createDelegatedAccessToken,
+  loadGmailHistory,
   listGmailMessagesForQueries,
   probeGmailMailbox,
+  renewGmailWatch,
   scanGmailLeadMessages,
   scanGmailOnboardingMessages
 };
