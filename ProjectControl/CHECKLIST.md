@@ -142,12 +142,12 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [ ] Add Gmail scan controls if candidate count grows.
 - [x] Add sheet-write smoke tests for exact restoration, stale-version rejection, audit events, and idempotent replay.
 - [x] Run live Firebase QA for Refresh Leads through the production Scheduler path and verify the final whole-Sheet hash.
-- [ ] Observe the first natural 06:00 Firebase scheduled refresh and confirm its COMPLETE audit before retiring the GAS refresh code.
+- [x] Observe the first natural 06:00 Firebase scheduled refresh and confirm its COMPLETE audit before retiring the GAS refresh code.
 - [x] Run live Firebase QA for CSV/XLSX export after filters on desktop and 390px mobile.
 - [x] Run live Firebase manual Jira write/verify/restore/replay acceptance on row 6 and redeploy the gate disabled.
 - [x] Exercise the operational Firebase manual Jira path on row 6 with its existing issue key and verify idempotent replay, then return both gates/editor to disabled.
 - [x] Add shared serialization between manual Jira writes and the scheduled whole-Sheet writer before enabling the editor operationally.
-- [ ] Complete signed desktop and 390px mobile browser QA for the Firebase manual Jira editor; no controllable browser was connected during backend acceptance.
+- [x] Complete signed browser QA for the Firebase manual Jira editor and correct its desktop/mobile field layout after operator acceptance.
 - [ ] Run live QA for Deep Refresh Jira Matches.
 - [ ] Review web app access settings before broader team/external use.
 - [ ] Review whether setup/test endpoint functions should remain present or be removed entirely.

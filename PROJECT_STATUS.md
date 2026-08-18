@@ -22,7 +22,7 @@ Current status source of truth for Lead Studio.
 - Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00003-sup`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled
 - Firebase Hosting mode: preview; central Auth policy `studioPolicies/lead-studio`
 - Firebase write acceptance: `leadStudioWriteAcceptanceV4` revision `leadstudiowriteacceptancev4-00005-bey`, disabled by configuration and bound to dedicated `lead-studio-writer@timeless-lead-studio.iam.gserviceaccount.com`
-- Firebase manual Jira pilot: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00007-xiw`, operational gate enabled for signed preview QA, acceptance gate disabled, editor visible only in the preview release, dedicated writer identity
+- Firebase manual Jira pilot: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00007-xiw`, signed preview QA passed, operational gate enabled, acceptance gate disabled, editor visible only in the preview release, dedicated writer identity
 - Firebase writer serialization: private `timeless-lead-studio-writer-locks` bucket with atomic object-generation acquisition shared by scheduled refresh, callable refresh, Notes acceptance, and manual Jira mutation paths
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
 - Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; scheduled synchronization is operational
@@ -72,6 +72,8 @@ Current status source of truth for Lead Studio.
 - 2026-08-17: Split manual Jira operational and acceptance gates, fixed the dormant preview editor status-element error, and briefly enabled the operational path for a real same-key save on test row 6. Provider validation passed, the row version changed, and idempotent replay caused no second write; `Debug Log` rows 1590-1591 contain metadata-only STARTED/COMPLETE records. Because no controllable browser was connected, the preview editor was hidden again and both gates were disabled.
 - 2026-08-17: Added a shared distributed writer lock for every Firebase mutation path. The dedicated writer atomically creates a generation-checked object in private bucket `timeless-lead-studio-writer-locks`, waits at most five seconds for contention, deletes only its acquired generation, and recovers locks after a five-minute expiry. All 57 tests pass. Revisions `leadstudiorefreshv4-00006-kab`, `leadstudioscheduledrefreshv4-00003-sup`, `leadstudiowriteacceptancev4-00005-bey`, and `leadstudiomanualjirav4-00006-sed` are live with only the scheduled gate enabled. A controlled Scheduler run returned HTTP 200 through the lock, replayed its existing idempotency key without mutation, released the lock object, and produced no service errors.
 - 2026-08-17: Opened the already accepted manual Jira workflow for signed preview browser QA. Preview config exposes the editor, operational backend revision `leadstudiomanualjirav4-00007-xiw` is enabled, and the acceptance gate remains false. The preview release expires 2026-08-31; production Hosting was not changed.
+- 2026-08-18: Observed the first natural 06:00 Europe/Ljubljana Firebase Scheduler run. Revision `leadstudioscheduledrefreshv4-00003-sup` returned HTTP 200 in 15.4 seconds, changed 55 existing rows, appended one new lead, and updated two onboarding-notice matches. `Debug Log` rows 1592-1593 contain STARTED/COMPLETE with `restored: false`, and no retry or error occurred.
+- 2026-08-18: Accepted signed manual Jira preview QA after a successful same-key save on row 6. `Debug Log` rows 1594-1595 contain STARTED/COMPLETE with `restored: false`. Fixed the reported compressed Jira-key field by replacing the form's conflicting flex sizing with stable desktop and mobile grids, then redeployed the preview.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -114,8 +116,8 @@ Current status source of truth for Lead Studio.
 ## Current Risks
 
 - Firebase Scheduler is the sole automatic refresh writer. GAS v60 still exposes manual refresh controls as a rollback path, so operators must not use them while the Firebase schedule is active.
-- The first natural 06:00 Firebase scheduled run still needs observation even though an identical manually launched production Scheduler run completed successfully.
-- Filtered exports and the reversible manual Jira-link command have passed Firebase acceptance. The Firebase manual Jira endpoint/editor are temporarily enabled only for signed preview QA; GAS continues to provide the manual rollback workflow until Hosting promotion.
+- The first natural 06:00 Firebase scheduled run passed on 2026-08-18. Continue normal monitoring through the planned Operations visibility work.
+- Filtered exports and the manual Jira-link command have passed Firebase acceptance and signed preview QA. The endpoint/editor remain enabled only in the preview release; GAS continues to provide the manual rollback workflow until Hosting promotion.
 - Before enabling Firebase manual Jira, complete signed desktop/mobile browser acceptance of the preview editor. Shared serialization with the Scheduler writer is complete.
 - The Hosting preview expires on 2026-08-31 unless renewed or replaced. Production Hosting has not been promoted.
 - The source Sheet is currently readable by link, matching its pre-migration state. Tightening Drive sharing should be a separate reviewed data-access change after a dedicated runtime identity can be granted access.
@@ -196,7 +198,7 @@ V4 owns the operational daily refresh and continues to serve its Hosting preview
 
 Next controlled slices:
 
-- Observe the first natural 06:00 Scheduler run and verify its COMPLETE audit.
+- Continue monitoring daily Scheduler runs; the first natural 06:00 run and COMPLETE audit passed on 2026-08-18.
 - Add bounded Debug Log reads, refresh duration, and scheduled-failure visibility to Operations.
 - Promote the Hosting/Console tile only after final production QA and rollback review.
 - Enable the already accepted Firebase manual Jira workflow only as part of the UI promotion, then retire the equivalent GAS write path.
