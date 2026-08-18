@@ -256,16 +256,13 @@ function applyLifecycle(row, indexes, lookup, liveStatuses, discovered, timestam
   var form = onboardingSheet.findOnboardingRequest(lookup, lead);
   var match = form.match;
   var issueKey = normalizeIssueKey(value(row, indexes, "Jira Issue Key"));
-  var issueUrl = normalize(value(row, indexes, "Jira Issue URL"));
   var source = normalize(value(row, indexes, "Jira Match Source"));
   var conflict = 0;
   if (match && match.jiraIssueKey) {
     if (!issueKey) {
       issueKey = normalizeIssueKey(match.jiraIssueKey);
-      issueUrl = normalize(match.jiraIssueUrl);
       source = form.source === "email" ? "auto_onboarding_sheet" : "auto_onboarding_responsible_person";
     } else if (issueKey === normalizeIssueKey(match.jiraIssueKey)) {
-      issueUrl = issueUrl || normalize(match.jiraIssueUrl);
       source = source || (form.source === "email" ? "auto_onboarding_sheet" : "auto_onboarding_responsible_person");
     } else {
       conflict = 1;
@@ -282,7 +279,7 @@ function applyLifecycle(row, indexes, lookup, liveStatuses, discovered, timestam
   }
   var jira = liveStatuses[issueKey] || (discovered && normalizeIssueKey(discovered.issueKey) === issueKey ? discovered : null) || {};
   setValue(row, indexes, "Jira Issue Key", issueKey);
-  setValue(row, indexes, "Jira Issue URL", issueUrl || jiraUrl(issueKey));
+  setValue(row, indexes, "Jira Issue URL", jiraUrl(issueKey));
   setValue(row, indexes, "Jira Match Source", source || "existing_key");
   setValue(row, indexes, "Onboarding Complete", "Yes");
   setValue(row, indexes, "Last Checked", timestamp);

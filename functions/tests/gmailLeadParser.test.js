@@ -56,6 +56,22 @@ test("parses old and legacy lead formats", function () {
   assert.equal(legacy.contactEmail, "ada@example.com");
 });
 
+test("normalizes only the approved Interested in vocabulary", function () {
+  var aliases = parser.parseGmailLeadMessage(message(
+    "gmail-products-1",
+    "New Contact",
+    "New Contact Name: Ada Last Name: Lovelace Email: ada@example.com Phone: 1 Address: EU Business Type: Other Company Name: Analytical Engines Interested in: Games Agregator and Turnkey iGaming Package Inquiry: Hello Language: en"
+  ));
+  var unrelated = parser.parseGmailLeadMessage(message(
+    "gmail-products-2",
+    "New Contact",
+    "New Contact Name: Grace Last Name: Hopper Email: grace@example.com Phone: 1 Address: EU Business Type: Other Company Name: Navy Interested in: 1x2 Gaming Inquiry: Hello Language: en"
+  ));
+
+  assert.equal(aliases.values["Interested in"], "Game Aggregator, White Label");
+  assert.equal(unrelated.values["Interested in"], "");
+});
+
 test("rejects untrusted senders and cleans hidden HTML artifacts", function () {
   var untrusted = message("gmail-4", "New Contact", "New Contact Email: attacker@example.com Phone:");
   untrusted.payload.headers[0].value = "attacker@example.net";

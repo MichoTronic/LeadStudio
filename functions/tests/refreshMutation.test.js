@@ -75,6 +75,26 @@ test("builds full existing-row and append mutations without exposing lead conten
   assert.deepEqual(publicResult.appendRowNumbers, [3]);
 });
 
+test("canonicalizes existing Jira browser links during refresh", function () {
+  var headers = parser.APPEND_HEADERS.slice();
+  var values = leadValues({
+    "Jira Issue Key": "SF-68",
+    "Jira Issue URL": "https://gaming-universe.atlassian.net/browse/SF-68",
+    "Jira Status": "08 Customer Archive",
+    "Onboarding Complete": "Yes"
+  });
+  var original = headers.map(function (header) { return values[header]; });
+  var plan = refresh.buildRefreshPlan({
+    snapshot: { headers: headers, rows: [original], version: refresh.snapshotVersion(headers, [original]) },
+    liveStatuses: { "SF-68": { issueKey: "SF-68", status: "08 Customer Archive" } },
+    now: new Date("2026-08-18T10:15:00Z"),
+    timeZone: "Europe/Ljubljana"
+  });
+  var indexes = Object.fromEntries(headers.map(function (header, index) { return [header, index]; }));
+
+  assert.equal(plan.targetRows[0][indexes["Jira Issue URL"]], "https://jira.at.semper7.net/browse/SF-68");
+});
+
 test("writes, verifies, restores, audits, and replays a whole refresh plan", async function () {
   var plan = fixturePlan();
   var state = [plan.headers.slice()].concat(plan.originalRows.map(function (row) { return row.slice(); }));

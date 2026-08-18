@@ -183,19 +183,14 @@ function normalizeBusinessType(value) {
 function normalizeInterestedIn(value) {
   var raw = normalize(value);
   if (!raw) return "";
-  var values = {
-    game_aggregator: "Game Aggregator",
-    bonus_engine: "Bonus Engine",
-    bonus_engine_gamification: "Bonus Engine",
-    white_label: "White Label",
-    betexchange: "BetExchange",
-    bet_exchange: "BetExchange",
-    betting_exchange: "BetExchange",
-    beting_exchange: "BetExchange",
-    other: "Other",
-    ohter: "Other"
-  };
-  return raw.split(",").map(function (item) { return normalizeOption(item, values); }).filter(Boolean).join(", ");
+  var normalized = raw.toLowerCase().replace(/&/g, " and ");
+  var matches = [];
+  if (/\b(?:game|games)\s+(?:aggregator|agregator|aggreator|aggregation)\b|\b(?:aggregator|agregator)\b/.test(normalized)) matches.push("Game Aggregator");
+  if (/\bbonus\s+engine\b|\bgamification\b/.test(normalized)) matches.push("Bonus Engine");
+  if (/\bwhite\s*label\b|\bturnkey\b/.test(normalized)) matches.push("White Label");
+  if (/\bbet(?:ting)?\s*exchange\b/.test(normalized)) matches.push("BetExchange");
+  if (/^(?:other|ohter)$|(?:^|[,;|])\s*(?:other|ohter)\s*(?:$|[,;|])/.test(normalized)) matches.push("Other");
+  return matches.join(", ");
 }
 
 function normalizeOption(value, values) {
