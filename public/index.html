@@ -8,7 +8,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://timeless-studio-auth.web.app" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=4.0.4">
+  <link rel="stylesheet" href="/styles.css?v=4.0.5">
 </head>
 <body class="auth-locked">
   <section class="auth-gate" aria-live="polite">
@@ -86,15 +86,19 @@
             <option value="pending">Pending</option>
           </select>
         </label>
-        <label>
-          <span class="sr-only">Date range</span>
-          <select id="date-filter">
-            <option value="">All dates</option>
-            <option value="7">Last 7 days</option>
-            <option value="30">Last 30 days</option>
-            <option value="90">Last 90 days</option>
-          </select>
-        </label>
+        <div class="date-controls" aria-label="Email date range">
+          <label>
+            <span class="sr-only">Date preset</span>
+            <select id="date-filter">
+              <option value="">All dates</option>
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+            </select>
+          </label>
+          <label class="date-input-field"><span>From</span><input id="date-from-input" type="date"></label>
+          <label class="date-input-field"><span>To</span><input id="date-to-input" type="date"></label>
+        </div>
         <button id="clear-filters" class="icon-button" type="button" title="Clear filters" aria-label="Clear filters"><i data-lucide="filter-x"></i></button>
       </div>
       <div class="facet-filters" aria-label="Contact attributes">
@@ -137,7 +141,7 @@
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
   <script src="https://timeless-studio-auth.web.app/studio-sso-client.js"></script>
   <script src="/export-utils.js?v=4.0.1"></script>
-  <script src="/lead-list-utils.js?v=4.0.1"></script>
-  <script type="module" src="/app.js?v=4.0.17"></script>
+  <script src="/lead-list-utils.js?v=4.0.2"></script>
+  <script type="module" src="/app.js?v=4.0.18"></script>
 </body>
 </html>

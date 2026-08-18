@@ -76,6 +76,10 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Restore multi-select Business type, Target region, and Interested in filters in the Firebase preview.
 - [x] Restore Date and Company sorting in the Firebase preview.
 - [x] Show the authorized Inquiry field in Firebase contact details while keeping private message/body fields out of browser responses.
+- [x] Add inclusive custom From/To date inputs alongside the existing date presets.
+- [x] Restrict Interested in display/filter values to Game Aggregator, Bonus Engine, White Label, BetExchange, and Other; map known aliases and display unrelated historical values as `-` without rewriting Sheet data.
+- [x] Align the Firebase preview accents with the blue Marketing Studio Console palette.
+- [x] Restore row-wide mouse and keyboard opening of desktop contact details.
 - [ ] Consider saving active filter/search state between sessions if repeated use needs it.
 
 ## Operations
@@ -153,7 +157,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Add shared serialization between manual Jira writes and the scheduled whole-Sheet writer before enabling the editor operationally.
 - [x] Complete signed browser QA for the Firebase manual Jira editor and correct its desktop/mobile field layout after operator acceptance.
 - [x] Accept either a Jira issue key or a configured Atlassian HTTPS browse URL in the Firebase manual editor; reject unrelated hosts and paths.
-- [ ] Run signed operator QA for Jira browse-URL input, Inquiry display, All leads, facet filters, and Date/Company sorting.
+- [x] Preserve the historical Jira API/browser host split: validate through the Atlassian API tenant and accept/store `jira.at.semper7.net/browse/KEY` links.
+- [ ] Run signed operator QA for the canonical Jira URL, Inquiry, fixed Interested in values, custom dates, list filters/sorting, row opening, and responsive blue styling.
 - [ ] Run live QA for Deep Refresh Jira Matches.
 - [ ] Review web app access settings before broader team/external use.
 - [ ] Review whether setup/test endpoint functions should remain present or be removed entirely.

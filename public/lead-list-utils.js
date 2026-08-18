@@ -5,6 +5,15 @@
 }(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
+  var INTEREST_OPTIONS = ["Game Aggregator", "Bonus Engine", "White Label", "BetExchange", "Other"];
+  var INTEREST_PATTERNS = [
+    [/\bgame\s*aggregat(?:or|ion)\b|\baggregator\b/i],
+    [/\bbonus\s*engine\b|\bgamification\b/i],
+    [/\bwhite\s*label\b|\bturn\s*key(?:\s+solution)?\b/i],
+    [/\bbet\s*exchange\b|\bbetting\s*exchange\b|\bbetexchange\b/i],
+    [/\bother\b|\bohter\b/i]
+  ];
+
   function normalize(value) {
     return String(value == null ? "" : value).trim().toLowerCase();
   }
@@ -13,6 +22,19 @@
     return String(value == null ? "" : value).split(",").map(function (item) {
       return item.trim();
     }).filter(Boolean);
+  }
+
+  function canonicalInterests(value) {
+    var searchable = String(value == null ? "" : value)
+      .replace(/[_-]+/g, " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2");
+    return INTEREST_OPTIONS.filter(function (_, index) {
+      return INTEREST_PATTERNS[index].some(function (pattern) { return pattern.test(searchable); });
+    });
+  }
+
+  function canonicalInterestValue(value) {
+    return canonicalInterests(value).join(", ");
   }
 
   function parseLeadDate(value) {
@@ -49,7 +71,9 @@
     var query = normalize(options.query);
     var status = normalize(options.status);
     var onboarding = normalize(options.onboarding);
-    var days = Number(options.days) || 0;
+    var fromDate = dateBoundary(options.fromDate, false);
+    var toDate = dateBoundary(options.toDate, true);
+    var days = fromDate || toDate ? 0 : Number(options.days) || 0;
     var now = Number(options.now) || Date.now();
     var cutoff = days ? now - days * 86400000 : 0;
     var statusMap = options.statusMap || {};
@@ -73,8 +97,24 @@
         var date = parseLeadDate(lead.emailDate);
         if (!date || date.getTime() < cutoff) return false;
       }
+      if (fromDate || toDate) {
+        var customDate = parseLeadDate(lead.emailDate);
+        if (!customDate) return false;
+        var customTime = customDate.getTime();
+        if (fromDate && customTime < fromDate) return false;
+        if (toDate && customTime > toDate) return false;
+      }
       return true;
     });
+  }
+
+  function dateBoundary(value, endOfDay) {
+    var match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return 0;
+    var date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    if (Number.isNaN(date.getTime())) return 0;
+    if (endOfDay) date.setHours(23, 59, 59, 999);
+    return date.getTime();
   }
 
   function sortLeads(leads, sort) {
@@ -111,11 +151,14 @@
   }
 
   return {
+    canonicalInterestValue: canonicalInterestValue,
+    canonicalInterests: canonicalInterests,
     facetValues: facetValues,
     filterAndSort: filterAndSort,
     filterLeads: filterLeads,
     isComplete: isComplete,
     isLifecycleTracked: isLifecycleTracked,
+    interestOptions: INTEREST_OPTIONS.slice(),
     parseLeadDate: parseLeadDate,
     sortLeads: sortLeads,
     splitValues: splitValues,

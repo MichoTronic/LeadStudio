@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
-import { firebaseConfig, leadStudioConfig } from "./config.js";
+import { firebaseConfig, leadStudioConfig } from "./config.js?v=4.0.1";
 
 const backendApp = initializeApp(firebaseConfig, "lead-studio-backend");
 const backendFunctions = getFunctions(backendApp, leadStudioConfig.functionRegion);
@@ -66,6 +66,8 @@ const nodes = {
   status: document.getElementById("status-filter"),
   onboarding: document.getElementById("onboarding-filter"),
   date: document.getElementById("date-filter"),
+  dateFrom: document.getElementById("date-from-input"),
+  dateTo: document.getElementById("date-to-input"),
   clear: document.getElementById("clear-filters"),
   businessOptions: document.getElementById("business-filter-options"),
   businessSummary: document.getElementById("business-filter-summary"),
@@ -105,7 +107,9 @@ nodes.refresh.addEventListener("click", loadLeads);
 nodes.search.addEventListener("input", applyFilters);
 nodes.status.addEventListener("change", applyFilters);
 nodes.onboarding.addEventListener("change", applyFilters);
-nodes.date.addEventListener("change", applyFilters);
+nodes.date.addEventListener("change", handleDatePresetChange);
+nodes.dateFrom.addEventListener("change", handleCustomDateChange);
+nodes.dateTo.addEventListener("change", handleCustomDateChange);
 nodes.clear.addEventListener("click", clearFilters);
 nodes.businessOptions.addEventListener("change", handleFacetChange);
 nodes.regionOptions.addEventListener("change", handleFacetChange);
@@ -197,7 +201,13 @@ async function loadLeads() {
   try {
     const response = await callAction("bootstrap");
     const payload = response.data || {};
-    state.leads = Array.isArray(payload.leads) ? payload.leads : [];
+    state.leads = (Array.isArray(payload.leads) ? payload.leads : []).map(function (lead) {
+      return {
+        ...lead,
+        interestedIn: window.LeadStudioList.canonicalInterestValue(lead.interestedIn),
+        jiraIssueUrl: canonicalJiraUrl(lead.jiraIssueKey, lead.jiraIssueUrl)
+      };
+    });
     nodes.viewer.textContent = formatViewer(payload.authorization);
     populateStatusFilter();
     populateFacetFilters();
@@ -255,6 +265,8 @@ function currentFilterOptions(overrides = {}) {
     status: nodes.status.value,
     onboarding: nodes.onboarding.value,
     days: nodes.date.value,
+    fromDate: nodes.dateFrom.value,
+    toDate: nodes.dateTo.value,
     businessTypes: state.filters.businessTypes,
     targetRegions: state.filters.targetRegions,
     interests: state.filters.interests,
@@ -276,7 +288,7 @@ function populateStatusFilter() {
 function populateFacetFilters() {
   renderFacetOptions(nodes.businessOptions, window.LeadStudioList.facetValues(state.leads, "businessType"), "businessTypes");
   renderFacetOptions(nodes.regionOptions, window.LeadStudioList.facetValues(state.leads, "targetRegion"), "targetRegions");
-  renderFacetOptions(nodes.interestOptions, window.LeadStudioList.facetValues(state.leads, "interestedIn"), "interests");
+  renderFacetOptions(nodes.interestOptions, window.LeadStudioList.interestOptions, "interests");
   syncFacetSummaries();
 }
 
@@ -387,6 +399,8 @@ function renderRows() {
 
 function renderTableRow(lead) {
   const row = document.createElement("tr");
+  row.className = "lead-row";
+  row.tabIndex = 0;
   row.append(
     cell(lead.emailDate || "-"),
     contactCell(lead),
@@ -398,6 +412,16 @@ function renderTableRow(lead) {
     statusCell(isComplete(lead.onboardingComplete) ? "Complete" : "Pending", isComplete(lead.onboardingComplete) ? "success" : ""),
     detailButtonCell(lead)
   );
+  row.addEventListener("click", (event) => {
+    if (!event.target.closest("a, button")) openDetails(lead);
+  });
+  row.addEventListener("keydown", (event) => {
+    if (event.target.closest("a, button")) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openDetails(lead);
+    }
+  });
   return row;
 }
 
@@ -506,7 +530,7 @@ function buildManualJiraEditor(lead) {
   const input = document.createElement("input");
   input.name = "issueKey";
   input.required = true;
-  input.placeholder = "SF-127 or https://.../browse/SF-127";
+  input.placeholder = "SF-127 or https://jira.at.semper7.net/browse/SF-127";
   input.value = lead.jiraIssueKey || "";
   const button = document.createElement("button");
   button.type = "submit";
@@ -574,9 +598,24 @@ function clearFilters() {
   nodes.status.value = "";
   nodes.onboarding.value = "";
   nodes.date.value = "";
+  nodes.dateFrom.value = "";
+  nodes.dateTo.value = "";
   Object.keys(state.filters).forEach((key) => { state.filters[key] = []; });
   document.querySelectorAll(".filter-options input:checked").forEach((input) => { input.checked = false; });
   syncFacetSummaries();
+  applyFilters();
+}
+
+function handleDatePresetChange() {
+  if (nodes.date.value) {
+    nodes.dateFrom.value = "";
+    nodes.dateTo.value = "";
+  }
+  applyFilters();
+}
+
+function handleCustomDateChange() {
+  if (nodes.dateFrom.value || nodes.dateTo.value) nodes.date.value = "";
   applyFilters();
 }
 
@@ -636,6 +675,12 @@ function statusMarkup(value) { return `<span class="status-pill${statusClass(val
 function safeHttpUrl(value) {
   if (!value) return false;
   try { const url = new URL(value); return url.protocol === "https:" || url.protocol === "http:"; } catch (_) { return false; }
+}
+
+function canonicalJiraUrl(issueKey, fallback) {
+  const key = String(issueKey || "").trim().toUpperCase();
+  if (!/^[A-Z][A-Z0-9]+-\d+$/.test(key)) return fallback || "";
+  return `${leadStudioConfig.jiraBrowserBaseUrl}/browse/${key}`;
 }
 function parseLeadDate(value) {
   if (!value) return null;

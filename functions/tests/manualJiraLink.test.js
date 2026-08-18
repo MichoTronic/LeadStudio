@@ -47,6 +47,7 @@ function options(fixture) {
     rowNumber: 2,
     actor: "admin@example.com",
     jiraBaseUrl: "https://gaming-universe.atlassian.net",
+    jiraBrowserBaseUrl: "https://jira.at.semper7.net",
     jiraIssueByKey: async function (key) { return { issueKey: key, status: "02 Qualified Lead" }; },
     now: new Date("2026-08-17T10:02:00Z"),
     timeZone: "Europe/Ljubljana"
@@ -64,7 +65,7 @@ test("updates only the manual Jira allowlist and replays without a second mutati
 
   assert.equal(result.restored, false);
   assert.equal(fixture.row[3], "SF-42");
-  assert.equal(fixture.row[4], "https://gaming-universe.atlassian.net/browse/SF-42");
+  assert.equal(fixture.row[4], "https://jira.at.semper7.net/browse/SF-42");
   assert.equal(fixture.row[5], "manual");
   assert.equal(fixture.row[6], "Yes");
   assert.equal(fixture.row[8], "02 Qualified Lead");
@@ -82,7 +83,7 @@ test("updates only the manual Jira allowlist and replays without a second mutati
   assert.equal(fixture.updates.length, 1);
 });
 
-test("accepts a configured Atlassian browse URL and rejects unrelated URLs", async function () {
+test("accepts API and canonical browser Jira URLs and rejects unrelated URLs", async function () {
   var fixture = createFixture();
   var prepared = await manualJira.prepareManualJiraLink(options(fixture));
   await manualJira.executeManualJiraLink(Object.assign(options(fixture), {
@@ -91,9 +92,10 @@ test("accepts a configured Atlassian browse URL and rejects unrelated URLs", asy
     expectedVersion: prepared.rowVersion
   }));
   assert.equal(fixture.row[3], "SF-77");
-  assert.equal(fixture.row[4], "https://gaming-universe.atlassian.net/browse/SF-77");
-  assert.equal(manualJira.normalizeManualIssueKey("https://example.com/browse/SF-77", "https://gaming-universe.atlassian.net"), "");
-  assert.equal(manualJira.normalizeManualIssueKey("https://gaming-universe.atlassian.net/issues/SF-77", "https://gaming-universe.atlassian.net"), "");
+  assert.equal(fixture.row[4], "https://jira.at.semper7.net/browse/SF-77");
+  assert.equal(manualJira.normalizeManualIssueKey("https://jira.at.semper7.net/browse/SF-268", "https://gaming-universe.atlassian.net", "https://jira.at.semper7.net"), "SF-268");
+  assert.equal(manualJira.normalizeManualIssueKey("https://example.com/browse/SF-77", "https://gaming-universe.atlassian.net", "https://jira.at.semper7.net"), "");
+  assert.equal(manualJira.normalizeManualIssueKey("https://jira.at.semper7.net/issues/SF-77", "https://gaming-universe.atlassian.net", "https://jira.at.semper7.net"), "");
 });
 
 test("restores the exact original row after a manual Jira acceptance round trip", async function () {
@@ -144,5 +146,7 @@ test("rejects stale rows and missing Jira issues without mutating", async functi
 test("formats Ljubljana timestamps and accepts only the Atlassian base URL", function () {
   assert.equal(manualJira.formatSheetTimestamp(new Date("2026-08-17T10:02:00Z"), "Europe/Ljubljana"), "2026-08-17 12:02");
   assert.equal(manualJira.buildJiraUrl("https://gaming-universe.atlassian.net", "SF-7"), "https://gaming-universe.atlassian.net/browse/SF-7");
+  assert.equal(manualJira.buildJiraBrowserUrl("https://jira.at.semper7.net", "SF-7"), "https://jira.at.semper7.net/browse/SF-7");
   assert.throws(function () { manualJira.buildJiraUrl("https://example.com", "SF-7"); });
+  assert.throws(function () { manualJira.buildJiraBrowserUrl("https://example.com", "SF-7"); });
 });

@@ -27,6 +27,9 @@ var leadStudioServiceAccountEmail = params.defineString("LEAD_STUDIO_SERVICE_ACC
 var leadStudioJiraBaseUrl = params.defineString("LEAD_STUDIO_JIRA_BASE_URL", {
   default: "https://gaming-universe.atlassian.net"
 });
+var leadStudioJiraBrowserBaseUrl = params.defineString("LEAD_STUDIO_JIRA_BROWSER_BASE_URL", {
+  default: "https://jira.at.semper7.net"
+});
 var leadStudioJiraEmail = params.defineString("LEAD_STUDIO_JIRA_EMAIL", {
   default: "mitja@timelesstech.io"
 });
@@ -508,6 +511,7 @@ exports.leadStudioManualJiraV4 = functions.onCall({
       expectedVersion: data.expectedVersion,
       issueKey: data.issueKey,
       jiraBaseUrl: leadStudioJiraBaseUrl.value(),
+      jiraBrowserBaseUrl: leadStudioJiraBrowserBaseUrl.value(),
       jiraIssueByKey: function (issueKey) {
         return jiraClient.loadJiraIssueByKey({
           baseUrl: leadStudioJiraBaseUrl.value(),

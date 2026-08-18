@@ -37,7 +37,11 @@ async function executeManualJiraLink(options) {
   var idempotencyKey = normalize(options && options.idempotencyKey);
   var expectedVersion = normalize(options && options.expectedVersion);
   var actor = normalize(options && options.actor).toLowerCase();
-  var issueKey = normalizeManualIssueKey(options && options.issueKey, options && options.jiraBaseUrl);
+  var issueKey = normalizeManualIssueKey(
+    options && options.issueKey,
+    options && options.jiraBaseUrl,
+    options && options.jiraBrowserBaseUrl
+  );
   if (!/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) throw codedError("invalid-argument", "A valid idempotency key is required.");
   if (!/^[a-f0-9]{64}$/.test(expectedVersion)) throw codedError("invalid-argument", "A valid expected row version is required.");
   if (!actor) throw codedError("invalid-argument", "An authenticated actor is required.");
@@ -80,7 +84,7 @@ async function executeManualJiraLink(options) {
   var timestamp = formatSheetTimestamp(options.now || new Date(), options.timeZone || "Europe/Ljubljana");
   var target = {
     "Jira Issue Key": issueKey,
-    "Jira Issue URL": buildJiraUrl(options.jiraBaseUrl, issueKey),
+    "Jira Issue URL": buildJiraBrowserUrl(options.jiraBrowserBaseUrl || options.jiraBaseUrl, issueKey),
     "Jira Match Source": "manual",
     "Onboarding Complete": "Yes",
     "Last Checked": timestamp,
@@ -243,6 +247,19 @@ function buildJiraUrl(baseUrl, issueKey) {
   return `${parsed.origin}/browse/${issueKey}`;
 }
 
+function buildJiraBrowserUrl(baseUrl, issueKey) {
+  var parsed;
+  try { parsed = new URL(normalize(baseUrl)); } catch (_) { throw codedError("failed-precondition", "The Jira browser URL is invalid."); }
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.pathname !== "/") {
+    throw codedError("failed-precondition", "The Jira browser URL is invalid.");
+  }
+  var hostname = parsed.hostname.toLowerCase();
+  if (hostname !== "jira.at.semper7.net" && !hostname.endsWith(".atlassian.net")) {
+    throw codedError("failed-precondition", "The Jira browser URL is invalid.");
+  }
+  return `${parsed.origin}/browse/${issueKey}`;
+}
+
 function formatSheetTimestamp(date, timeZone) {
   var parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: timeZone,
@@ -264,22 +281,24 @@ function normalizeIssueKey(value) {
   return match ? match[0] : "";
 }
 
-function normalizeManualIssueKey(value, baseUrl) {
+function normalizeManualIssueKey(value, baseUrl, browserBaseUrl) {
   var raw = normalize(value);
   var direct = normalizeIssueKey(raw);
   if (direct) return direct;
 
   var candidate;
-  var configured;
+  var allowedOrigins;
   try {
     candidate = new URL(raw);
-    configured = new URL(normalize(baseUrl));
+    allowedOrigins = [baseUrl, browserBaseUrl].filter(Boolean).map(function (value) {
+      return new URL(normalize(value)).origin;
+    });
   } catch (_) {
     return "";
   }
   if (
     candidate.protocol !== "https:" ||
-    candidate.origin !== configured.origin ||
+    !allowedOrigins.includes(candidate.origin) ||
     candidate.username ||
     candidate.password
   ) {
@@ -318,6 +337,7 @@ function normalize(value) {
 
 module.exports = {
   WRITE_FIELDS,
+  buildJiraBrowserUrl,
   buildJiraUrl,
   executeManualJiraLink,
   formatSheetTimestamp,

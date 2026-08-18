@@ -22,7 +22,7 @@ Current status source of truth for Lead Studio.
 - Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00003-sup`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled
 - Firebase Hosting mode: preview; central Auth policy `studioPolicies/lead-studio`
 - Firebase write acceptance: `leadStudioWriteAcceptanceV4` revision `leadstudiowriteacceptancev4-00005-bey`, disabled by configuration and bound to dedicated `lead-studio-writer@timeless-lead-studio.iam.gserviceaccount.com`
-- Firebase manual Jira pilot: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00008-yil`, signed key-based preview QA passed, issue-key/configured Jira browse-URL input enabled, operational gate enabled, acceptance gate disabled, editor visible only in the preview release, dedicated writer identity
+- Firebase manual Jira pilot: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00009-rof`, signed key-based preview QA passed, issue-key/API-host/custom-browser-host input enabled, canonical `jira.at.semper7.net` links stored, operational gate enabled, acceptance gate disabled, editor visible only in the preview release, dedicated writer identity
 - Firebase writer serialization: private `timeless-lead-studio-writer-locks` bucket with atomic object-generation acquisition shared by scheduled refresh, callable refresh, Notes acceptance, and manual Jira mutation paths
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
 - Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; scheduled synchronization is operational
@@ -75,6 +75,7 @@ Current status source of truth for Lead Studio.
 - 2026-08-18: Observed the first natural 06:00 Europe/Ljubljana Firebase Scheduler run. Revision `leadstudioscheduledrefreshv4-00003-sup` returned HTTP 200 in 15.4 seconds, changed 55 existing rows, appended one new lead, and updated two onboarding-notice matches. `Debug Log` rows 1592-1593 contain STARTED/COMPLETE with `restored: false`, and no retry or error occurred.
 - 2026-08-18: Accepted signed manual Jira preview QA after a successful same-key save on row 6. `Debug Log` rows 1594-1595 contain STARTED/COMPLETE with `restored: false`. Fixed the reported compressed Jira-key field by replacing the form's conflicting flex sizing with stable desktop and mobile grids, then redeployed the preview.
 - 2026-08-18: Restored core GAS list parity in the Firebase preview: All leads and clickable lifecycle metrics, multi-select Business type / Target region / Interested in facets, Date and Company sorting, and Inquiry in the contact dialog. The manual Jira editor now accepts either a key or a full HTTPS `/browse/KEY` URL from the configured Atlassian tenant and stores the canonical key/link; unrelated origins and paths are rejected. Revisions `leadstudioactionv4-00015-yoy` and `leadstudiomanualjirav4-00008-yil` are active, preview version `397c4a870f889c09` is released, and all 62 automated checks pass. Production Hosting and GAS v60 were unchanged.
+- 2026-08-18: Reconciled the old Jira host split: API calls remain on `gaming-universe.atlassian.net`, while pasted and stored browser links use `jira.at.semper7.net`. Added a fixed five-product Interested in vocabulary with alias matching (`Turnkey Solution` maps to White Label and unrelated historical text maps to blank display), inclusive custom From/To date filtering, Console-aligned blue accents, and row-wide desktop detail opening. Manual Jira revision `leadstudiomanualjirav4-00009-rof` and preview version `059e8e6ecb556666` are active; all 64 automated checks pass. Historical Sheet/Form rows, the Form connection, production Hosting, GAS v60, and Scheduler ownership were unchanged.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -118,7 +119,7 @@ Current status source of truth for Lead Studio.
 
 - Firebase Scheduler is the sole automatic refresh writer. GAS v60 still exposes manual refresh controls as a rollback path, so operators must not use them while the Firebase schedule is active.
 - The first natural 06:00 Firebase scheduled run passed on 2026-08-18. Continue normal monitoring through the planned Operations visibility work.
-- Filtered exports and key-based manual Jira linking have passed Firebase acceptance and signed preview QA. Browse-URL input plus the restored Inquiry/filter/sort UI need one signed operator pass before final promotion planning. The endpoint/editor remain enabled only in the preview release; GAS continues to provide the manual rollback workflow until Hosting promotion.
+- Filtered exports and key-based manual Jira linking have passed Firebase acceptance and signed preview QA. The canonical custom-host Jira URL, five-product normalization, custom dates, row interaction, and blue styling need one signed operator pass before final promotion planning. The endpoint/editor remain enabled only in the preview release; GAS continues to provide the manual rollback workflow until Hosting promotion.
 - The Hosting preview expires on 2026-08-31 unless renewed or replaced. Production Hosting has not been promoted.
 - The source Sheet is currently readable by link, matching its pre-migration state. Tightening Drive sharing should be a separate reviewed data-access change after a dedicated runtime identity can be granted access.
 - `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
@@ -199,10 +200,17 @@ V4 owns the operational daily refresh and continues to serve its Hosting preview
 Next controlled slices:
 
 - Continue monitoring daily Scheduler runs; the first natural 06:00 run and COMPLETE audit passed on 2026-08-18.
-- Complete signed operator QA for Jira browse-URL input, Inquiry, All leads, facets, and Date/Company sorting.
+- Complete signed operator QA for the canonical Jira browse URL, fixed Interested in normalization, custom dates, Inquiry, All leads, facets, Date/Company sorting, row opening, and responsive blue styling.
 - Add bounded Debug Log reads, refresh duration, and scheduled-failure visibility to Operations.
 - Promote the Hosting/Console tile only after final production QA and rollback review.
 - Enable the already accepted Firebase manual Jira workflow only as part of the UI promotion, then retire the equivalent GAS write path.
+
+### V4 GAS Parity Decisions
+
+- Retained: secure list load, view refresh, lifecycle metrics, search, canonical attribute filters, preset/custom dates, Date/Company sorting, filtered CSV/XLSX export, contact details, manual Jira editing, responsive cards, and keyboard-accessible row opening.
+- Replaced: the GAS automatic/manual refresh model is owned by the single Firebase Scheduler and audited Firebase writer; no second refresh writer is exposed in the preview.
+- Intentionally excluded: raw Gmail IDs, message bodies, phone/address fields, setup/service-account details, and direct smoke-test buttons remain outside normal browser responses.
+- Deferred Operations UI: bounded Debug Log status, duration, and failure alerts remain planned; current diagnostics stay settings-authorized and non-user-facing.
 
 ### V4 Write Safety Contract
 

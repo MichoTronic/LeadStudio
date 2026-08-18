@@ -41,3 +41,21 @@ test("sorts companies and builds deduplicated multi-value facets", function () {
   assert.deepEqual(list.facetValues(LEADS, "targetRegion"), ["Asia", "LATAM", "ROW"]);
   assert.deepEqual(list.facetValues(LEADS, "interestedIn"), ["Bonus Engine", "Other", "White Label"]);
 });
+
+test("normalizes only the supported Interested in products and drops unrelated legacy text", function () {
+  assert.equal(list.canonicalInterestValue("turnkey solution; bonus_engine_gamification"), "Bonus Engine, White Label");
+  assert.equal(list.canonicalInterestValue("game aggregator and betting exchange"), "Game Aggregator, BetExchange");
+  assert.equal(list.canonicalInterestValue("1x2 Gaming"), "");
+  assert.deepEqual(list.interestOptions, ["Game Aggregator", "Bonus Engine", "White Label", "BetExchange", "Other"]);
+});
+
+test("filters an inclusive custom date range and lets it override a preset", function () {
+  var result = list.filterLeads(LEADS, {
+    fromDate: "2026-08-11",
+    toDate: "2026-08-15",
+    days: 7,
+    now: new Date("2026-08-18T12:00:00Z").getTime(),
+    statusMap: STATUS_MAP
+  });
+  assert.deepEqual(result.map(function (lead) { return lead.rowNumber; }), [4]);
+});
