@@ -6,7 +6,7 @@ var leadStudio = require("../src/leadStudio");
 
 var HEADERS = [
   "Email Date", "Name", "Last Name", "Contact Email", "Phone", "Address",
-  "Business Type", "Company Name", "Interested in", "Full Body", "Gmail Message ID",
+  "Business Type", "Company Name", "Interested in", "Inquiry", "Full Body", "Gmail Message ID",
   "Jira Issue Key", "Jira Status", "Onboarding Complete", "Last Jira Check", "Last Checked",
   "Jira Issue URL", "Lead Status", "Target Region"
 ];
@@ -14,7 +14,7 @@ var HEADERS = [
 test("maps only the approved browser fields", function () {
   var row = [
     "2026-08-17", "Ada", "Lovelace", "ada@example.com", "+386 1", "Private address",
-    "Operator", "Analytical Engines", "Platform", "private body", "gmail-secret",
+    "Operator", "Analytical Engines", "Platform", "Please contact me", "private body", "gmail-secret",
     "MKT-42", "In Progress", "Y", "2026-08-17", "2026-08-17",
     "https://jira.example/MKT-42", "Qualified", "EMEA"
   ];
@@ -23,6 +23,7 @@ test("maps only the approved browser fields", function () {
   assert.equal(mapped.rowNumber, 12);
   assert.equal(mapped.companyName, "Analytical Engines");
   assert.equal(mapped.contactEmail, "ada@example.com");
+  assert.equal(mapped.inquiry, "Please contact me");
   assert.equal(mapped.phone, undefined);
   assert.equal(mapped.address, undefined);
   assert.equal(mapped.fullBody, undefined);

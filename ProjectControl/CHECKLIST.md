@@ -72,6 +72,10 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [ ] Review table density and column order after the first real user feedback round.
 - [ ] Add clearer empty/error states for missing Jira credentials, Gmail delegation failure, and onboarding sheet access failure.
 - [x] Verify Firebase CSV/XLSX export output for filtered rows, Jira links, quoting, and special characters.
+- [x] Restore Firebase All leads and lifecycle metric filtering with New lead results aligned to the GAS lifecycle rule.
+- [x] Restore multi-select Business type, Target region, and Interested in filters in the Firebase preview.
+- [x] Restore Date and Company sorting in the Firebase preview.
+- [x] Show the authorized Inquiry field in Firebase contact details while keeping private message/body fields out of browser responses.
 - [ ] Consider saving active filter/search state between sessions if repeated use needs it.
 
 ## Operations
@@ -148,6 +152,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Exercise the operational Firebase manual Jira path on row 6 with its existing issue key and verify idempotent replay, then return both gates/editor to disabled.
 - [x] Add shared serialization between manual Jira writes and the scheduled whole-Sheet writer before enabling the editor operationally.
 - [x] Complete signed browser QA for the Firebase manual Jira editor and correct its desktop/mobile field layout after operator acceptance.
+- [x] Accept either a Jira issue key or a configured Atlassian HTTPS browse URL in the Firebase manual editor; reject unrelated hosts and paths.
+- [ ] Run signed operator QA for Jira browse-URL input, Inquiry display, All leads, facet filters, and Date/Company sorting.
 - [ ] Run live QA for Deep Refresh Jira Matches.
 - [ ] Review web app access settings before broader team/external use.
 - [ ] Review whether setup/test endpoint functions should remain present or be removed entirely.

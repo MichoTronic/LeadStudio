@@ -8,7 +8,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://timeless-studio-auth.web.app" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=4.0.3">
+  <link rel="stylesheet" href="/styles.css?v=4.0.4">
 </head>
 <body class="auth-locked">
   <section class="auth-gate" aria-live="polite">
@@ -42,11 +42,12 @@
     </header>
 
     <section class="metric-band" aria-label="Lead overview">
-      <div class="metric"><span>New lead</span><strong id="metric-new">0</strong></div>
-      <div class="metric"><span>Qualified</span><strong id="metric-qualified">0</strong></div>
-      <div class="metric"><span>Active</span><strong id="metric-active">0</strong></div>
-      <div class="metric"><span>Not active</span><strong id="metric-inactive">0</strong></div>
-      <div class="metric"><span>Onboarded</span><strong id="metric-onboarded">0</strong></div>
+      <button class="metric" type="button" data-metric-filter="" aria-pressed="true"><span>All leads</span><strong id="metric-all">0</strong></button>
+      <button class="metric" type="button" data-metric-filter="lead" aria-pressed="false"><span>New lead</span><strong id="metric-new">0</strong></button>
+      <button class="metric" type="button" data-metric-filter="qualified leads" aria-pressed="false"><span>Qualified</span><strong id="metric-qualified">0</strong></button>
+      <button class="metric" type="button" data-metric-filter="active" aria-pressed="false"><span>Active</span><strong id="metric-active">0</strong></button>
+      <button class="metric" type="button" data-metric-filter="not active" aria-pressed="false"><span>Not active</span><strong id="metric-inactive">0</strong></button>
+      <button class="metric" type="button" data-metric-filter="onboarded" aria-pressed="false"><span>Onboarded</span><strong id="metric-onboarded">0</strong></button>
     </section>
 
     <section class="workspace">
@@ -63,7 +64,7 @@
               <button id="export-xlsx-button" type="button"><i data-lucide="sheet"></i><span>Download XLSX</span></button>
             </div>
           </details>
-          <span class="mode-badge">Read only</span>
+          <span class="mode-badge">Preview</span>
         </div>
       </header>
 
@@ -96,6 +97,20 @@
         </label>
         <button id="clear-filters" class="icon-button" type="button" title="Clear filters" aria-label="Clear filters"><i data-lucide="filter-x"></i></button>
       </div>
+      <div class="facet-filters" aria-label="Contact attributes">
+        <details class="filter-menu">
+          <summary id="business-filter-summary">Business type</summary>
+          <div id="business-filter-options" class="filter-options"></div>
+        </details>
+        <details class="filter-menu">
+          <summary id="region-filter-summary">Target region</summary>
+          <div id="region-filter-options" class="filter-options"></div>
+        </details>
+        <details class="filter-menu">
+          <summary id="interest-filter-summary">Interested in</summary>
+          <div id="interest-filter-options" class="filter-options"></div>
+        </details>
+      </div>
 
       <p id="error-banner" class="error-banner" hidden></p>
       <div id="loading-state" class="loading-state"><span class="spinner" aria-hidden="true"></span>Loading contacts</div>
@@ -103,7 +118,7 @@
 
       <div id="desktop-table" class="table-wrap" hidden>
         <table>
-          <thead><tr><th>Date</th><th>Contact</th><th>Company</th><th>Region</th><th>Interest</th><th>Status</th><th>Jira</th><th>Onboarding</th><th><span class="sr-only">Details</span></th></tr></thead>
+          <thead><tr><th data-sort-header="emailDate" aria-sort="descending"><button class="sort-button" type="button" data-sort-field="emailDate"><span>Date</span><i data-lucide="arrow-down"></i></button></th><th>Contact</th><th data-sort-header="companyName" aria-sort="none"><button class="sort-button" type="button" data-sort-field="companyName"><span>Company</span><i data-lucide="arrow-up-down"></i></button></th><th>Region</th><th>Interest</th><th>Status</th><th>Jira</th><th>Onboarding</th><th><span class="sr-only">Details</span></th></tr></thead>
           <tbody id="lead-table-body"></tbody>
         </table>
       </div>
@@ -122,6 +137,7 @@
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
   <script src="https://timeless-studio-auth.web.app/studio-sso-client.js"></script>
   <script src="/export-utils.js?v=4.0.1"></script>
-  <script type="module" src="/app.js?v=4.0.16"></script>
+  <script src="/lead-list-utils.js?v=4.0.1"></script>
+  <script type="module" src="/app.js?v=4.0.17"></script>
 </body>
 </html>

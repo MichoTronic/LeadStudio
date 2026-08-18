@@ -41,6 +41,15 @@ const state = {
   authState: null,
   leads: [],
   visible: [],
+  filters: {
+    businessTypes: [],
+    targetRegions: [],
+    interests: []
+  },
+  sort: {
+    field: "emailDate",
+    direction: "desc"
+  },
   started: false,
   busy: false
 };
@@ -58,6 +67,15 @@ const nodes = {
   onboarding: document.getElementById("onboarding-filter"),
   date: document.getElementById("date-filter"),
   clear: document.getElementById("clear-filters"),
+  businessOptions: document.getElementById("business-filter-options"),
+  businessSummary: document.getElementById("business-filter-summary"),
+  regionOptions: document.getElementById("region-filter-options"),
+  regionSummary: document.getElementById("region-filter-summary"),
+  interestOptions: document.getElementById("interest-filter-options"),
+  interestSummary: document.getElementById("interest-filter-summary"),
+  filterMenus: [...document.querySelectorAll(".filter-menu")],
+  sortButtons: [...document.querySelectorAll("[data-sort-field]")],
+  metricButtons: [...document.querySelectorAll("[data-metric-filter]")],
   exportMenu: document.getElementById("export-menu"),
   exportCsv: document.getElementById("export-csv-button"),
   exportXlsx: document.getElementById("export-xlsx-button"),
@@ -68,6 +86,7 @@ const nodes = {
   loading: document.getElementById("loading-state"),
   empty: document.getElementById("empty-state"),
   error: document.getElementById("error-banner"),
+  metricAll: document.getElementById("metric-all"),
   metricNew: document.getElementById("metric-new"),
   metricQualified: document.getElementById("metric-qualified"),
   metricActive: document.getElementById("metric-active"),
@@ -88,6 +107,11 @@ nodes.status.addEventListener("change", applyFilters);
 nodes.onboarding.addEventListener("change", applyFilters);
 nodes.date.addEventListener("change", applyFilters);
 nodes.clear.addEventListener("click", clearFilters);
+nodes.businessOptions.addEventListener("change", handleFacetChange);
+nodes.regionOptions.addEventListener("change", handleFacetChange);
+nodes.interestOptions.addEventListener("change", handleFacetChange);
+nodes.sortButtons.forEach((button) => button.addEventListener("click", () => toggleSort(button.dataset.sortField)));
+nodes.metricButtons.forEach((button) => button.addEventListener("click", () => applyMetricFilter(button.dataset.metricFilter)));
 nodes.exportCsv.addEventListener("click", () => exportVisible("csv"));
 nodes.exportXlsx.addEventListener("click", () => exportVisible("xlsx"));
 nodes.dialogClose.addEventListener("click", () => nodes.dialog.close());
@@ -96,6 +120,9 @@ nodes.dialog.addEventListener("click", (event) => {
 });
 document.addEventListener("click", (event) => {
   if (nodes.exportMenu.open && !nodes.exportMenu.contains(event.target)) nodes.exportMenu.open = false;
+  nodes.filterMenus.forEach((menu) => {
+    if (menu.open && !menu.contains(event.target)) menu.open = false;
+  });
 });
 nodes.legacy.href = leadStudioConfig.legacyUrl;
 Object.defineProperty(window, "__leadStudioDiagnostics", {
@@ -173,7 +200,7 @@ async function loadLeads() {
     state.leads = Array.isArray(payload.leads) ? payload.leads : [];
     nodes.viewer.textContent = formatViewer(payload.authorization);
     populateStatusFilter();
-    renderMetrics();
+    populateFacetFilters();
     applyFilters();
   } catch (error) {
     state.started = false;
@@ -217,30 +244,24 @@ async function runManualJiraRoundTrip(idempotencyKey = crypto.randomUUID().repla
 }
 
 function applyFilters() {
-  const query = normalize(nodes.search.value);
-  const status = normalize(nodes.status.value);
-  const onboarding = nodes.onboarding.value;
-  const days = Number(nodes.date.value || 0);
-  const cutoff = days ? Date.now() - days * 86400000 : 0;
-
-  state.visible = state.leads.filter((lead) => {
-    const searchable = normalize([
-      lead.name, lead.lastName, lead.contactEmail, lead.companyName,
-      lead.businessType, lead.interestedIn, lead.targetRegion,
-      lead.leadStatus, lead.jiraStatus, lead.jiraIssueKey
-    ].join(" "));
-    if (query && !searchable.includes(query)) return false;
-    if (status && normalize(statusLabel(lead)) !== status) return false;
-    const complete = isComplete(lead.onboardingComplete);
-    if (onboarding === "complete" && !complete) return false;
-    if (onboarding === "pending" && complete) return false;
-    if (cutoff) {
-      const date = parseLeadDate(lead.emailDate);
-      if (!date || date.getTime() < cutoff) return false;
-    }
-    return true;
-  });
+  state.visible = window.LeadStudioList.filterAndSort(state.leads, currentFilterOptions());
+  renderMetrics();
   renderRows();
+}
+
+function currentFilterOptions(overrides = {}) {
+  return {
+    query: nodes.search.value,
+    status: nodes.status.value,
+    onboarding: nodes.onboarding.value,
+    days: nodes.date.value,
+    businessTypes: state.filters.businessTypes,
+    targetRegions: state.filters.targetRegions,
+    interests: state.filters.interests,
+    statusMap: STATUS_MAP,
+    sort: state.sort,
+    ...overrides
+  };
 }
 
 function populateStatusFilter() {
@@ -248,17 +269,107 @@ function populateStatusFilter() {
   const statuses = [...new Set(state.leads.map(statusLabel).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b));
   nodes.status.replaceChildren(new Option("All statuses", ""));
-  statuses.forEach((status) => nodes.status.add(new Option(status, normalize(status))));
+  statuses.forEach((status) => nodes.status.add(new Option(status === "Lead" ? "New lead" : status, normalize(status))));
   nodes.status.value = selected;
 }
 
+function populateFacetFilters() {
+  renderFacetOptions(nodes.businessOptions, window.LeadStudioList.facetValues(state.leads, "businessType"), "businessTypes");
+  renderFacetOptions(nodes.regionOptions, window.LeadStudioList.facetValues(state.leads, "targetRegion"), "targetRegions");
+  renderFacetOptions(nodes.interestOptions, window.LeadStudioList.facetValues(state.leads, "interestedIn"), "interests");
+  syncFacetSummaries();
+}
+
+function renderFacetOptions(container, values, filterName) {
+  const selected = new Set(state.filters[filterName].map(normalize));
+  state.filters[filterName] = state.filters[filterName].filter((value) => values.some((option) => normalize(option) === normalize(value)));
+  container.replaceChildren(...values.map((value) => {
+    const label = document.createElement("label");
+    label.className = "filter-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = value;
+    input.dataset.filter = filterName;
+    input.checked = selected.has(normalize(value));
+    const text = document.createElement("span");
+    text.textContent = value;
+    label.append(input, text);
+    return label;
+  }));
+}
+
+function handleFacetChange(event) {
+  const filterName = event.target?.dataset?.filter;
+  if (!filterName || !Object.hasOwn(state.filters, filterName)) return;
+  state.filters[filterName] = [...document.querySelectorAll(`input[data-filter="${filterName}"]:checked`)].map((input) => input.value);
+  syncFacetSummaries();
+  applyFilters();
+}
+
+function syncFacetSummaries() {
+  nodes.businessSummary.textContent = facetSummary("Business type", state.filters.businessTypes);
+  nodes.regionSummary.textContent = facetSummary("Target region", state.filters.targetRegions);
+  nodes.interestSummary.textContent = facetSummary("Interested in", state.filters.interests);
+}
+
+function facetSummary(label, values) {
+  return values.length ? `${label} (${values.length})` : label;
+}
+
 function renderMetrics() {
-  const buckets = state.leads.map((lead) => statusLabel(lead));
-  nodes.metricNew.textContent = String(state.leads.filter((lead, index) => buckets[index] === "Lead" && isLifecycleTracked(lead)).length);
+  const metricLeads = window.LeadStudioList.filterLeads(state.leads, currentFilterOptions({ status: "", onboarding: "" }));
+  const buckets = metricLeads.map((lead) => statusLabel(lead));
+  nodes.metricAll.textContent = String(metricLeads.length);
+  nodes.metricNew.textContent = String(metricLeads.filter((lead, index) => buckets[index] === "Lead" && isLifecycleTracked(lead)).length);
   nodes.metricQualified.textContent = String(buckets.filter((status) => status === "Qualified Leads").length);
   nodes.metricActive.textContent = String(buckets.filter((status) => status === "Active").length);
   nodes.metricInactive.textContent = String(buckets.filter((status) => status === "Not Active").length);
-  nodes.metricOnboarded.textContent = String(state.leads.filter((lead) => isComplete(lead.onboardingComplete)).length);
+  nodes.metricOnboarded.textContent = String(metricLeads.filter((lead) => isComplete(lead.onboardingComplete)).length);
+  syncMetricState();
+}
+
+function applyMetricFilter(filter) {
+  if (filter === "onboarded") {
+    nodes.status.value = "";
+    nodes.onboarding.value = "complete";
+  } else {
+    nodes.status.value = filter || "";
+    nodes.onboarding.value = "";
+  }
+  applyFilters();
+}
+
+function syncMetricState() {
+  const active = nodes.onboarding.value === "complete" && !nodes.status.value
+    ? "onboarded"
+    : nodes.status.value || (nodes.onboarding.value ? "__filtered" : "");
+  nodes.metricButtons.forEach((button) => {
+    const selected = button.dataset.metricFilter === active;
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
+
+function toggleSort(field) {
+  if (state.sort.field === field) state.sort.direction = state.sort.direction === "asc" ? "desc" : "asc";
+  else {
+    state.sort.field = field;
+    state.sort.direction = field === "emailDate" ? "desc" : "asc";
+  }
+  applyFilters();
+}
+
+function syncSortState() {
+  nodes.sortButtons.forEach((button) => {
+    const field = button.dataset.sortField;
+    const selected = field === state.sort.field;
+    const header = button.closest("th");
+    header.setAttribute("aria-sort", selected ? (state.sort.direction === "asc" ? "ascending" : "descending") : "none");
+    const icon = document.createElement("i");
+    icon.setAttribute("data-lucide", selected ? (state.sort.direction === "asc" ? "arrow-up" : "arrow-down") : "arrow-up-down");
+    button.querySelector("i, svg")?.replaceWith(icon);
+    button.classList.toggle("is-active", selected);
+  });
 }
 
 function renderRows() {
@@ -270,6 +381,7 @@ function renderRows() {
   nodes.table.hidden = !hasRows || state.busy;
   nodes.mobileList.hidden = !hasRows || state.busy;
   nodes.empty.hidden = hasRows || state.busy;
+  syncSortState();
   window.lucide?.createIcons();
 }
 
@@ -381,6 +493,7 @@ function openDetails(lead) {
     ["Submitted", lead.onboardingSubmittedAt], ["Last checked", lead.lastChecked]
   ];
   nodes.dialogContent.replaceChildren(...details.map(([label, value, url]) => detailNode(label, value, url)));
+  nodes.dialogContent.append(detailTextNode("Inquiry", lead.inquiry));
   if (leadStudioConfig.manualJiraEnabled) nodes.dialogContent.append(buildManualJiraEditor(lead));
   nodes.dialog.showModal();
 }
@@ -389,11 +502,11 @@ function buildManualJiraEditor(lead) {
   const form = document.createElement("form");
   form.className = "manual-jira-form";
   const label = document.createElement("label");
-  label.textContent = "Jira issue key";
+  label.textContent = "Jira issue key or URL";
   const input = document.createElement("input");
   input.name = "issueKey";
   input.required = true;
-  input.placeholder = "SF-127";
+  input.placeholder = "SF-127 or https://.../browse/SF-127";
   input.value = lead.jiraIssueKey || "";
   const button = document.createElement("button");
   button.type = "submit";
@@ -450,11 +563,20 @@ function detailNode(label, value, url) {
   return item;
 }
 
+function detailTextNode(label, value) {
+  const item = detailNode(label, value);
+  item.classList.add("detail-wide");
+  return item;
+}
+
 function clearFilters() {
   nodes.search.value = "";
   nodes.status.value = "";
   nodes.onboarding.value = "";
   nodes.date.value = "";
+  Object.keys(state.filters).forEach((key) => { state.filters[key] = []; });
+  document.querySelectorAll(".filter-options input:checked").forEach((input) => { input.checked = false; });
+  syncFacetSummaries();
   applyFilters();
 }
 

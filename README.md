@@ -1,6 +1,6 @@
 # Timeless Tech Lead Studio
 
-Google Apps Script web app for tracking marketing contact-form leads, onboarding submissions, and Jira lifecycle status.
+Lead management studio for tracking marketing contact-form leads, onboarding submissions, and Jira lifecycle status. Firebase V4 owns the operational refresh and preview; Google Apps Script version 60 is the rollback UI.
 
 ## Start Here
 
@@ -52,10 +52,10 @@ Folder identity:
 - Lead parsing supports current `New Contact`, old `Contact Form (TLT-Webpage-*)`, and legacy `Form submission from:` email formats.
 - Onboarding status comes from Gmail onboarding notices plus the onboarding request spreadsheet.
 - Firebase stores the rotated Jira token in Secret Manager and owns scheduled status synchronization. It reads the Form-linked onboarding Sheet without modifying its Google Form response connection.
-- Function revision `leadstudioactionv4-00014-jek` and disabled callable writer `leadstudiorefreshv4-00006-kab` share one canonical, PII-minimized refresh planner. The 69-row write/verify/restore/replay acceptance passed exactly. Scheduled writer `leadstudioscheduledrefreshv4-00003-sup` then persisted the same plan and verified its final 302-row snapshot hash.
+- Function revision `leadstudioactionv4-00015-yoy` and disabled callable writer `leadstudiorefreshv4-00006-kab` share one canonical, PII-minimized refresh planner. The 69-row write/verify/restore/replay acceptance passed exactly. Scheduled writer `leadstudioscheduledrefreshv4-00003-sup` then persisted the same plan and verified its final 302-row snapshot hash.
 - Firebase write acceptance is isolated in `leadStudioWriteAcceptanceV4`, requires central settings authorization, uses optimistic row versions and idempotency keys, and audits only metadata to `Debug Log`. Its dedicated writer service account has Sheet Editor access; the normal runtime remains Viewer. The endpoint is deployed disabled at revision `leadstudiowriteacceptancev4-00005-bey` after a successful write/verify/restore/replay test.
 - All Firebase mutation paths share an atomic generation-checked lock in the private `timeless-lead-studio-writer-locks` bucket. The lock has bounded waiting, exact-generation release, and stale-lock recovery so manual commands cannot overlap the scheduled whole-Sheet refresh.
-- The Firebase preview exports its currently filtered contacts as CSV or XLSX with the legacy visible-column contract. `leadStudioManualJiraV4` ports manual Jira linking behind separate operational/acceptance gates on the dedicated writer identity. Reversible acceptance, same-key operational replay, and signed preview QA passed. The editor remains enabled in the preview, its acceptance gate remains disabled, and GAS v60 remains the manual rollback UI.
+- The Firebase preview exports its currently filtered contacts as CSV or XLSX with the legacy visible-column contract. It includes All leads and lifecycle metric filters, Business type / Target region / Interested in facets, Date and Company sorting, and Inquiry in contact details. `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00008-yil` accepts either an issue key or an HTTPS browse URL on the configured Atlassian tenant. Reversible acceptance, same-key operational replay, and signed preview QA passed. The editor remains enabled in the preview, its acceptance gate remains disabled, and GAS v60 remains the manual rollback UI.
 - Jira lifecycle buckets are mapped in `Config.js`.
 - The app reads and updates lead status; it does not create Jira issues.
 - Manual Jira issue linking is supported from the lead detail UI.
@@ -80,7 +80,7 @@ Current operational baseline: Firebase V4 owns the daily refresh; GAS `V3` versi
 - V3 completion review reports: `Reports/2026_06_22_Phase_V3_*`
 - V3 decision: `GO WITH CONDITIONS`
 
-The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing lead and Form-linked onboarding Sheets after central Auth, supports filtered exports, and shares the production refresh planner. Its manual Jira editor passed signed QA and remains enabled in the preview; all acceptance and callable refresh gates remain disabled. The dedicated 06:00 Scheduler remains the only automatic writer; its first natural run passed on 2026-08-18. GAS v60 has no trigger and must be treated as rollback-only for refreshes.
+The current Firebase preview is `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`; it reads the existing lead and Form-linked onboarding Sheets after central Auth, restores the core GAS list/filter/sort workflow, supports filtered exports, and shares the production refresh planner. Its manual Jira editor passed signed QA and remains enabled in the preview; all acceptance and callable refresh gates remain disabled. The dedicated 06:00 Scheduler remains the only automatic writer; its first natural run passed on 2026-08-18. GAS v60 has no trigger and must be treated as rollback-only for refreshes.
 
 V3 hotfix on 2026-07-20: version `57` uses `noreply@timelesstech.io` as the current `New Contact` notice sender; run `Settings > Refresh Leads` to verify/backfill post-2026-06-21 form notices.
 
@@ -97,7 +97,7 @@ Shared auth cleanup on 2026-08-05: version `60` keeps browser calls protected wh
 - Add scheduled-refresh failure alerting.
 - Add Gmail scan performance counters and controls.
 - Add sheet-write smoke tests.
-- Run a live QA pass for Refresh Leads, exports, manual Jira save, and Deep Refresh Jira Matches.
+- Run final signed preview QA for Jira browse-URL input, Inquiry display, All leads, facets, and sorting; Deep Refresh Jira Matches remains a later controlled slice.
 - Split large client utilities from `Script.html` only after more test coverage exists.
 
 ## Folder Layout

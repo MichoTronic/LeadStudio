@@ -25,6 +25,7 @@ var PUBLIC_FIELDS = Object.freeze({
   "Business Type": "businessType",
   "Company Name": "companyName",
   "Interested in": "interestedIn",
+  "Inquiry": "inquiry",
   "Language": "language",
   "Onboarding Sent": "onboardingSent",
   "Onboarding Sent At": "onboardingSentAt",

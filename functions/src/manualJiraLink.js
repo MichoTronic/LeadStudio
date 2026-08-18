@@ -37,7 +37,7 @@ async function executeManualJiraLink(options) {
   var idempotencyKey = normalize(options && options.idempotencyKey);
   var expectedVersion = normalize(options && options.expectedVersion);
   var actor = normalize(options && options.actor).toLowerCase();
-  var issueKey = normalizeIssueKey(options && options.issueKey);
+  var issueKey = normalizeManualIssueKey(options && options.issueKey, options && options.jiraBaseUrl);
   if (!/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) throw codedError("invalid-argument", "A valid idempotency key is required.");
   if (!/^[a-f0-9]{64}$/.test(expectedVersion)) throw codedError("invalid-argument", "A valid expected row version is required.");
   if (!actor) throw codedError("invalid-argument", "An authenticated actor is required.");
@@ -264,6 +264,31 @@ function normalizeIssueKey(value) {
   return match ? match[0] : "";
 }
 
+function normalizeManualIssueKey(value, baseUrl) {
+  var raw = normalize(value);
+  var direct = normalizeIssueKey(raw);
+  if (direct) return direct;
+
+  var candidate;
+  var configured;
+  try {
+    candidate = new URL(raw);
+    configured = new URL(normalize(baseUrl));
+  } catch (_) {
+    return "";
+  }
+  if (
+    candidate.protocol !== "https:" ||
+    candidate.origin !== configured.origin ||
+    candidate.username ||
+    candidate.password
+  ) {
+    return "";
+  }
+  var match = candidate.pathname.match(/^\/browse\/([A-Za-z][A-Za-z0-9]+-\d+)\/?$/);
+  return match ? normalizeIssueKey(match[1]) : "";
+}
+
 function columnName(number) {
   var value = Number(number);
   var output = "";
@@ -296,6 +321,7 @@ module.exports = {
   buildJiraUrl,
   executeManualJiraLink,
   formatSheetTimestamp,
+  normalizeManualIssueKey,
   prepareManualJiraLink,
   rowVersion
 };

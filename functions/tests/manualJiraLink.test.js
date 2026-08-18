@@ -82,6 +82,20 @@ test("updates only the manual Jira allowlist and replays without a second mutati
   assert.equal(fixture.updates.length, 1);
 });
 
+test("accepts a configured Atlassian browse URL and rejects unrelated URLs", async function () {
+  var fixture = createFixture();
+  var prepared = await manualJira.prepareManualJiraLink(options(fixture));
+  await manualJira.executeManualJiraLink(Object.assign(options(fixture), {
+    issueKey: "https://gaming-universe.atlassian.net/browse/sf-77",
+    idempotencyKey: "manualjiraurl77",
+    expectedVersion: prepared.rowVersion
+  }));
+  assert.equal(fixture.row[3], "SF-77");
+  assert.equal(fixture.row[4], "https://gaming-universe.atlassian.net/browse/SF-77");
+  assert.equal(manualJira.normalizeManualIssueKey("https://example.com/browse/SF-77", "https://gaming-universe.atlassian.net"), "");
+  assert.equal(manualJira.normalizeManualIssueKey("https://gaming-universe.atlassian.net/issues/SF-77", "https://gaming-universe.atlassian.net"), "");
+});
+
 test("restores the exact original row after a manual Jira acceptance round trip", async function () {
   var fixture = createFixture();
   var original = fixture.row.slice();
