@@ -178,13 +178,14 @@ th:nth-child(1) { width: 92px; } th:nth-child(2) { width: 180px; } th:nth-child(
 .message-list { padding: 0 0 10px 14px; border-left: 2px solid rgba(91, 156, 255, 0.2); }
 .message-item { border-bottom: 1px solid var(--border); background: rgba(11, 18, 35, 0.28); }
 .message-item:last-child { border-bottom: 0; }
-.message-item > summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px; padding: 11px 12px; cursor: pointer; list-style: none; }
-.message-direction { min-width: 0; display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 0.72rem; }
+.message-item > summary { display: flex; flex-direction: column; gap: 5px; padding: 11px 12px; cursor: pointer; list-style: none; }
+.message-direction { width: 100%; min-width: 0; display: grid; grid-template-columns: 15px minmax(0, 1fr) auto; align-items: center; gap: 7px; color: var(--muted); font-size: 0.72rem; }
 .message-direction svg { width: 15px; height: 15px; flex: 0 0 15px; }
+.message-direction strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .message-item.is-incoming .message-direction { color: #9fc8ff; }
 .message-item.is-outgoing .message-direction { color: #9cf2b8; }
 .message-item.is-forwarded .message-direction { color: #d8b4fe; }
-.message-item time { color: var(--muted); font-size: 0.68rem; white-space: nowrap; }
+.message-direction time { color: var(--muted); font-size: 0.68rem; white-space: nowrap; }
 .message-subject { min-width: 0; overflow: hidden; font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
 .message-excerpt { min-width: 0; overflow: hidden; color: var(--muted); font-size: 0.72rem; text-overflow: ellipsis; white-space: nowrap; }
 .message-content { padding: 2px 12px 15px; }
@@ -240,7 +241,6 @@ th:nth-child(1) { width: 92px; } th:nth-child(2) { width: 180px; } th:nth-child(
   .activity-panel { padding-top: 14px; }
   .activity-header { padding-bottom: 12px; }
   .message-list { padding-left: 8px; }
-  .message-subject, .message-excerpt { grid-column: 1 / -1; }
 }
 
 @media (max-width: 560px) {

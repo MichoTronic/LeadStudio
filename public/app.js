@@ -719,7 +719,8 @@ function buildActivityMessage(message, expanded) {
   const excerpt = document.createElement("span");
   excerpt.className = "message-excerpt";
   excerpt.textContent = message.excerpt || "No plain-text content available.";
-  summary.append(direction, date, subject, excerpt);
+  direction.append(date);
+  summary.append(direction, subject, excerpt);
 
   const body = document.createElement("div");
   body.className = "message-content";
