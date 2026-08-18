@@ -6,6 +6,7 @@ var scheduler = require("firebase-functions/v2/scheduler");
 var logger = require("firebase-functions/logger");
 var params = require("firebase-functions/params");
 var jiraClient = require("./src/jiraClient");
+var gmailContactActivity = require("./src/gmailContactActivity");
 var leadStudio = require("./src/leadStudio");
 var manualJiraLink = require("./src/manualJiraLink");
 var onboardingSheet = require("./src/onboardingSheet");
@@ -178,6 +179,14 @@ exports.leadStudioActionV4 = functions.onCall({
           signJwt: signWorkspaceJwt,
           operational: true,
           timeZone: "Europe/Ljubljana"
+        });
+      },
+      gmailContactActivity: function (lead) {
+        return gmailContactActivity.loadContactActivity({
+          delegatedUser: leadStudioGmailUser.value(),
+          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
+          signJwt: signWorkspaceJwt,
+          lead: lead
         });
       },
       onboardingSheetProbe: async function () {

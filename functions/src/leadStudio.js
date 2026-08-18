@@ -14,6 +14,7 @@ var SETTINGS_ACTIONS = new Set([
 ]);
 var INTERNAL_FIELDS = Object.freeze({
   "Gmail Message ID": "gmailMessageId",
+  "Gmail Thread ID": "gmailThreadId",
   "Onboarding Message ID": "onboardingMessageId",
   "Onboarding Sheet Row": "onboardingSheetRow"
 });
@@ -97,6 +98,23 @@ async function runAction(request, dependencies) {
       mode: "read-only-pilot",
       leads: result.leads,
       metadata: result.metadata,
+      authorization: publicAuthorization(authorization)
+    };
+  }
+  if (action === "contactActivity") {
+    if (typeof dependencies.gmailContactActivity !== "function") {
+      throw new HttpsError("failed-precondition", "Lead Studio contact activity is not configured.");
+    }
+    var activityRowNumber = Number(data.rowNumber);
+    if (!Number.isInteger(activityRowNumber) || activityRowNumber < 2 || activityRowNumber > MAX_LEADS + 1) {
+      throw new HttpsError("invalid-argument", "A valid contact row is required.");
+    }
+    var activitySheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
+    var activityLead = activitySheetResult.leads.find(function (lead) { return lead.rowNumber === activityRowNumber; });
+    if (!activityLead) throw new HttpsError("not-found", "The contact could not be found.");
+    return {
+      mode: "read-only-contact-activity",
+      contactActivity: await dependencies.gmailContactActivity(activityLead),
       authorization: publicAuthorization(authorization)
     };
   }

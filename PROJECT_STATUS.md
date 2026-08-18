@@ -10,14 +10,14 @@ Current status source of truth for Lead Studio.
 - Storage: `Lead Studio Database` Google Sheet
 - Local folder: `D:\GoogleDrive\_Share\TimelessTech\Marketing\Optmizations\LeadStudio`
 - Parent Google Drive folder: `1keVmyWTXwqQM0cK5AWQzFPIKM7K7hyt1`
-- Current local code line: V3 source line, with toolbar stability, date filters, fixed table columns, operations status, smoke tests, endpoint hardening, and scheduled refresh helpers present
+- Current local code line: V4 Firebase pilot, with the dark Console UI, responsive lead workflow, protected Gmail contact activity, and the accepted Firebase scheduled-refresh runtime
 - Apps Script source root: `AppsScript/`
 - Official Version 1 checkpoint: Version 45
 - Current stable deployment: Version 60 - Auth phase cleanup
 - Current stable web app deployment ID: `AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA`
 - Firebase pilot preview: `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`
 - Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
-- Firebase pilot function revision: `leadstudioactionv4-00015-yoy`; canonical operational refresh planner plus authorized Inquiry display field deployed read-only
+- Firebase pilot function revision: `leadstudioactionv4-00016-dux`; canonical operational refresh planner plus authorized, read-only Gmail contact activity
 - Firebase refresh callable: `leadStudioRefreshV4` revision `leadstudiorefreshv4-00006-kab`, dedicated writer identity, one instance/concurrency, operational and acceptance gates disabled
 - Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00003-sup`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled
 - Firebase Hosting mode: preview; central Auth policy `studioPolicies/lead-studio`
@@ -43,7 +43,7 @@ Current status source of truth for Lead Studio.
 - Track onboarding-sent notices.
 - Match leads to onboarding submissions.
 - Read Jira issue status and map it into Lead Studio lifecycle buckets.
-- Show Jira links, lifecycle counters, All leads, GAS-parity facet filters, Date/Company sorting, Inquiry details, export actions, and manual Jira key-or-URL edits in the UI.
+- Show Jira links, lifecycle counters, All leads, GAS-parity facet filters, Date/Company sorting, Inquiry details, filtered exports, manual Jira key-or-URL edits, and bounded Gmail conversation activity in the UI.
 - Filter visible leads by Email Date using Last 7 days, Last 30 days, or a custom from/to range.
 - Support an owner-installed scheduled daily Refresh Leads job.
 
@@ -78,6 +78,7 @@ Current status source of truth for Lead Studio.
 - 2026-08-18: Reconciled the old Jira host split: API calls remain on `gaming-universe.atlassian.net`, while pasted and stored browser links use `jira.at.semper7.net`. Added a fixed five-product Interested in vocabulary with alias matching (`Turnkey Solution` maps to White Label and unrelated historical text maps to blank display), inclusive custom From/To date filtering, Console-aligned blue accents, and row-wide desktop detail opening. Manual Jira revision `leadstudiomanualjirav4-00009-rof` and preview version `059e8e6ecb556666` are active; all 64 automated checks pass. Historical Sheet/Form rows, the Form connection, production Hosting, GAS v60, and Scheduler ownership were unchanged.
 - 2026-08-18: Replaced the preview's light interface with the full dark navy Marketing Studio Console visual system across authentication, navigation, lifecycle metrics, filters, date controls, lead tables/cards, dialogs, Jira editing, and responsive states. Preview version `86ef5e4acc0bed48` is active and all 64 automated checks pass. This was a Hosting-preview-only visual release; Functions, production Hosting, Sheet/Form data, GAS v60, and Scheduler ownership were unchanged.
 - 2026-08-18: Adopted the Gmail API watch + Cloud Pub/Sub direction for near-real-time lead ingestion. The planned Function will consume incremental Gmail history under the existing writer lock and message-ID idempotency controls; a daily watch renewal and the 06:00 reconcile/Jira job remain for reliability. The active Gmail schedule was not changed in this step. Preview version `fea9e9cd86d3322e` now keeps desktop controls visible around a viewport-contained scrolling table with sticky headers and uses the canonical white-on-Console-blue Timeless Tech favicon; mobile retains its responsive contact-card layout.
+- 2026-08-18: Added protected, on-demand Gmail contact activity to the Firebase preview. `leadStudioActionV4` revision `leadstudioactionv4-00016-dux` resolves a browser-supplied Sheet row only after central read authorization, then combines the stored original thread, onboarding threads, and exact participant-matched related threads. The response is capped at eight conversations, 40 messages, and 12,000 plain-text characters per message; it excludes Gmail IDs and delegated tokens, strips quoted history/unsafe HTML, and does not persist message bodies. Preview version `650fe7b8fe125dc5` presents a wide two-panel desktop dialog and mobile `Details` / `Conversation` tabs with compact message accordions. All 68 automated checks pass, preview assets return HTTP 200, production Hosting was unchanged, and signed desktop/mobile conversation acceptance remains open.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -122,7 +123,7 @@ Current status source of truth for Lead Studio.
 - Firebase Scheduler is the sole automatic refresh writer. GAS v60 still exposes manual refresh controls as a rollback path, so operators must not use them while the Firebase schedule is active.
 - The first natural 06:00 Firebase scheduled run passed on 2026-08-18. Continue normal monitoring through the planned Operations visibility work.
 - Filtered exports and key-based manual Jira linking have passed Firebase acceptance and signed preview QA. The canonical custom-host Jira URL, five-product normalization, custom dates, row interaction, and full dark Console styling need one signed operator pass before final promotion planning. The endpoint/editor remain enabled only in the preview release; GAS continues to provide the manual rollback workflow until Hosting promotion.
-- The Hosting preview expires on 2026-08-31 unless renewed or replaced. Production Hosting has not been promoted.
+- The Hosting preview expires on 2026-09-01 unless renewed or replaced. Production Hosting has not been promoted.
 - The source Sheet is currently readable by link, matching its pre-migration state. Tightening Drive sharing should be a separate reviewed data-access change after a dedicated runtime identity can be granted access.
 - `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
 - Apps Script shows zero installed triggers. Do not reinstall its daily trigger unless explicitly rolling back and first disabling the Firebase scheduled-refresh gate.
@@ -212,7 +213,7 @@ Next controlled slices:
 
 - Retained: secure list load, view refresh, lifecycle metrics, search, canonical attribute filters, preset/custom dates, Date/Company sorting, filtered CSV/XLSX export, contact details, manual Jira editing, responsive cards, and keyboard-accessible row opening.
 - Replaced: the GAS automatic/manual refresh model is owned by the single Firebase Scheduler and audited Firebase writer; no second refresh writer is exposed in the preview.
-- Intentionally excluded: raw Gmail IDs, message bodies, phone/address fields, setup/service-account details, and direct smoke-test buttons remain outside normal browser responses.
+- Intentionally excluded: raw Gmail IDs, delegated tokens, phone/address fields, setup/service-account details, and direct smoke-test buttons remain outside browser responses. Sanitized Gmail message text is returned only by the authorized, on-demand contact-activity action and is not persisted by Lead Studio.
 - Deferred Operations UI: bounded Debug Log status, duration, and failure alerts remain planned; current diagnostics stay settings-authorized and non-user-facing.
 
 ### V4 Write Safety Contract

@@ -28,6 +28,7 @@ test("maps only the approved browser fields", function () {
   assert.equal(mapped.address, undefined);
   assert.equal(mapped.fullBody, undefined);
   assert.equal(mapped.gmailMessageId, undefined);
+  assert.equal(mapped.gmailThreadId, undefined);
 });
 
 test("loads non-empty leads and reports bounded metadata", async function () {
@@ -282,20 +283,70 @@ test("compares Gmail parser results by message ID without returning contact valu
   assert.equal(JSON.stringify(response.gmailLeadParity).includes("Example"), false);
 });
 
-test("keeps internal Gmail message IDs out of normal bootstrap responses", async function () {
-  var headers = Object.keys(leadStudio.PUBLIC_FIELDS).concat(["Gmail Message ID"]);
+test("keeps internal Gmail message and thread IDs out of normal bootstrap responses", async function () {
+  var headers = Object.keys(leadStudio.PUBLIC_FIELDS).concat(["Gmail Message ID", "Gmail Thread ID"]);
   var row = headers.map(function (header) {
     return ({
       "Contact Email": "lead@example.com",
       "Company Name": "Example",
       "Lead Status": "Lead",
-      "Gmail Message ID": "private-gmail-id"
+      "Gmail Message ID": "private-gmail-id",
+      "Gmail Thread ID": "private-thread-id"
     })[header] || "";
   });
   var result = await leadStudio.loadLeads({
     spreadsheets: { values: { get: async function () { return { data: { values: [headers, row] } }; } } }
   }, "sheet-1");
   assert.equal(result.leads[0].gmailMessageId, undefined);
+  assert.equal(result.leads[0].gmailThreadId, undefined);
+});
+
+test("loads protected contact activity by Sheet row with read scope", async function () {
+  var headers = Object.keys(leadStudio.PUBLIC_FIELDS).concat([
+    "Gmail Message ID", "Gmail Thread ID", "Onboarding Message ID"
+  ]);
+  var row = headers.map(function (header) {
+    return ({
+      "Email Date": "2026-08-17",
+      "Name": "Ada",
+      "Contact Email": "lead@example.com",
+      "Company Name": "Example",
+      "Lead Status": "Lead",
+      "Gmail Message ID": "private-gmail-id",
+      "Gmail Thread ID": "private-thread-id",
+      "Onboarding Message ID": "private-onboarding-id"
+    })[header] || "";
+  });
+  var capturedLead;
+  var response = await leadStudio.runAction({
+    data: { action: "contactActivity", studioAuthToken: "signed-token", rowNumber: 2 }
+  }, {
+    fetchImpl: async function (_url, request) {
+      assert.equal(JSON.parse(request.body).requiredScope, "read");
+      return { ok: true, json: async function () {
+        return { allowed: true, email: "viewer@example.com", role: "viewer", scopes: ["read"] };
+      } };
+    },
+    spreadsheetId: "sheet-1",
+    sheetsClient: {
+      spreadsheets: { values: { get: async function () {
+        return { data: { values: [headers, row] } };
+      } } }
+    },
+    gmailContactActivity: async function (lead) {
+      capturedLead = lead;
+      return { conversationCount: 1, messageCount: 2, conversations: [{ key: "conversation-1", messages: [] }] };
+    }
+  });
+
+  assert.equal(capturedLead.rowNumber, 2);
+  assert.equal(capturedLead.gmailMessageId, "private-gmail-id");
+  assert.equal(capturedLead.gmailThreadId, "private-thread-id");
+  assert.equal(capturedLead.onboardingMessageId, "private-onboarding-id");
+  assert.equal(response.mode, "read-only-contact-activity");
+  assert.equal(response.contactActivity.messageCount, 2);
+  assert.equal(response.authorization.email, "viewer@example.com");
+  assert.equal(JSON.stringify(response).includes("private-thread-id"), false);
 });
 
 test("requires settings scope for the safe onboarding Sheet probe", async function () {

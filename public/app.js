@@ -51,7 +51,8 @@ const state = {
     direction: "desc"
   },
   started: false,
-  busy: false
+  busy: false,
+  dialogRequestId: 0
 };
 
 const nodes = {
@@ -118,10 +119,11 @@ nodes.sortButtons.forEach((button) => button.addEventListener("click", () => tog
 nodes.metricButtons.forEach((button) => button.addEventListener("click", () => applyMetricFilter(button.dataset.metricFilter)));
 nodes.exportCsv.addEventListener("click", () => exportVisible("csv"));
 nodes.exportXlsx.addEventListener("click", () => exportVisible("xlsx"));
-nodes.dialogClose.addEventListener("click", () => nodes.dialog.close());
+nodes.dialogClose.addEventListener("click", closeContactDialog);
 nodes.dialog.addEventListener("click", (event) => {
-  if (event.target === nodes.dialog) nodes.dialog.close();
+  if (event.target === nodes.dialog) closeContactDialog();
 });
+nodes.dialog.addEventListener("close", () => { state.dialogRequestId += 1; });
 document.addEventListener("click", (event) => {
   if (nodes.exportMenu.open && !nodes.exportMenu.contains(event.target)) nodes.exportMenu.open = false;
   nodes.filterMenus.forEach((menu) => {
@@ -223,10 +225,10 @@ async function loadLeads() {
   }
 }
 
-async function callAction(actionName) {
+async function callAction(actionName, payload = {}) {
   const studioAuthToken = await state.authClient.refreshToken();
   if (!studioAuthToken) throw new Error("Timeless Studio authorization expired.");
-  return action({ action: actionName, studioAuthToken });
+  return action({ ...payload, action: actionName, studioAuthToken });
 }
 
 async function runNotesWriteAcceptance(idempotencyKey = crypto.randomUUID().replaceAll("-", "")) {
@@ -505,6 +507,7 @@ function detailButtonCell(lead) {
 }
 
 function openDetails(lead) {
+  const requestId = ++state.dialogRequestId;
   nodes.dialogTitle.textContent = fullName(lead) || lead.companyName || "Contact";
   const details = [
     ["Email", lead.contactEmail], ["Company", lead.companyName],
@@ -516,10 +519,249 @@ function openDetails(lead) {
     ["Onboarding sent", lead.onboardingSentAt || lead.onboardingSent],
     ["Submitted", lead.onboardingSubmittedAt], ["Last checked", lead.lastChecked]
   ];
-  nodes.dialogContent.replaceChildren(...details.map(([label, value, url]) => detailNode(label, value, url)));
-  nodes.dialogContent.append(detailTextNode("Inquiry", lead.inquiry));
-  if (leadStudioConfig.manualJiraEnabled) nodes.dialogContent.append(buildManualJiraEditor(lead));
+
+  const tabs = buildDialogTabs();
+  const layout = document.createElement("div");
+  layout.className = "dialog-layout";
+
+  const detailsPanel = document.createElement("section");
+  detailsPanel.id = "contact-details-panel";
+  detailsPanel.className = "dialog-panel contact-panel is-active";
+  detailsPanel.dataset.dialogPanel = "details";
+  detailsPanel.setAttribute("role", "tabpanel");
+  detailsPanel.setAttribute("aria-labelledby", "contact-details-tab");
+  const detailsGrid = document.createElement("div");
+  detailsGrid.className = "contact-details-grid";
+  detailsGrid.append(...details.map(([label, value, url]) => detailNode(label, value, url)));
+  detailsGrid.append(detailTextNode("Inquiry", lead.inquiry));
+  detailsPanel.append(detailsGrid);
+  if (leadStudioConfig.manualJiraEnabled) detailsPanel.append(buildManualJiraEditor(lead));
+
+  const activityPanel = document.createElement("section");
+  activityPanel.id = "contact-conversation-panel";
+  activityPanel.className = "dialog-panel activity-panel";
+  activityPanel.dataset.dialogPanel = "conversation";
+  activityPanel.setAttribute("role", "tabpanel");
+  activityPanel.setAttribute("aria-labelledby", "contact-conversation-tab");
+  renderActivityLoading(activityPanel);
+
+  layout.append(detailsPanel, activityPanel);
+  nodes.dialogContent.replaceChildren(tabs, layout);
   nodes.dialog.showModal();
+  window.lucide?.createIcons();
+  loadContactActivity(lead, requestId, activityPanel);
+}
+
+function closeContactDialog() {
+  if (nodes.dialog.open) nodes.dialog.close();
+}
+
+function buildDialogTabs() {
+  const tabs = document.createElement("div");
+  tabs.className = "dialog-tabs";
+  tabs.setAttribute("role", "tablist");
+  [["details", "Details"], ["conversation", "Conversation"]].forEach(([key, label], index) => {
+    const button = document.createElement("button");
+    button.id = `contact-${key}-tab`;
+    button.type = "button";
+    button.className = `dialog-tab${index === 0 ? " is-active" : ""}`;
+    button.dataset.dialogTab = key;
+    button.setAttribute("role", "tab");
+    button.setAttribute("aria-controls", `contact-${key}-panel`);
+    button.setAttribute("aria-selected", String(index === 0));
+    button.tabIndex = index === 0 ? 0 : -1;
+    button.textContent = label;
+    button.addEventListener("click", () => setDialogTab(key));
+    tabs.append(button);
+  });
+  return tabs;
+}
+
+function setDialogTab(activeKey) {
+  nodes.dialogContent.querySelectorAll("[data-dialog-tab]").forEach((tab) => {
+    const active = tab.dataset.dialogTab === activeKey;
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", String(active));
+    tab.tabIndex = active ? 0 : -1;
+  });
+  nodes.dialogContent.querySelectorAll("[data-dialog-panel]").forEach((panel) => {
+    panel.classList.toggle("is-active", panel.dataset.dialogPanel === activeKey);
+  });
+}
+
+async function loadContactActivity(lead, requestId, panel) {
+  renderActivityLoading(panel);
+  try {
+    const response = await callAction("contactActivity", { rowNumber: lead.rowNumber });
+    if (requestId !== state.dialogRequestId || !nodes.dialog.open) return;
+    renderContactActivity(panel, response.data?.contactActivity || {});
+  } catch (error) {
+    if (requestId !== state.dialogRequestId || !nodes.dialog.open) return;
+    renderActivityError(panel, errorMessage(error, "Unable to load the Gmail conversation."), () => {
+      loadContactActivity(lead, requestId, panel);
+    });
+  }
+  window.lucide?.createIcons();
+}
+
+function renderActivityLoading(panel) {
+  const stateNode = document.createElement("div");
+  stateNode.className = "activity-state";
+  const spinner = document.createElement("span");
+  spinner.className = "spinner";
+  spinner.setAttribute("aria-hidden", "true");
+  const label = document.createElement("span");
+  label.textContent = "Loading conversation";
+  stateNode.append(spinner, label);
+  panel.replaceChildren(stateNode);
+}
+
+function renderActivityError(panel, message, retry) {
+  const stateNode = document.createElement("div");
+  stateNode.className = "activity-state is-error";
+  const label = document.createElement("p");
+  label.textContent = message;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "button button-secondary";
+  button.innerHTML = '<i data-lucide="refresh-cw"></i><span>Retry</span>';
+  button.addEventListener("click", retry);
+  stateNode.append(label, button);
+  panel.replaceChildren(stateNode);
+}
+
+function renderContactActivity(panel, activity) {
+  const conversations = Array.isArray(activity.conversations) ? activity.conversations : [];
+  const header = document.createElement("div");
+  header.className = "activity-header";
+  const heading = document.createElement("div");
+  const eyebrow = document.createElement("span");
+  eyebrow.className = "eyebrow";
+  eyebrow.textContent = "Gmail activity";
+  const title = document.createElement("h3");
+  title.textContent = "Conversation";
+  const summary = document.createElement("p");
+  summary.textContent = `${Number(activity.messageCount) || 0} messages across ${Number(activity.conversationCount) || 0} conversations`;
+  heading.append(eyebrow, title, summary);
+  header.append(heading);
+
+  if (!conversations.length) {
+    const empty = document.createElement("div");
+    empty.className = "activity-state";
+    empty.textContent = "No related Gmail conversation was found for this contact.";
+    panel.replaceChildren(header, empty);
+    return;
+  }
+
+  const list = document.createElement("div");
+  list.className = "conversation-list";
+  conversations.forEach((conversation, conversationIndex) => {
+    list.append(buildConversation(conversation, conversationIndex));
+  });
+  panel.replaceChildren(header, list);
+
+  if (activity.truncated) {
+    const notice = document.createElement("p");
+    notice.className = "activity-limit-note";
+    notice.textContent = "Showing the most recent matching Gmail activity.";
+    panel.append(notice);
+  }
+}
+
+function buildConversation(conversation, conversationIndex) {
+  const group = document.createElement("details");
+  group.className = "conversation-group";
+  group.open = conversationIndex === 0;
+  const summary = document.createElement("summary");
+  const copy = document.createElement("span");
+  copy.className = "conversation-summary-copy";
+  const label = document.createElement("span");
+  label.className = `conversation-kind is-${["original", "onboarding"].includes(conversation.kind) ? conversation.kind : "related"}`;
+  label.textContent = conversation.label || "Related email";
+  const subject = document.createElement("strong");
+  subject.textContent = conversation.subject || "Email conversation";
+  const meta = document.createElement("span");
+  const messages = Array.isArray(conversation.messages) ? conversation.messages : [];
+  meta.textContent = `${formatActivityDate(conversation.latestAt)} | ${messages.length} message${messages.length === 1 ? "" : "s"}`;
+  copy.append(label, subject, meta);
+  const icon = document.createElement("i");
+  icon.dataset.lucide = "chevron-down";
+  summary.append(copy, icon);
+  group.append(summary);
+
+  const messageList = document.createElement("div");
+  messageList.className = "message-list";
+  messages.forEach((message, messageIndex) => {
+    messageList.append(buildActivityMessage(message, conversationIndex === 0 && messageIndex === 0));
+  });
+  group.append(messageList);
+  return group;
+}
+
+function buildActivityMessage(message, expanded) {
+  const item = document.createElement("details");
+  item.className = `message-item is-${activityDirection(message.direction)}`;
+  item.open = expanded;
+  const summary = document.createElement("summary");
+  const direction = document.createElement("span");
+  direction.className = "message-direction";
+  const icon = document.createElement("i");
+  icon.dataset.lucide = activityDirectionIcon(message.direction);
+  const label = document.createElement("strong");
+  label.textContent = message.directionLabel || "Related";
+  direction.append(icon, label);
+  const date = document.createElement("time");
+  date.dateTime = message.date || "";
+  date.textContent = formatActivityDate(message.date);
+  const subject = document.createElement("strong");
+  subject.className = "message-subject";
+  subject.textContent = message.subject || "(no subject)";
+  const excerpt = document.createElement("span");
+  excerpt.className = "message-excerpt";
+  excerpt.textContent = message.excerpt || "No plain-text content available.";
+  summary.append(direction, date, subject, excerpt);
+
+  const body = document.createElement("div");
+  body.className = "message-content";
+  const metadata = document.createElement("dl");
+  metadata.className = "message-metadata";
+  [["From", message.from], ["To", message.to], ["Cc", message.cc], ["Bcc", message.bcc]].forEach(([term, value]) => {
+    if (!value) return;
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    metadata.append(dt, dd);
+  });
+  const text = document.createElement("pre");
+  text.className = "message-body";
+  text.textContent = message.text || "No plain-text content available.";
+  body.append(metadata, text);
+  if (message.bodyTruncated) {
+    const note = document.createElement("p");
+    note.className = "activity-limit-note";
+    note.textContent = "This message is longer than the activity preview.";
+    body.append(note);
+  }
+  item.append(summary, body);
+  return item;
+}
+
+function activityDirection(value) {
+  return ["incoming", "outgoing", "forwarded"].includes(value) ? value : "related";
+}
+
+function activityDirectionIcon(value) {
+  if (value === "incoming") return "arrow-down-left";
+  if (value === "outgoing") return "arrow-up-right";
+  if (value === "forwarded") return "forward";
+  return "mail";
+}
+
+function formatActivityDate(value) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) return "Date unavailable";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 
 function buildManualJiraEditor(lead) {
