@@ -19,7 +19,12 @@
     ["Jira Issue URL", "jiraIssueUrl"],
     ["Jira Status", "jiraStatus"],
     ["Onboarding Complete", "onboardingComplete"],
-    ["Last Checked", "lastChecked"]
+    ["Last Checked", "lastChecked"],
+    ["Lead Status", "leadStatus"],
+    ["Inquiry", "inquiry"],
+    ["Onboarding Sent At", "onboardingSentAt"],
+    ["Onboarding Submitted At", "onboardingSubmittedAt"],
+    ["Last Contacted / Last Activity At", "lastActivityAt"]
   ]);
   var crcTable;
 
@@ -28,11 +33,38 @@
       headers: COLUMNS.map(function (column) { return column[0]; }),
       rows: (leads || []).map(function (lead) {
         return COLUMNS.map(function (column) {
-          var value = lead && lead[column[1]];
+          var value = column[1] === "lastActivityAt"
+            ? latestKnownActivityAt(lead)
+            : lead && lead[column[1]];
           return value == null ? "" : String(value);
         });
       })
     };
+  }
+
+  function latestKnownActivityAt(lead) {
+    if (!lead) return "";
+    if (lead.lastActivityAt) return String(lead.lastActivityAt);
+    var candidates = [lead.emailDate, lead.onboardingSentAt, lead.onboardingSubmittedAt]
+      .map(function (value) { return { value: value, time: activityTime(value) }; })
+      .filter(function (candidate) { return candidate.value != null && String(candidate.value).trim(); });
+    var dated = candidates.filter(function (candidate) { return Number.isFinite(candidate.time); });
+    if (!dated.length) return candidates.length ? String(candidates[0].value) : "";
+    return String(dated.reduce(function (latest, candidate) {
+      return candidate.time > latest.time ? candidate : latest;
+    }).value);
+  }
+
+  function activityTime(value) {
+    var direct = Date.parse(String(value == null ? "" : value));
+    if (Number.isFinite(direct)) return direct;
+    var match = String(value == null ? "" : value).match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if (!match) return NaN;
+    var date = new Date(
+      Number(match[3]), Number(match[2]) - 1, Number(match[1]),
+      Number(match[4]) || 0, Number(match[5]) || 0, Number(match[6]) || 0
+    );
+    return date.getTime();
   }
 
   function buildExportFilename(format, status, date) {
@@ -187,6 +219,7 @@
     buildExportRows: buildExportRows,
     buildExportFilename: buildExportFilename,
     createCsvBlob: createCsvBlob,
-    createXlsxBlob: createXlsxBlob
+    createXlsxBlob: createXlsxBlob,
+    latestKnownActivityAt: latestKnownActivityAt
   });
 });
