@@ -6,16 +6,20 @@ Last updated: 2026-08-19
 
 Repository: `https://github.com/MichoTronic/LeadStudio.git`
 
-Active branch: `phase/v4-firebase-sso`; production record commit: `7f72c56`.
+Active branch: `phase/v4-firebase-sso`; production record commit: `179f1d3`.
 
-## Deep Data-Quality Source Checkpoint - 2026-08-19
+## Deep Data-Quality Production Checkpoint - 2026-08-19
 
-This source-only checkpoint is tested but not deployed. Lead bootstrap metadata
-now reports bounded row-number-only anomalies for duplicate contact emails,
-Gmail message IDs, and Jira keys; malformed emails or Jira keys; and Jira
-URL/key mismatches. Contact values and provider IDs remain absent from the
-anomaly payload and the normal browser lead rows. The full Lead suite passes
-83/83 and the production dependency audit is clean.
+Commit `179f1d3` is deployed in `leadStudioActionV4` revision
+`leadstudioactionv4-00021-moq`; previous revision
+`leadstudioactionv4-00020-wes` remains the immediate rollback. Lead bootstrap
+metadata now reports bounded row-number-only anomalies for duplicate contact
+emails, Gmail message IDs, and Jira keys; malformed emails or Jira keys; and
+Jira URL/key mismatches. Contact values and provider IDs remain absent from the
+anomaly payload and normal browser lead rows. The full Lead suite passes 83/83,
+the production dependency audit is clean, unsigned access returns HTTP 401,
+and the new revision produced no error logs. No Hosting, other Function,
+Scheduler, Sheet, Form, Gmail, or Jira mutation was part of this promotion.
 
 ## Runtime Posture
 
@@ -33,7 +37,7 @@ anomaly payload and the normal browser lead rows. The full Lead suite passes
 - Firebase preview/rollback channel: `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`
 - Firebase production: `https://timeless-lead-studio.web.app`; accepted Hosting version `2ebf4cbe315f4974` promoted on 2026-08-18
 - Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
-- Firebase action Function: `leadStudioActionV4`; canonical operational refresh planner, authorized Gmail contact activity, and settings-authorized metadata-only operations status
+- Firebase action Function: `leadStudioActionV4` revision `leadstudioactionv4-00021-moq`; canonical operational refresh planner, authorized Gmail contact activity, and settings-authorized metadata-only operations status
 - Firebase refresh callable: `leadStudioRefreshV4` revision `leadstudiorefreshv4-00006-kab`, dedicated writer identity, one instance/concurrency, operational and acceptance gates disabled
 - Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00003-sup`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled
 - Firebase Hosting mode: live with preview retained for rollback/QA; central Auth policy `studioPolicies/lead-studio`
