@@ -2,6 +2,12 @@
 
 Current status source of truth for Lead Studio.
 
+Last updated: 2026-08-19
+
+Repository: `https://github.com/MichoTronic/LeadStudio.git`
+
+Active branch: `phase/v4-firebase-sso`; production record commit: `7f72c56`.
+
 ## Runtime Posture
 
 - Product: `Lead Studio`
@@ -15,7 +21,7 @@ Current status source of truth for Lead Studio.
 - Official Version 1 checkpoint: Version 45
 - Current stable deployment: Version 60 - Auth phase cleanup
 - Current stable web app deployment ID: `AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA`
-- Firebase pilot preview: `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`
+- Firebase preview/rollback channel: `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`
 - Firebase production: `https://timeless-lead-studio.web.app`; accepted Hosting version `2ebf4cbe315f4974` promoted on 2026-08-18
 - Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
 - Firebase action Function: `leadStudioActionV4`; canonical operational refresh planner, authorized Gmail contact activity, and settings-authorized metadata-only operations status

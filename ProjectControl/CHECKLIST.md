@@ -1,6 +1,6 @@
 # Lead Studio Checklist
 
-Current task and backlog ledger. This file is intentionally short.
+Current task and backlog ledger.
 
 For current status, use `../PROJECT_STATUS.md`.
 For historical implementation detail, use `DocumentationArchive/NOTES.md` with care because it contains sensitive information.
@@ -31,7 +31,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Register local auth rules for `studioPolicies/lead-studio`.
 - [x] Deploy Lead Studio shared-auth integration to the stable Apps Script web app.
 - [x] Run shared-auth phase completion cleanup and preserve scheduled/internal refresh paths.
-- [ ] Browser-test Mitja access through shared auth on the live Lead Studio URL.
+- [x] Browser-test Mitja access through shared auth on the live Lead Studio URL.
 - [ ] Browser-test Gaja and Vanesa access after deployment.
 - [ ] Browser-test a denied account after deployment.
 - [x] Replace the Firebase Gmail credential-file plan with keyless IAM `signJwt` domain-wide delegation; Firebase stores no service-account JSON key or user OAuth access token.
@@ -164,6 +164,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Preserve the historical Jira API/browser host split: validate through the Atlassian API tenant and accept/store `jira.at.semper7.net/browse/KEY` links.
 - [x] Run signed operator QA for the canonical Jira URL, Inquiry, fixed Interested in values, custom dates, list filters/sorting, row opening, and responsive dark Console styling.
 - [x] Confirm desktop viewport-contained table scrolling and sticky headers, plus the existing 390px card/filter layout, in signed Chrome QA.
+- [x] Promote accepted Hosting version `2ebf4cbe315f4974` to production and update the Console launcher.
+- [x] Add current architecture, release, documentation, and decision governance files.
 - [ ] Run live QA for Deep Refresh Jira Matches.
 - [ ] Review web app access settings before broader team/external use.
 - [ ] Review whether setup/test endpoint functions should remain present or be removed entirely.

@@ -1,0 +1,39 @@
+# Release Governance
+
+## Release Rule
+
+Hosting, Functions, Scheduler, IAM, Secret Manager, Pub/Sub, and GAS deployment
+changes require an explicit release candidate and owner approval for the exact
+production action.
+
+## Pre-Deployment Gate
+
+1. Read `../PROJECT_STATUS.md`, this file, and `CHECKLIST.md`.
+2. Reconcile source branch/commit with live Hosting and Function revisions.
+3. Confirm GAS still has zero installed triggers before Firebase writer changes.
+4. Confirm the Form-linked onboarding Sheet connection remains intact.
+5. Run Functions tests, browser syntax checks, and `git diff --check`.
+6. Verify Auth production client/policy bindings.
+7. Record current Hosting and Function rollback revisions.
+8. Update status/checklist and obtain explicit approval.
+9. Deploy one environment at a time and run signed read/write/restore smoke.
+
+## Environment Rules
+
+- Production: permanent `timeless-lead-studio.web.app` URL and production Auth
+  client.
+- Preview: separate Hosting channel and exact preview Auth client; QA/rollback
+  only.
+- GAS v60: inactive rollback source. Do not run its refresh helpers while
+  Firebase writers are active.
+- Secrets stay in Secret Manager or approved Script Properties and never in
+  source, reports, command history examples, or browser config.
+
+## Rollback
+
+- Clone the previous accepted Hosting version.
+- Restore the previous Function/Cloud Run revision and runtime configuration.
+- Disable Firebase writers before deliberately restoring a GAS writer; never
+  operate both writer engines together.
+- Verify Sheet hash/rows, scheduler state, Gmail cursor, and Jira behavior.
+- Record the restored versions and verification result.
