@@ -52,4 +52,4 @@ git diff --check
 ```
 
 Use `PROJECT_STATUS.md` for the complete runtime inventory, current acceptance
-evidence, and remaining Gmail push monitoring item.
+evidence, and remaining post-live monitoring items.

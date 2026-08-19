@@ -8,6 +8,25 @@ Repository: `https://github.com/MichoTronic/LeadStudio.git`
 
 Active branch: `phase/v4-firebase-sso`; production record commit: `179f1d3`.
 
+## Natural Gmail-Push Acceptance - 2026-08-19
+
+A trusted contact-form notice arrived naturally on 2026-08-18 at 18:23 UTC.
+`leadStudioGmailPushV4` reported one candidate, one accepted lead, one appended
+row, zero changed rows, and no replay. The Gmail message ID occurs exactly once
+in `Email Matches`, at row 305. `Debug Log` rows 1628-1629 contain the matching
+`FIREBASE_GMAIL_PUSH_STARTED` / `COMPLETE` pair with the same idempotency key,
+one append, verified source/target hashes, and duration only; no contact values,
+message IDs, or message bodies are present in the audit.
+
+The accepted event closes the broad-scan hold. The 06:00 reconciliation now
+uses a 14-day Gmail lookback while retaining the full Sheet, Form-linked
+onboarding, and Jira reconciliation behavior. Expired Gmail-history recovery
+still forces the intentionally broad scan. Configuration-only revisions
+`leadstudioactionv4-00022-qoj`, `leadstudiorefreshv4-00008-mer`,
+`leadstudioscheduledrefreshv4-00007-lew`, and
+`leadstudiogmailpushv4-00004-tew` are active with 100% traffic. All 83 tests
+pass and no post-deployment Function errors were found.
+
 ## Deep Data-Quality Production Checkpoint - 2026-08-19
 
 Commit `179f1d3` is deployed in `leadStudioActionV4` revision
@@ -37,15 +56,15 @@ Scheduler, Sheet, Form, Gmail, or Jira mutation was part of this promotion.
 - Firebase preview/rollback channel: `https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app`
 - Firebase production: `https://timeless-lead-studio.web.app`; accepted Hosting version `2ebf4cbe315f4974` promoted on 2026-08-18
 - Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
-- Firebase action Function: `leadStudioActionV4` revision `leadstudioactionv4-00021-moq`; canonical operational refresh planner, authorized Gmail contact activity, and settings-authorized metadata-only operations status
-- Firebase refresh callable: `leadStudioRefreshV4` revision `leadstudiorefreshv4-00006-kab`, dedicated writer identity, one instance/concurrency, operational and acceptance gates disabled
-- Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00006-kax`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled; Form-linked onboarding Sheet reader access repaired and catch-up accepted on 2026-08-19
+- Firebase action Function: `leadStudioActionV4` revision `leadstudioactionv4-00022-qoj`; canonical operational refresh planner, authorized Gmail contact activity, settings-authorized metadata-only operations status, and 14-day reconciliation status
+- Firebase refresh callable: `leadStudioRefreshV4` revision `leadstudiorefreshv4-00008-mer`, dedicated writer identity, one instance/concurrency, operational and acceptance gates disabled
+- Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00007-lew`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled, and 14-day Gmail reconciliation lookback; Form-linked onboarding Sheet reader access repaired and catch-up accepted on 2026-08-19
 - Firebase Hosting mode: live with preview retained for rollback/QA; central Auth policy `studioPolicies/lead-studio`
 - Firebase write acceptance: `leadStudioWriteAcceptanceV4` revision `leadstudiowriteacceptancev4-00005-bey`, disabled by configuration and bound to dedicated `lead-studio-writer@timeless-lead-studio.iam.gserviceaccount.com`
 - Firebase manual Jira workflow: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00009-rof`, signed key-based QA passed, issue-key/API-host/custom-browser-host input enabled, canonical `jira.at.semper7.net` links stored, operational gate enabled, acceptance gate disabled, editor enabled on Firebase Hosting, dedicated writer identity
 - Firebase writer serialization: private `timeless-lead-studio-writer-locks` bucket with atomic object-generation acquisition shared by scheduled refresh, callable refresh, Notes acceptance, and manual Jira mutation paths
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
-- Firebase Gmail push: topic `lead-studio-gmail-changes`, daily 03:00 watch renewal, durable private history cursor, retrying single-instance `leadStudioGmailPushV4`, shared writer lock, and topic-only Gmail publisher IAM; watch/push gates enabled
+- Firebase Gmail push: topic `lead-studio-gmail-changes`, daily 03:00 watch renewal, durable private history cursor, retrying single-instance `leadStudioGmailPushV4` revision `leadstudiogmailpushv4-00004-tew`, shared writer lock, and topic-only Gmail publisher IAM; watch/push gates enabled and natural trusted-lead acceptance passed
 - Firebase health: `leadStudioHealthCheckV4` every six hours plus enabled `Lead Studio runtime failures` log-match alert policy to `mitja@timelesstech.io`
 - Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; scheduled synchronization is operational
 - Current V3 review decision: `GO WITH CONDITIONS`
@@ -105,7 +124,8 @@ Scheduler, Sheet, Form, Gmail, or Jira mutation was part of this promotion.
 - 2026-08-18: The production-readiness review confirmed 303 populated lead rows, no duplicate Gmail message IDs, no missing source email/message IDs, and no impossible lifecycle state. Twenty-two repeated contact-email groups are retained as distinct form submissions. New Gmail ingestion now stores only the approved five-product Interested in vocabulary with conservative alias matching; unrelated text is blank. Refresh now canonicalizes every linked Jira browser URL to `jira.at.semper7.net`. All 82 tests pass. The affected Node 22 Function revisions are deployed with source hash `18c9fdf57b29023796bdc5d65c9eb70067b28e88`; preview Hosting version `2ebf4cbe315f4974` returns HTTP 200 and the callable rejects unauthenticated data access with HTTP 401. Production Hosting remains empty and signed acceptance is pending.
 - 2026-08-19: The 06:00 scheduled refresh and one controlled diagnostic retry failed with HTTP 500 because the dedicated writer no longer had permission to read Form-linked spreadsheet `TLT_Onboarding_Form`. Gmail watch, Gmail push, the main Lead Sheet, writer lock, health checks, Scheduler authentication, and Jira credentials remained healthy. Restored only Reader access for `lead-studio-writer@timeless-lead-studio.iam.gserviceaccount.com`; the Google Form connection and Sheet content were untouched. The controlled catch-up at 08:46 UTC returned HTTP 200, reconciled 56 existing rows, appended zero rows, and left Scheduler status clear.
 - 2026-08-18: Owner desktop/mobile acceptance passed. Exact preview version `2ebf4cbe315f4974` was cloned to live Hosting, direct live HTTP/title/favicon checks passed, and Marketing Studio Console now launches `https://timeless-lead-studio.web.app`. Source commit `d29396a` is pushed. GAS v60 remains trigger-free rollback source only.
-- 2026-08-18: Implemented and enabled Gmail `users.watch` plus Pub/Sub incremental history ingestion. The topic grants publisher only to Google's Gmail push identity; Eventarc uses the dedicated writer identity with explicit receiver/invoker access. Watch renewal passed, current-cursor delivery passed end to end, queued retries completed with zero mutations, and idempotent replay passed. A private GCS cursor, expired-history reconciliation, narrow Gmail-only mutation planner, bounded Operations status, refresh duration metadata, six-hour health check, and Cloud Monitoring email policy are active. All 79 automated checks pass. The daily scan remains broad until one natural trusted form lead is observed through push; Hosting and the Console tile remain unchanged.
+- 2026-08-18: Implemented and enabled Gmail `users.watch` plus Pub/Sub incremental history ingestion. The topic grants publisher only to Google's Gmail push identity; Eventarc uses the dedicated writer identity with explicit receiver/invoker access. Watch renewal passed, current-cursor delivery passed end to end, queued retries completed with zero mutations, and idempotent replay passed. A private GCS cursor, expired-history reconciliation, narrow Gmail-only mutation planner, bounded Operations status, refresh duration metadata, six-hour health check, and Cloud Monitoring email policy are active. All 79 automated checks passed. Hosting and the Console tile were unchanged.
+- 2026-08-19: Closed natural Gmail-push acceptance using the trusted lead delivered at 18:23 UTC on 2026-08-18. Structured logs recorded one candidate, one accepted lead, one append, and no replay; the Gmail message ID appears exactly once at `Email Matches` row 305. Metadata-only `Debug Log` rows 1628-1629 contain the matching STARTED/COMPLETE pair and no lead or Gmail content. Enabled the planned 14-day daily Gmail reconciliation lookback on the action, callable refresh, scheduled refresh, and push-recovery Functions; explicit expired-history recovery remains broad. All 83 tests pass and the four active revisions have no post-deployment errors.
 - 2026-06-22: Ran the full V2 completion review pack and saved the ordered reports in `Reports/`.
 - 2026-06-22: Added `.gitignore` guardrails for GitHub publishing; sensitive historical notes, snapshots, local zip archives, and Google Drive shortcuts stay out of git.
 - 2026-06-22: Created `Archive/Snapshots/Lead Studio V2/` and `Archive/Snapshots/Lead Studio V2.zip`.
@@ -231,7 +251,7 @@ Next controlled slices:
 
 - Continue monitoring daily Scheduler runs; the first natural 06:00 run and COMPLETE audit passed on 2026-08-18.
 - Treat the signed desktop/mobile Lead Studio UI and functional pass as accepted.
-- Observe one naturally arriving trusted form lead through Gmail push, verify its metadata-only audit and Sheet append, then enable the 14-day reconciliation fallback.
+- Monitor the first natural 06:00 run with the enabled 14-day Gmail reconciliation fallback; natural push acceptance and the configuration promotion passed on 2026-08-19.
 - Keep bounded Operations metadata and Cloud Monitoring failure email active.
 - Monitor the live Hosting/Console launch and Firebase writers through the post-live acceptance window.
 - Retire the equivalent GAS UI/write path after post-live acceptance; retain its source in git.

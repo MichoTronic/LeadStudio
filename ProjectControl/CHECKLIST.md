@@ -151,7 +151,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Create the Lead Studio Gmail Pub/Sub topic and grant publisher access only to `gmail-api-push@system.gserviceaccount.com`.
 - [x] Implement idempotent Gmail `history.list` processing from a durable committed `historyId`, including bounded recovery from an expired checkpoint.
 - [x] Add daily Gmail `watch` renewal and keep the 06:00 reconciliation/Jira job as the dropped-notification safety net.
-- [ ] Run write/verify/replay acceptance for one push-delivered lead before removing the broad three-month scan from the daily path.
+- [x] Verify one naturally push-delivered trusted lead was appended exactly once with a metadata-only STARTED/COMPLETE audit, then replace the broad daily scan with the 14-day reconciliation fallback; passed on 2026-08-19.
 - [x] Add sheet-write smoke tests for exact restoration, stale-version rejection, audit events, and idempotent replay.
 - [x] Run live Firebase QA for Refresh Leads through the production Scheduler path and verify the final whole-Sheet hash.
 - [x] Observe the first natural 06:00 Firebase scheduled refresh and confirm its COMPLETE audit before retiring the GAS refresh code.
