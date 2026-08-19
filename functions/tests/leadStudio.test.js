@@ -46,6 +46,31 @@ test("loads non-empty leads and reports bounded metadata", async function () {
   assert.equal(result.leads.length, 1);
   assert.equal(result.metadata.totalRows, 2);
   assert.equal(result.metadata.returnedRows, 1);
+  assert.equal(result.metadata.anomalies.issueCount, 0);
+});
+
+test("reports lead anomalies by row without exposing contact or internal values", async function () {
+  var headers = Object.keys(leadStudio.PUBLIC_FIELDS).concat(["Gmail Message ID"]);
+  function row(values) { return headers.map(function (header) { return values[header] || ""; }); }
+  var result = await leadStudio.loadLeads({
+    spreadsheets: { values: { get: async function () { return { data: { values: [headers,
+      row({ "Contact Email": "bad-email", "Company Name": "One", "Lead Status": "New", "Jira Issue Key": "SF-1", "Jira Issue URL": "https://jira.example/browse/SF-2", "Gmail Message ID": "message-1" }),
+      row({ "Contact Email": "BAD-EMAIL", "Company Name": "Two", "Lead Status": "New", "Jira Issue Key": "not-a-key", "Gmail Message ID": "message-1" }),
+      row({ "Contact Email": "valid@example.com", "Company Name": "Three", "Lead Status": "New", "Jira Issue Key": "SF-1" })
+    ] } }; } } }
+  }, "sheet-1");
+
+  assert.deepEqual(result.metadata.anomalies.counts, {
+    "invalid-contact-email": 2,
+    "jira-url-key-mismatch": 1,
+    "duplicate-contact-email": 1,
+    "duplicate-gmail-message-id": 1,
+    "invalid-jira-issue-key": 1,
+    "duplicate-jira-issue-key": 1
+  });
+  assert.equal(result.metadata.anomalies.issueCount, 7);
+  assert.doesNotMatch(JSON.stringify(result.metadata.anomalies), /bad-email|message-1|SF-1|SF-2/i);
+  assert.equal(result.leads[0].gmailMessageId, undefined);
 });
 
 test("rejects a changed sheet contract", function () {

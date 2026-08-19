@@ -283,15 +283,16 @@ async function loadLeads(sheetsClient, spreadsheetId, options) {
     valueRenderOption: "FORMATTED_VALUE"
   });
   var values = response && response.data && response.data.values || [];
-  if (!values.length) return { leads: [], metadata: { totalRows: 0, returnedRows: 0 } };
+  if (!values.length) return { leads: [], metadata: { totalRows: 0, returnedRows: 0, anomalies: analyzeLeadAnomalies([]) } };
 
   var headers = values[0].map(normalize);
   assertRequiredHeaders(headers);
-  var leads = values.slice(1).map(function (row, index) {
-    return mapLead(headers, row, index + 2, options.includeInternal === true);
+  var analyzedLeads = values.slice(1).map(function (row, index) {
+    return mapLead(headers, row, index + 2, true);
   }).filter(function (lead) {
     return lead.name || lead.lastName || lead.contactEmail || lead.companyName;
   }).slice(0, MAX_LEADS);
+  var leads = options.includeInternal === true ? analyzedLeads : analyzedLeads.map(stripInternalFields);
 
   return {
     leads: leads,
@@ -300,6 +301,7 @@ async function loadLeads(sheetsClient, spreadsheetId, options) {
       totalRows: Math.max(values.length - 1, 0),
       returnedRows: leads.length,
       truncated: values.length - 1 > MAX_LEADS,
+      anomalies: analyzeLeadAnomalies(analyzedLeads),
       loadedAt: new Date().toISOString()
     }
   };
@@ -318,6 +320,44 @@ function mapLead(headers, row, rowNumber, includeInternal) {
     });
   }
   return lead;
+}
+
+function stripInternalFields(lead) {
+  var output = { rowNumber: Number(lead && lead.rowNumber) || 0 };
+  Object.values(PUBLIC_FIELDS).forEach(function (field) { output[field] = normalize(lead && lead[field]); });
+  return output;
+}
+
+function analyzeLeadAnomalies(leads) {
+  var issues = [];
+  var seen = { contactEmail: new Map(), gmailMessageId: new Map(), jiraIssueKey: new Map() };
+  function issue(type, rowNumber) {
+    issues.push({ type: type, rowNumber: Number(rowNumber) || 0 });
+  }
+  function duplicate(field, value, type, rowNumber) {
+    if (!value) return;
+    if (seen[field].has(value)) issue(type, rowNumber);
+    else seen[field].set(value, Number(rowNumber) || 0);
+  }
+
+  (Array.isArray(leads) ? leads : []).forEach(function (lead) {
+    var rowNumber = lead && lead.rowNumber;
+    var email = normalize(lead && lead.contactEmail).toLowerCase();
+    var jiraRaw = normalize(lead && lead.jiraIssueKey);
+    var jiraKey = normalizeIssueKey(jiraRaw);
+    var jiraUrl = normalize(lead && lead.jiraIssueUrl);
+    var urlMatch = jiraUrl.toUpperCase().match(/\/BROWSE\/([A-Z][A-Z0-9]+-\d+)(?:[/?#]|$)/);
+    duplicate("contactEmail", email, "duplicate-contact-email", rowNumber);
+    duplicate("gmailMessageId", normalize(lead && lead.gmailMessageId), "duplicate-gmail-message-id", rowNumber);
+    duplicate("jiraIssueKey", jiraKey, "duplicate-jira-issue-key", rowNumber);
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) issue("invalid-contact-email", rowNumber);
+    if (jiraRaw && !jiraKey) issue("invalid-jira-issue-key", rowNumber);
+    if (jiraKey && urlMatch && urlMatch[1] !== jiraKey) issue("jira-url-key-mismatch", rowNumber);
+  });
+
+  var counts = {};
+  issues.forEach(function (item) { counts[item.type] = Number(counts[item.type] || 0) + 1; });
+  return { issueCount: issues.length, counts: counts, issues: issues.slice(0, 100), truncated: issues.length > 100 };
 }
 
 function assertRequiredHeaders(headers) {
@@ -554,6 +594,7 @@ module.exports = {
   SETTINGS_ACTIONS,
   STUDIO_ID,
   assertRequiredHeaders,
+  analyzeLeadAnomalies,
   compareGmailLeads,
   compareGmailOnboarding,
   compareOnboardingSheet,

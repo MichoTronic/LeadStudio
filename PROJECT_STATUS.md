@@ -8,6 +8,15 @@ Repository: `https://github.com/MichoTronic/LeadStudio.git`
 
 Active branch: `phase/v4-firebase-sso`; production record commit: `7f72c56`.
 
+## Deep Data-Quality Source Checkpoint - 2026-08-19
+
+This source-only checkpoint is tested but not deployed. Lead bootstrap metadata
+now reports bounded row-number-only anomalies for duplicate contact emails,
+Gmail message IDs, and Jira keys; malformed emails or Jira keys; and Jira
+URL/key mismatches. Contact values and provider IDs remain absent from the
+anomaly payload and the normal browser lead rows. The full Lead suite passes
+83/83 and the production dependency audit is clean.
+
 ## Runtime Posture
 
 - Product: `Lead Studio`
