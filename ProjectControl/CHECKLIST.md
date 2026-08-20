@@ -112,6 +112,9 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Create `../Archive/Snapshots/Lead Studio V2/` and matching V2 archive.
 - [x] Remove old versioned Apps Script deployments.
 - [x] Confirm remaining Apps Script deployments are stable version 60 plus read-only `@HEAD`.
+- [x] Retire the final versioned GAS web deployment and obsolete Firebase/Auth
+  preview surfaces after their rollback windows; retain source and immutable
+  version history only (2026-08-20).
 - [x] Initialize git repository on `main`.
 - [x] Create local V2 commit `c17001e` (`Prepare Lead Studio V2`).
 - [x] Push safe V2 project files to `https://github.com/MichoTronic/LeadStudio.git`.

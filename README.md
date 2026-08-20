@@ -15,7 +15,8 @@ sales export.
 
 Firebase Node 22 Functions, Scheduler, Gmail push/watch, monitoring, and the
 responsive Hosting UI are active. Google Apps Script v60 has zero triggers and
-is retained in `AppsScript/` as rollback/reference source only.
+no versioned web deployment; its source and version history remain in
+`AppsScript/` and Apps Script as rollback/reference material only.
 
 ## Start Here
 
