@@ -8,10 +8,6 @@ const action = httpsCallable(
   backendFunctions,
   leadStudioConfig.functionName
 );
-const writeAcceptanceAction = httpsCallable(
-  backendFunctions,
-  leadStudioConfig.writeAcceptanceFunctionName
-);
 const manualJiraAction = httpsCallable(
   backendFunctions,
   leadStudioConfig.manualJiraFunctionName
@@ -61,7 +57,6 @@ const nodes = {
   authSignOut: document.getElementById("auth-signout-button"),
   topbarSignOut: document.getElementById("topbar-signout-button"),
   viewer: document.getElementById("viewer-label"),
-  legacy: document.getElementById("legacy-link"),
   refresh: document.getElementById("refresh-button"),
   search: document.getElementById("search-input"),
   status: document.getElementById("status-filter"),
@@ -130,7 +125,6 @@ document.addEventListener("click", (event) => {
     if (menu.open && !menu.contains(event.target)) menu.open = false;
   });
 });
-nodes.legacy.href = leadStudioConfig.legacyUrl;
 Object.defineProperty(window, "__leadStudioDiagnostics", {
   value: Object.freeze({
     gmailProbe: () => callAction("gmailProbe"),
@@ -143,9 +137,7 @@ Object.defineProperty(window, "__leadStudioDiagnostics", {
     jiraStatusParity: () => callAction("jiraStatusParity"),
     jiraDiscoveryParity: () => callAction("jiraDiscoveryParity"),
     jiraDirectLookupParity: () => callAction("jiraDirectLookupParity"),
-    refreshDryRun: () => callAction("refreshDryRun"),
-    notesWriteAcceptance: runNotesWriteAcceptance,
-    manualJiraRoundTrip: runManualJiraRoundTrip
+    refreshDryRun: () => callAction("refreshDryRun")
   }),
   configurable: false,
   enumerable: false,
@@ -229,30 +221,6 @@ async function callAction(actionName, payload = {}) {
   const studioAuthToken = await state.authClient.refreshToken();
   if (!studioAuthToken) throw new Error("Timeless Studio authorization expired.");
   return action({ ...payload, action: actionName, studioAuthToken });
-}
-
-async function runNotesWriteAcceptance(idempotencyKey = crypto.randomUUID().replaceAll("-", "")) {
-  const studioAuthToken = await state.authClient.refreshToken();
-  if (!studioAuthToken) throw new Error("Timeless Studio authorization expired.");
-  const prepared = await writeAcceptanceAction({ action: "prepareNotesRoundTrip", studioAuthToken });
-  return writeAcceptanceAction({
-    action: "executeNotesRoundTrip",
-    studioAuthToken,
-    idempotencyKey,
-    expectedVersion: prepared.data.acceptance.rowVersion
-  });
-}
-
-async function runManualJiraRoundTrip(idempotencyKey = crypto.randomUUID().replaceAll("-", "")) {
-  const studioAuthToken = await state.authClient.refreshToken();
-  if (!studioAuthToken) throw new Error("Timeless Studio authorization expired.");
-  const prepared = await manualJiraAction({ action: "prepareAcceptance", studioAuthToken });
-  return manualJiraAction({
-    action: "executeAcceptance",
-    studioAuthToken,
-    idempotencyKey,
-    expectedVersion: prepared.data.manualJira.rowVersion
-  });
 }
 
 function applyFilters() {

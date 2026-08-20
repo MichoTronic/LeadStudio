@@ -15,7 +15,6 @@ var manualJiraLink = require("./src/manualJiraLink");
 var onboardingSheet = require("./src/onboardingSheet");
 var operationsStatus = require("./src/operationsStatus");
 var refreshMutation = require("./src/refreshMutation");
-var writeAcceptance = require("./src/writeAcceptance");
 var writerLock = require("./src/writerLock");
 var workspaceDelegation = require("./src/workspaceDelegation");
 
@@ -41,25 +40,7 @@ var leadStudioJiraEmail = params.defineString("LEAD_STUDIO_JIRA_EMAIL", {
 var leadStudioOnboardingSpreadsheetId = params.defineString("LEAD_STUDIO_ONBOARDING_SPREADSHEET_ID", {
   default: "1Ev6nu3bp1Hjh86vB0YY-qvq9DjQh_IZzD5czBjMrtM0"
 });
-var leadStudioWriteAcceptanceEnabled = params.defineString("LEAD_STUDIO_WRITE_ACCEPTANCE_ENABLED", {
-  default: "false"
-});
-var leadStudioWriteAcceptanceRow = params.defineString("LEAD_STUDIO_WRITE_ACCEPTANCE_ROW", {
-  default: "2"
-});
 var leadStudioManualJiraEnabled = params.defineString("LEAD_STUDIO_MANUAL_JIRA_ENABLED", {
-  default: "false"
-});
-var leadStudioManualJiraAcceptanceEnabled = params.defineString("LEAD_STUDIO_MANUAL_JIRA_ACCEPTANCE_ENABLED", {
-  default: "false"
-});
-var leadStudioManualJiraAcceptanceRow = params.defineString("LEAD_STUDIO_MANUAL_JIRA_ACCEPTANCE_ROW", {
-  default: "2"
-});
-var leadStudioRefreshEnabled = params.defineString("LEAD_STUDIO_REFRESH_ENABLED", {
-  default: "false"
-});
-var leadStudioRefreshAcceptanceEnabled = params.defineString("LEAD_STUDIO_REFRESH_ACCEPTANCE_ENABLED", {
   default: "false"
 });
 var leadStudioScheduledRefreshEnabled = params.defineString("LEAD_STUDIO_SCHEDULED_REFRESH_ENABLED", {
@@ -367,72 +348,6 @@ async function buildLiveRefreshPlan(sheetsClient, options) {
   };
 }
 
-exports.leadStudioRefreshV4 = functions.onCall({
-  region: "europe-west1",
-  cors: LEAD_STUDIO_ORIGINS,
-  secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
-  timeoutSeconds: 180,
-  memory: "512MiB",
-  maxInstances: 1,
-  concurrency: 1,
-  serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT
-}, async function (request) {
-  var data = request && request.data || {};
-  var actionName = String(data.action || "").trim();
-  try {
-    var authorization = await leadStudio.verifyAccess(data.studioAuthToken, "settings");
-    var acceptance = actionName === "executeAcceptance";
-    var prepare = actionName === "prepare" || actionName === "prepareAcceptance";
-    if (!prepare && !acceptance && actionName !== "execute") {
-      throw new functions.HttpsError("invalid-argument", "Unsupported refresh action.");
-    }
-    if (acceptance && leadStudioRefreshAcceptanceEnabled.value() !== "true") {
-      throw new functions.HttpsError("failed-precondition", "Lead Studio refresh acceptance is disabled.");
-    }
-    if (actionName === "execute" && leadStudioRefreshEnabled.value() !== "true") {
-      throw new functions.HttpsError("failed-precondition", "Lead Studio operational refresh is disabled.");
-    }
-    if (prepare) {
-      var prepared = await buildLiveRefreshPlan();
-      return {
-        mode: "refresh-disabled",
-        refresh: refreshMutation.publicPlan(prepared.plan),
-        authorization: leadStudio.publicAuthorization(authorization)
-      };
-    }
-    var result = await withLeadStudioWriterLock("refresh-callable", async function () {
-      var lockedPlan = await buildLiveRefreshPlan();
-      return refreshMutation.executeRefreshPlan({
-        plan: lockedPlan.plan,
-        sheetsClient: lockedPlan.sheetsClient,
-        spreadsheetId: lockedPlan.spreadsheetId,
-        actor: authorization.email,
-        idempotencyKey: data.idempotencyKey,
-        expectedVersion: data.expectedVersion,
-        restoreAfterVerify: acceptance
-      });
-    });
-    logger.info("Lead Studio Firebase refresh completed", {
-      actor: authorization.email,
-      acceptance: acceptance,
-      restored: result.restored,
-      changedRows: result.changedRows,
-      appendedRows: result.appendedRows
-    });
-    return {
-      mode: acceptance ? "refresh-acceptance" : "refresh-operational",
-      refresh: result,
-      authorization: leadStudio.publicAuthorization(authorization)
-    };
-  } catch (error) {
-    if (error instanceof functions.HttpsError) throw error;
-    var code = ["invalid-argument", "failed-precondition", "aborted", "data-loss"].includes(error && error.code)
-      ? error.code : "internal";
-    logger.error("leadStudioRefreshV4 failed", { name: error && error.name, code: code, message: error && error.message });
-    throw new functions.HttpsError(code, code === "internal" ? "Lead Studio refresh failed." : error.message);
-  }
-});
-
 exports.leadStudioScheduledRefreshV4 = scheduler.onSchedule({
   region: "europe-west1",
   schedule: "0 6 * * *",
@@ -714,68 +629,6 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
   }
 });
 
-exports.leadStudioWriteAcceptanceV4 = functions.onCall({
-  region: "europe-west1",
-  cors: LEAD_STUDIO_ORIGINS,
-  secrets: [leadStudioSpreadsheetId],
-  serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT,
-  timeoutSeconds: 30,
-  memory: "256MiB",
-  maxInstances: 1
-}, async function (request) {
-  try {
-    if (leadStudioWriteAcceptanceEnabled.value().toLowerCase() !== "true") {
-      throw new functions.HttpsError("failed-precondition", "Lead Studio write acceptance is disabled.");
-    }
-    var data = request && request.data || {};
-    var authorization = await leadStudio.verifyAccess(data.studioAuthToken, "settings");
-    var options = {
-      sheetsClient: createWriteSheetsClient(),
-      spreadsheetId: leadStudioSpreadsheetId.value().trim(),
-      rowNumber: Number(leadStudioWriteAcceptanceRow.value()),
-      actor: authorization.email,
-      idempotencyKey: data.idempotencyKey,
-      expectedVersion: data.expectedVersion
-    };
-    if (data.action === "prepareNotesRoundTrip") {
-      return {
-        mode: "write-acceptance",
-        acceptance: await writeAcceptance.prepareNotesRoundTrip(options),
-        authorization: leadStudio.publicAuthorization(authorization)
-      };
-    }
-    if (data.action === "executeNotesRoundTrip") {
-      var result = await withLeadStudioWriterLock("notes-acceptance", function () {
-        return writeAcceptance.executeNotesRoundTrip(options);
-      });
-      logger.info("Lead Studio write acceptance completed", {
-        rowNumber: result.rowNumber,
-        field: result.field,
-        restored: result.restored,
-        replayed: result.replayed,
-        idempotencyKey: result.idempotencyKey
-      });
-      return {
-        mode: "write-acceptance",
-        acceptance: result,
-        authorization: leadStudio.publicAuthorization(authorization)
-      };
-    }
-    throw new functions.HttpsError("invalid-argument", "Unsupported write acceptance action.");
-  } catch (error) {
-    if (error instanceof functions.HttpsError) throw error;
-    var safeCodes = new Set(["aborted", "data-loss", "failed-precondition", "invalid-argument"]);
-    var code = safeCodes.has(error && error.code) ? error.code : "internal";
-    logger.error("leadStudioWriteAcceptanceV4 failed", {
-      code: code,
-      name: error && error.name,
-      providerStatus: Number(error && error.response && error.response.status) || 0,
-      providerMessage: error && error.message
-    });
-    throw new functions.HttpsError(code, code === "internal" ? "Lead Studio write acceptance failed." : error.message);
-  }
-});
-
 exports.leadStudioManualJiraV4 = functions.onCall({
   region: "europe-west1",
   cors: LEAD_STUDIO_ORIGINS,
@@ -788,15 +641,11 @@ exports.leadStudioManualJiraV4 = functions.onCall({
   try {
     var data = request && request.data || {};
     var actionName = String(data.action || "").trim();
-    var acceptanceAction = actionName === "prepareAcceptance" || actionName === "executeAcceptance";
-    if (acceptanceAction && leadStudioManualJiraAcceptanceEnabled.value().toLowerCase() !== "true") {
-      throw new functions.HttpsError("failed-precondition", "Lead Studio manual Jira acceptance is disabled.");
-    }
-    if (!acceptanceAction && leadStudioManualJiraEnabled.value().toLowerCase() !== "true") {
+    if (leadStudioManualJiraEnabled.value().toLowerCase() !== "true") {
       throw new functions.HttpsError("failed-precondition", "Lead Studio manual Jira writes are disabled.");
     }
-    var authorization = await leadStudio.verifyAccess(data.studioAuthToken, acceptanceAction ? "settings" : "write");
-    var rowNumber = acceptanceAction ? Number(leadStudioManualJiraAcceptanceRow.value()) : Number(data.rowNumber);
+    var authorization = await leadStudio.verifyAccess(data.studioAuthToken, "write");
+    var rowNumber = Number(data.rowNumber);
     var options = {
       sheetsClient: createWriteSheetsClient(),
       spreadsheetId: leadStudioSpreadsheetId.value().trim(),
@@ -829,32 +678,6 @@ exports.leadStudioManualJiraV4 = functions.onCall({
         manualJira: await withLeadStudioWriterLock("manual-jira", function () {
           return manualJiraLink.executeManualJiraLink(options);
         }),
-        authorization: leadStudio.publicAuthorization(authorization)
-      };
-    }
-    if (actionName === "prepareAcceptance") {
-      return {
-        mode: "manual-jira-acceptance",
-        manualJira: await manualJiraLink.prepareManualJiraLink(options),
-        authorization: leadStudio.publicAuthorization(authorization)
-      };
-    }
-    if (actionName === "executeAcceptance") {
-      var result = await withLeadStudioWriterLock("manual-jira-acceptance", async function () {
-        var prepared = await manualJiraLink.prepareManualJiraLink(options);
-        options.issueKey = prepared.issueKey;
-        options.restoreAfterVerify = true;
-        return manualJiraLink.executeManualJiraLink(options);
-      });
-      logger.info("Lead Studio manual Jira acceptance completed", {
-        rowNumber: result.rowNumber,
-        restored: result.restored,
-        replayed: result.replayed,
-        idempotencyKey: result.idempotencyKey
-      });
-      return {
-        mode: "manual-jira-acceptance",
-        manualJira: result,
         authorization: leadStudio.publicAuthorization(authorization)
       };
     }
