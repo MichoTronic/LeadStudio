@@ -12,6 +12,7 @@
 | 2026-08-18 | Use Gmail watch/Pub/Sub for new-message signals with scheduled reconciliation as fallback. | Reduces broad inbox scanning while retaining recovery from dropped/expired history. |
 | 2026-08-18 | Keep Console as launcher/auth front door only. | Lead business behavior remains in the Lead repository/project. |
 | 2026-08-18 | Retain GAS source after runtime retirement. | Preserves rollback/reference without a second active engine. |
+| 2026-08-20 | Preserve owner-configured Google Workspace sharing and prohibit automatic permission mutation. | Lead Forms/Sheets and outside-support access are external integration contracts; scopes and release approval do not authorize changing General access or named roles. |
 
 ## Pending Decisions
 

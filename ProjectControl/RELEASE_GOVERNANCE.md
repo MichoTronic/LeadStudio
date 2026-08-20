@@ -6,6 +6,17 @@ Hosting, Functions, Scheduler, IAM, Secret Manager, Pub/Sub, and GAS deployment
 changes require an explicit release candidate and owner approval for the exact
 production action.
 
+## Google Workspace Sharing Preservation
+
+Form responder visibility, Form collaborators, Sheet General access, named
+Drive roles, and link sharing are owner-managed integration configuration.
+Lead Studio code, Functions, GAS, deployment, tests, migrations, and audits
+must preserve the exact existing state and must not mutate permissions. OAuth
+scopes are not approval. Any exception requires an exact file-specific owner
+instruction, before/after state, dependency check, and restore plan. Read-only
+permission inspection is allowed. The ecosystem canonical rule is
+`MarketingStudioConsole/ProjectControl/GOOGLE_WORKSPACE_SHARING_GOVERNANCE.md`.
+
 ## Pre-Deployment Gate
 
 1. Read `../PROJECT_STATUS.md`, this file, and `CHECKLIST.md`.
