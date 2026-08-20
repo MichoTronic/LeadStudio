@@ -48,3 +48,11 @@ permission inspection is allowed. The ecosystem canonical rule is
   operate both writer engines together.
 - Verify Sheet hash/rows, scheduler state, Gmail cursor, and Jira behavior.
 - Record the restored versions and verification result.
+
+## Public Asset Release Gate
+
+- Resolve Drive IDs or URLs through the Timeless Public Assets manifest.
+- Store and expose only active central URLs that pass anonymous HTTP 200 image
+  verification without redirects.
+- Apply the Timeless Tech brand standard.
+- Preserve Drive, Form, and Sheet sharing and never delete permanent assets.

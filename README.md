@@ -54,3 +54,12 @@ git diff --check
 
 Use `PROJECT_STATUS.md` for the complete runtime inventory, current acceptance
 evidence, and remaining post-live monitoring items.
+
+## Brand And Public Assets
+
+Lead Studio is a Timeless Tech product. Public images use
+[Timeless Public Assets](https://github.com/MichoTronic/TimelessPublicAssets)
+under the central [integration standard](https://github.com/MichoTronic/TimelessPublicAssets/blob/main/docs/STUDIO_ASSET_INTEGRATION_STANDARD.md)
+and [Timeless Tech brand standard](https://github.com/MichoTronic/TimelessPublicAssets/blob/main/docs/TIMELESS_TECH_BRAND_STANDARD.md).
+Direct Google Drive image delivery and Studio-local duplicate publishing are
+not supported.
