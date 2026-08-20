@@ -13,10 +13,8 @@
 | 2026-08-18 | Keep Console as launcher/auth front door only. | Lead business behavior remains in the Lead repository/project. |
 | 2026-08-18 | Retain GAS source after runtime retirement. | Preserves rollback/reference without a second active engine. |
 | 2026-08-20 | Preserve owner-configured Google Workspace sharing and prohibit automatic permission mutation. | Lead Forms/Sheets and outside-support access are external integration contracts; scopes and release approval do not authorize changing General access or named roles. |
+| 2026-08-20 | Retire acceptance-only Firebase Functions and the dead GAS launcher after their rollback window. | Production keeps only six operational Functions; test history and GAS source remain in Git without a second live UI or writer. |
 
 ## Pending Decisions
 
-- When one naturally delivered trusted lead completes push acceptance and the
-  broad reconciliation window can be narrowed.
 - Whether unresolved Jira/onboarding conflicts need a dedicated operator queue.
-- Final date to remove the deployed GAS UI after the post-live rollback window.

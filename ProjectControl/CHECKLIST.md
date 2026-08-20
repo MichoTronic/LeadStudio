@@ -171,7 +171,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Add current architecture, release, documentation, and decision governance files.
 - [ ] Run live QA for Deep Refresh Jira Matches.
 - [ ] Review web app access settings before broader team/external use.
-- [ ] Review whether setup/test endpoint functions should remain present or be removed entirely.
+- [x] Remove obsolete callable-refresh/write-acceptance Functions, browser
+  hooks, and the retired GAS launcher while preserving test history in Git.
 - [ ] Split client utilities from `Script.html` after test coverage improves.
 - [ ] Tighten `PROJECT_STATUS.md` Latest Change history into current-state summary plus release notes.
 - [ ] Add a lightweight local lint or syntax-check path for Apps Script files if future work becomes regular.

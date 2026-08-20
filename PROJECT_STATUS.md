@@ -6,7 +6,22 @@ Last updated: 2026-08-20
 
 Repository: `https://github.com/MichoTronic/LeadStudio.git`
 
-Active branch: `phase/v4-firebase-sso`; production record commit: `179f1d3`.
+Active branch: `phase/v4-firebase-sso`; production source commit: `78732e5`.
+
+## Final Validation And Runtime Cleanup - 2026-08-20
+
+The post-release validation passes 81/81 checks after removing obsolete
+acceptance-only code. Hosting version `298d0a3af1bf3263` is live and no longer
+contains the retired GAS operations link or browser hooks for the old Notes
+write acceptance. `leadStudioRefreshV4` and
+`leadStudioWriteAcceptanceV4` were deleted from Firebase; their accepted test
+history remains in Git and this document.
+
+The operational Jira writer was redeployed without its old acceptance-only
+branch as `leadstudiomanualjirav4-00011-xon`. The remaining six Functions are
+the action API, manual Jira writer, scheduled refresh, Gmail push, Gmail-watch
+renewal, and health check. The latest 24-hour Cloud Run/Function error query is
+clean for Lead Studio.
 
 ## Cross-Studio Completion Review - 2026-08-19
 
@@ -53,9 +68,10 @@ Scheduler, Sheet, Form, Gmail, or Jira mutation was part of this promotion.
 
 The obsolete Firebase preview channel, central Auth preview registration, and
 versioned GAS web deployment were retired on 2026-08-20 after their accepted
-rollback windows ended. Production Firebase Hosting and Functions are
-unchanged. GAS source, immutable versions, and Git history remain available,
-but GAS has zero triggers and no callable web deployment.
+rollback windows ended. Production Firebase Hosting and the retained
+operational Functions remain active. GAS source, immutable versions, and Git
+history remain available, but GAS has zero triggers and no callable web
+deployment.
 
 - Product: `Lead Studio`
 - Retained rollback material: Google Apps Script version 60 source and history; zero triggers and no versioned web deployment
@@ -67,22 +83,20 @@ but GAS has zero triggers and no callable web deployment.
 - Legacy Apps Script rollback source: `AppsScript/`
 - Official Version 1 checkpoint: Version 45
 - Final GAS version checkpoint: Version 60 - Auth phase cleanup; web deployment retired 2026-08-20
-- Firebase production: `https://timeless-lead-studio.web.app`; accepted Hosting version `2ebf4cbe315f4974` promoted on 2026-08-18
+- Firebase production: `https://timeless-lead-studio.web.app`; accepted Hosting version `298d0a3af1bf3263` promoted on 2026-08-20
 - Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
 - Firebase action Function: `leadStudioActionV4` revision `leadstudioactionv4-00022-qoj`; canonical operational refresh planner, authorized Gmail contact activity, settings-authorized metadata-only operations status, and 14-day reconciliation status
-- Firebase refresh callable: `leadStudioRefreshV4` revision `leadstudiorefreshv4-00008-mer`, dedicated writer identity, one instance/concurrency, operational and acceptance gates disabled
 - Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00007-lew`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled, and 14-day Gmail reconciliation lookback; Form-linked onboarding Sheet reader access repaired and catch-up accepted on 2026-08-19
 - Firebase Hosting mode: live only; central Auth policy `studioPolicies/lead-studio`
-- Firebase write acceptance: `leadStudioWriteAcceptanceV4` revision `leadstudiowriteacceptancev4-00005-bey`, disabled by configuration and bound to dedicated `lead-studio-writer@timeless-lead-studio.iam.gserviceaccount.com`
-- Firebase manual Jira workflow: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00009-rof`, signed key-based QA passed, issue-key/API-host/custom-browser-host input enabled, canonical `jira.at.semper7.net` links stored, operational gate enabled, acceptance gate disabled, editor enabled on Firebase Hosting, dedicated writer identity
-- Firebase writer serialization: private `timeless-lead-studio-writer-locks` bucket with atomic object-generation acquisition shared by scheduled refresh, callable refresh, Notes acceptance, and manual Jira mutation paths
+- Firebase manual Jira workflow: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00011-xon`, signed key-based QA passed, issue-key/API-host/custom-browser-host input enabled, canonical `jira.at.semper7.net` links stored, operational gate enabled, editor enabled on Firebase Hosting, dedicated writer identity
+- Firebase writer serialization: private `timeless-lead-studio-writer-locks` bucket with atomic object-generation acquisition shared by scheduled refresh, Gmail push, and manual Jira mutation paths
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
 - Firebase Gmail push: topic `lead-studio-gmail-changes`, daily 03:00 watch renewal, durable private history cursor, retrying single-instance `leadStudioGmailPushV4` revision `leadstudiogmailpushv4-00004-tew`, shared writer lock, and topic-only Gmail publisher IAM; watch/push gates enabled and natural trusted-lead acceptance passed
 - Firebase health: `leadStudioHealthCheckV4` every six hours plus enabled `Lead Studio runtime failures` log-match alert policy to `mitja@timelesstech.io`
 - Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; scheduled synchronization is operational
 - Current V3 review decision: `GO WITH CONDITIONS`
 - Current viable/stable baseline: `V3`
-- Current deployment inventory: retained GAS v60 source with zero triggers and no web deployment, live Firebase Hosting, enabled manual Jira workflow, disabled acceptance/callable-refresh writers, enabled 06:00 refresh, enabled Gmail watch/push, and enabled health monitoring; Console launches the Firebase app
+- Current deployment inventory: retained GAS v60 source with zero triggers and no web deployment, live Firebase Hosting, enabled manual Jira workflow, enabled 06:00 refresh, enabled Gmail watch/push, and enabled health monitoring; obsolete acceptance/callable-refresh Functions are deleted; Console launches the Firebase app
 - Current V3 rollback tag: `v3-stable`
 - Current V57 hotfix rollback tag: `v57-noreply-hotfix`
 - V2 rollback tag: `v2-stable`

@@ -8,15 +8,20 @@ sales export.
 
 - URL: `https://timeless-lead-studio.web.app`
 - Firebase project: `timeless-lead-studio`
-- Live Hosting version: `2ebf4cbe315f4974`
+- Live Hosting version: `298d0a3af1bf3263`
 - Active branch: `phase/v4-firebase-sso`
-- Production record commit: `7f72c56`
+- Production source commit: `78732e5`
 - Auth policy: `studioPolicies/lead-studio`
 
 Firebase Node 22 Functions, Scheduler, Gmail push/watch, monitoring, and the
 responsive Hosting UI are active. Google Apps Script v60 has zero triggers and
 no versioned web deployment; its source and version history remain in
 `AppsScript/` and Apps Script as rollback/reference material only.
+
+The obsolete callable refresh and write-acceptance Functions, their browser
+hooks, and the retired GAS UI link were removed on 2026-08-20. The six active
+Functions are the action API, manual Jira writer, scheduled refresh, Gmail
+push, Gmail-watch renewal, and health check.
 
 ## Start Here
 
