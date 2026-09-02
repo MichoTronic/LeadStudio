@@ -88,14 +88,14 @@ async function runAction(request, dependencies) {
   if (action === "probe") {
     return {
       status: "ok",
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       authorization: publicAuthorization(authorization)
     };
   }
   if (action === "bootstrap") {
     var result = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId);
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       leads: result.leads,
       metadata: result.metadata,
       authorization: publicAuthorization(authorization)
@@ -123,7 +123,7 @@ async function runAction(request, dependencies) {
       throw new HttpsError("failed-precondition", "Lead Studio Gmail access is not configured.");
     }
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       mailbox: await dependencies.gmailProbe(),
       authorization: publicAuthorization(authorization)
     };
@@ -135,7 +135,7 @@ async function runAction(request, dependencies) {
     var gmailSheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
     var gmailScan = await dependencies.gmailLeadScan();
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       gmailLeadParity: compareGmailLeads(gmailSheetResult.leads, gmailScan),
       authorization: publicAuthorization(authorization)
     };
@@ -147,7 +147,7 @@ async function runAction(request, dependencies) {
     var deepGmailSheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
     var deepGmailScan = await dependencies.gmailDeepLeadScan();
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       gmailDeepLeadParity: compareGmailLeads(deepGmailSheetResult.leads, deepGmailScan),
       authorization: publicAuthorization(authorization)
     };
@@ -159,7 +159,7 @@ async function runAction(request, dependencies) {
     var onboardingSheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
     var onboardingScan = await dependencies.gmailOnboardingScan();
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       gmailOnboardingParity: compareGmailOnboarding(onboardingSheetResult.leads, onboardingScan),
       authorization: publicAuthorization(authorization)
     };
@@ -169,7 +169,7 @@ async function runAction(request, dependencies) {
       throw new HttpsError("failed-precondition", "Lead Studio onboarding Sheet access is not configured.");
     }
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       onboardingSheet: await dependencies.onboardingSheetProbe(),
       authorization: publicAuthorization(authorization)
     };
@@ -181,7 +181,7 @@ async function runAction(request, dependencies) {
     var onboardingLeadResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId, { includeInternal: true });
     var onboardingLookup = onboardingSheet.buildOnboardingLookup(await dependencies.onboardingSheetRows());
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       onboardingSheetParity: compareOnboardingSheet(onboardingLeadResult.leads, onboardingLookup),
       authorization: publicAuthorization(authorization)
     };
@@ -191,7 +191,7 @@ async function runAction(request, dependencies) {
       throw new HttpsError("failed-precondition", "Lead Studio Jira access is not configured.");
     }
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       jira: await dependencies.jiraProbe(),
       authorization: publicAuthorization(authorization)
     };
@@ -204,7 +204,7 @@ async function runAction(request, dependencies) {
     var baseline = jiraStatusBaseline(sheetResult.leads);
     var liveStatuses = await dependencies.jiraIssueStatuses(baseline.issueKeys);
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       jiraParity: compareJiraStatuses(baseline.statuses, liveStatuses),
       authorization: publicAuthorization(authorization)
     };
@@ -225,7 +225,7 @@ async function runAction(request, dependencies) {
       });
     }
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       jiraDiscoveryParity: compareJiraDiscovery(discoveryResults),
       authorization: publicAuthorization(authorization)
     };
@@ -246,7 +246,7 @@ async function runAction(request, dependencies) {
       return [key, directBaseline.statuses[key]];
     }));
     return {
-      mode: "read-only-pilot",
+      mode: "read-only-diagnostic",
       jiraDirectLookupParity: compareJiraStatuses(selectedBaseline, directStatuses),
       authorization: publicAuthorization(authorization)
     };

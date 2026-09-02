@@ -68,6 +68,28 @@ test("rejects a failed delegated token exchange without returning provider paylo
   );
 });
 
+test("bounds delegated Google API requests and returns a retryable deadline error", async function () {
+  await assert.rejects(
+    delegation.createDelegatedAccessToken({
+      serviceAccountEmail: "runtime@example.iam.gserviceaccount.com",
+      delegatedUser: "marketing@example.com",
+      requestTimeoutMs: 25,
+      signJwt: async function () { return "signed-jwt"; },
+      fetchImpl: async function (_url, request) {
+        assert.ok(request.signal);
+        var error = new Error("provider request exceeded its deadline");
+        error.name = "TimeoutError";
+        throw error;
+      }
+    }),
+    function (error) {
+      assert.equal(error.code, "deadline-exceeded");
+      assert.equal(error.message, "Google API request timed out.");
+      return true;
+    }
+  );
+});
+
 test("runs a bounded delegated Gmail lead scan with private append payloads and no tokens", async function () {
   var listCalls = 0;
   var result = await delegation.scanGmailLeadMessages({

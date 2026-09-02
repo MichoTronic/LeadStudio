@@ -33,12 +33,22 @@ permission inspection is allowed. The ecosystem canonical rule is
 
 - Production: permanent `timeless-lead-studio.web.app` URL and production Auth
   client.
-- Preview: separate Hosting channel and exact preview Auth client; QA/rollback
-  only.
+- Lead Studio has no persistent staging or preview environment. Validate
+  locally, prepare a reviewed production candidate, and deploy only with exact
+  owner approval. Hosting and Function revision history provide rollback.
 - GAS v60: inactive rollback source. Do not run its refresh helpers while
   Firebase writers are active.
 - Secrets stay in Secret Manager or approved Script Properties and never in
   source, reports, command history examples, or browser config.
+
+## V4 Feature Freeze
+
+Lead Studio V4 is the production/live release. V4 changes are limited to
+narrowly scoped production fixes that preserve accepted behavior. New features,
+workflow changes, data-model changes, and material UX changes require a
+separately opened V5 branch and scope. Application-owned production identifiers
+use V4 consistently; historical Google API versions and immutable asset paths
+remain unchanged.
 
 ## Rollback
 

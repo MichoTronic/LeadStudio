@@ -9,14 +9,20 @@ sales export.
 - URL: `https://timeless-lead-studio.web.app`
 - Firebase project: `timeless-lead-studio`
 - Live Hosting version: `298d0a3af1bf3263`
-- Active branch: `phase/v4-firebase-sso`
+- Active release: Lead Studio V4
+- Active development branch: `hotfix/v4-gmail-push-timeout`
 - Production source commit: `78732e5`
+- Production Auth client: `lead-studio-v4`
 - Auth policy: `studioPolicies/lead-studio`
 
 Firebase Node 22 Functions, Scheduler, Gmail push/watch, monitoring, and the
 responsive Hosting UI are active. Google Apps Script v60 has zero triggers and
 no versioned web deployment; its source and version history remain in
 `AppsScript/` and Apps Script as rollback/reference material only.
+
+Lead Studio has one production environment and no persistent staging or preview
+environment. The V4 Gmail-push timeout hardening is an approved production
+candidate; current deployment evidence remains authoritative until promotion.
 
 The obsolete callable refresh and write-acceptance Functions, their browser
 hooks, and the retired GAS UI link were removed on 2026-08-20. The six active

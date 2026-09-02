@@ -5,6 +5,22 @@ Current task and backlog ledger.
 For current status, use `../PROJECT_STATUS.md`.
 For historical implementation detail, use `DocumentationArchive/NOTES.md` with care because it contains sensitive information.
 
+## V4 Production Hardening - 2026-09-02
+
+- [x] Reconcile live Hosting, all six V4 Functions, Auth client, and the absence
+  of a persistent preview channel.
+- [x] Diagnose the two 360-second Gmail push failures and confirm later
+  successful zero-write completion plus healthy subsequent deliveries.
+- [x] Add 30-second provider request bounds, a 15-minute writer-lock lease, and
+  metadata-only stage-duration logging.
+- [x] Align current source on package `4.0.0`, production Auth client
+  `lead-studio-v4`, and V4 Function identifiers; remove retired preview paths.
+- [x] Pass all 83 local checks and verify all six Auth production clients.
+- [ ] Deploy the approved production candidate and verify new revisions,
+  Hosting, event processing, health logs, and rollback inventory.
+- [ ] Close V4 on `release/v4` with tag `V4`; start new feature work only in an
+  explicitly opened V5 branch.
+
 ## Active Cleanup
 
 - [x] Add root `README.md` with canonical project orientation.

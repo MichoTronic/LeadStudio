@@ -2,11 +2,32 @@
 
 Current status source of truth for Lead Studio.
 
-Last updated: 2026-08-20
+Last updated: 2026-09-02
 
 Repository: `https://github.com/MichoTronic/LeadStudio.git`
 
-Active branch: `phase/v4-firebase-sso`; production source commit: `78732e5`.
+Active branch: `hotfix/v4-gmail-push-timeout`; production source commit remains
+`78732e5` until the approved hotfix is promoted.
+
+## V4 Gmail Push Timeout Candidate - 2026-09-02
+
+Two Gmail Pub/Sub requests on 2026-09-01 returned HTTP 504 at the exact
+360-second deadline. The executions later completed successfully with one or
+two candidates, no accepted lead/onboarding messages, and zero Sheet changes;
+subsequent deliveries are healthy. The defect is an unbounded provider-request
+path combined with a five-minute writer-lock lease shorter than the Function
+deadline.
+
+The approved candidate adds 30-second Gmail/OAuth, IAM Credentials, and Sheets
+request bounds; disables implicit Google-client retries in favor of the existing
+whole-event Pub/Sub retry/idempotency; extends the shared lock lease to 15
+minutes; and adds metadata-only stage timing. All 83 checks pass.
+
+Current source now uses V4 consistently: package `4.0.0`, V4 Function names,
+and production Auth client `lead-studio-v4`. Lead Studio has no persistent
+staging/preview environment, so retired preview selection, origin, and Auth
+fixture are being removed. See
+`Reports/2026_09_02_V4_Gmail_Push_Timeout_Hotfix.md`.
 
 ## Final Validation And Runtime Cleanup - 2026-08-20
 
@@ -94,8 +115,8 @@ deployment.
 - Firebase Gmail push: topic `lead-studio-gmail-changes`, daily 03:00 watch renewal, durable private history cursor, retrying single-instance `leadStudioGmailPushV4` revision `leadstudiogmailpushv4-00004-tew`, shared writer lock, and topic-only Gmail publisher IAM; watch/push gates enabled and natural trusted-lead acceptance passed
 - Firebase health: `leadStudioHealthCheckV4` every six hours plus enabled `Lead Studio runtime failures` log-match alert policy to `mitja@timelesstech.io`
 - Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; scheduled synchronization is operational
-- Current V3 review decision: `GO WITH CONDITIONS`
-- Current viable/stable baseline: `V3`
+- Current V4 production decision: `GO`; timeout hardening candidate approved
+- Current viable/stable baseline: `V4`
 - Current deployment inventory: retained GAS v60 source with zero triggers and no web deployment, live Firebase Hosting, enabled manual Jira workflow, enabled 06:00 refresh, enabled Gmail watch/push, and enabled health monitoring; obsolete acceptance/callable-refresh Functions are deleted; Console launches the Firebase app
 - Current V3 rollback tag: `v3-stable`
 - Current V57 hotfix rollback tag: `v57-noreply-hotfix`

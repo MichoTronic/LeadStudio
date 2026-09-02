@@ -5,6 +5,7 @@ var OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 var OPERATIONAL_PAGE_SIZE = 100;
 var OPERATIONAL_MAX_RESULTS_PER_QUERY = 500;
 var MESSAGE_FETCH_CONCURRENCY = 8;
+var DEFAULT_REQUEST_TIMEOUT_MS = 30 * 1000;
 var gmailLeadParser = require("./gmailLeadParser");
 
 async function createDelegatedAccessToken(options) {
@@ -27,14 +28,14 @@ async function createDelegatedAccessToken(options) {
   if (!normalize(signedJwt)) throw new Error("Workspace JWT signing failed.");
 
   var fetchImpl = options.fetchImpl || fetch;
-  var response = await fetchImpl(OAUTH_TOKEN_URL, {
+  var response = await fetchWithTimeout(fetchImpl, OAUTH_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion: signedJwt
     }).toString()
-  });
+  }, options.requestTimeoutMs);
   var body = await response.json().catch(function () { return {}; });
   if (!response.ok || !normalize(body.access_token)) {
     var reason = normalize(body.error_description || body.error);
@@ -48,9 +49,11 @@ async function probeGmailMailbox(options) {
   var delegatedUser = normalize(options.delegatedUser).toLowerCase();
   var accessToken = await createDelegatedAccessToken(options);
   var fetchImpl = options.fetchImpl || fetch;
-  var response = await fetchImpl(
+  var response = await fetchWithTimeout(
+    fetchImpl,
     `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/profile`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+    options.requestTimeoutMs
   );
   var body = await response.json().catch(function () { return {}; });
   if (!response.ok || !normalize(body.emailAddress)) {
@@ -92,7 +95,8 @@ async function scanGmailLeadMessages(options) {
     queries: queries,
     pageSize: operational ? OPERATIONAL_PAGE_SIZE : (deepScan ? 3 : 15),
     maxResultsPerQuery: operational ? OPERATIONAL_MAX_RESULTS_PER_QUERY : (deepScan ? 3 : 15),
-    candidateLimit: operational ? Infinity : (deepScan ? 21 : 12)
+    candidateLimit: operational ? Infinity : (deepScan ? 21 : 12),
+    requestTimeoutMs: options.requestTimeoutMs
   });
   var messageIds = listing.messageIds;
 
@@ -101,7 +105,7 @@ async function scanGmailLeadMessages(options) {
       `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageId)}`
     );
     messageUrl.searchParams.set("format", "full");
-    var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken);
+    var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken, undefined, options.requestTimeoutMs);
     return gmailLeadParser.parseGmailLeadMessage(message, { nowMs: options.nowMs, timeZone: options.timeZone });
   });
   var accepted = parsedMessages.filter(Boolean);
@@ -133,7 +137,8 @@ async function scanGmailOnboardingMessages(options) {
     queries: queries,
     pageSize: operational ? OPERATIONAL_PAGE_SIZE : 15,
     maxResultsPerQuery: operational ? OPERATIONAL_MAX_RESULTS_PER_QUERY : 15,
-    candidateLimit: operational ? Infinity : 12
+    candidateLimit: operational ? Infinity : 12,
+    requestTimeoutMs: options.requestTimeoutMs
   });
   var messageIds = listing.messageIds;
 
@@ -142,7 +147,7 @@ async function scanGmailOnboardingMessages(options) {
       `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageId)}`
     );
     messageUrl.searchParams.set("format", "full");
-    var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken);
+    var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken, undefined, options.requestTimeoutMs);
     return gmailLeadParser.parseGmailOnboardingMessage(message, { timeZone: options.timeZone });
   });
   return {
@@ -171,7 +176,13 @@ async function listGmailMessagesForQueries(options) {
       listUrl.searchParams.set("q", query);
       listUrl.searchParams.set("maxResults", String(Math.min(options.pageSize, remaining)));
       if (nextPageToken) listUrl.searchParams.set("pageToken", nextPageToken);
-      var listResponse = await gmailFetch(options.fetchImpl, listUrl.toString(), options.accessToken);
+      var listResponse = await gmailFetch(
+        options.fetchImpl,
+        listUrl.toString(),
+        options.accessToken,
+        undefined,
+        options.requestTimeoutMs
+      );
       var listed = Array.isArray(listResponse.messages) ? listResponse.messages : [];
       queryMessages.push.apply(queryMessages, listed);
       nextPageToken = normalize(listResponse.nextPageToken);
@@ -216,7 +227,8 @@ async function renewGmailWatch(options) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ topicName: topicName })
-    }
+    },
+    options.requestTimeoutMs
   );
   if (!normalize(response.historyId) || !normalize(response.expiration)) {
     throw new Error("Gmail watch did not return a history cursor and expiration.");
@@ -248,7 +260,13 @@ async function loadGmailHistory(options) {
     historyUrl.searchParams.set("historyTypes", "messageAdded");
     historyUrl.searchParams.set("maxResults", "500");
     if (nextPageToken) historyUrl.searchParams.set("pageToken", nextPageToken);
-    var historyResponse = await gmailFetch(fetchImpl, historyUrl.toString(), accessToken);
+    var historyResponse = await gmailFetch(
+      fetchImpl,
+      historyUrl.toString(),
+      accessToken,
+      undefined,
+      options.requestTimeoutMs
+    );
     (Array.isArray(historyResponse.history) ? historyResponse.history : []).forEach(function (record) {
       (Array.isArray(record.messagesAdded) ? record.messagesAdded : []).forEach(function (added) {
         var id = normalize(added && added.message && added.message.id);
@@ -267,7 +285,7 @@ async function loadGmailHistory(options) {
       `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageId)}`
     );
     messageUrl.searchParams.set("format", "full");
-    var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken);
+    var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken, undefined, options.requestTimeoutMs);
     return {
       lead: gmailLeadParser.parseGmailLeadMessage(message, { nowMs: options.nowMs, timeZone: options.timeZone }),
       onboarding: gmailLeadParser.parseGmailOnboardingMessage(message, { timeZone: options.timeZone })
@@ -304,10 +322,15 @@ function hasCompleteAppendPayload(message) {
   }) && normalize(values["Gmail Message ID"]) === normalize(message.messageId);
 }
 
-async function gmailFetch(fetchImpl, url, accessToken, request) {
+async function gmailFetch(fetchImpl, url, accessToken, request, requestTimeoutMs) {
   request = request || {};
   var headers = Object.assign({}, request.headers || {}, { Authorization: `Bearer ${accessToken}` });
-  var response = await fetchImpl(url, Object.assign({}, request, { headers: headers }));
+  var response = await fetchWithTimeout(
+    fetchImpl,
+    url,
+    Object.assign({}, request, { headers: headers }),
+    requestTimeoutMs
+  );
   var body = await response.json().catch(function () { return {}; });
   if (!response.ok) {
     var error = new Error(`Gmail API request failed (HTTP ${Number(response.status) || 0}).`);
@@ -315,6 +338,22 @@ async function gmailFetch(fetchImpl, url, accessToken, request) {
     throw error;
   }
   return body;
+}
+
+async function fetchWithTimeout(fetchImpl, url, request, requestTimeoutMs) {
+  var timeoutMs = positiveNumber(requestTimeoutMs, DEFAULT_REQUEST_TIMEOUT_MS);
+  var requestOptions = Object.assign({}, request || {});
+  if (!requestOptions.signal) requestOptions.signal = AbortSignal.timeout(timeoutMs);
+  try {
+    return await fetchImpl(url, requestOptions);
+  } catch (error) {
+    if (error && (error.name === "AbortError" || error.name === "TimeoutError")) {
+      var timeoutError = new Error("Google API request timed out.");
+      timeoutError.code = "deadline-exceeded";
+      throw timeoutError;
+    }
+    throw error;
+  }
 }
 
 function formatAfterDate(nowMs, lookbackDays) {
@@ -330,12 +369,18 @@ function nonNegativeNumber(value) {
   return Number.isFinite(number) && number >= 0 ? number : 0;
 }
 
+function positiveNumber(value, fallback) {
+  var number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
 function normalize(value) {
   return String(value == null ? "" : value).trim();
 }
 
 module.exports = {
   GMAIL_READONLY_SCOPE,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   MESSAGE_FETCH_CONCURRENCY,
   OAUTH_TOKEN_URL,
   OPERATIONAL_MAX_RESULTS_PER_QUERY,

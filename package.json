@@ -1,6 +1,6 @@
 {
   "name": "timeless-lead-studio",
-  "version": "4.0.0-pilot",
+  "version": "4.0.0",
   "private": true,
   "scripts": {
     "test": "npm --prefix functions test",

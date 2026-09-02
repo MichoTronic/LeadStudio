@@ -66,15 +66,18 @@ var leadStudioGmailNarrowReconciliationEnabled = params.defineString("LEAD_STUDI
 });
 var LEAD_STUDIO_ORIGINS = [
   "https://timeless-lead-studio.web.app",
-  "https://timeless-lead-studio.firebaseapp.com",
-  "https://timeless-lead-studio--v4-firebase-pilot-l3jpap21.web.app"
+  "https://timeless-lead-studio.firebaseapp.com"
 ];
 var LEAD_STUDIO_WRITER_SERVICE_ACCOUNT = "lead-studio-writer@timeless-lead-studio.iam.gserviceaccount.com";
+var EXTERNAL_REQUEST_TIMEOUT_MS = 30 * 1000;
+var WRITER_LOCK_TTL_MS = 15 * 60 * 1000;
 
 function createSheetsClient() {
   var google = require("googleapis").google;
   return google.sheets({
     version: "v4",
+    timeout: EXTERNAL_REQUEST_TIMEOUT_MS,
+    retry: false,
     auth: new google.auth.GoogleAuth({
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
     })
@@ -85,6 +88,8 @@ function createWriteSheetsClient() {
   var google = require("googleapis").google;
   return google.sheets({
     version: "v4",
+    timeout: EXTERNAL_REQUEST_TIMEOUT_MS,
+    retry: false,
     auth: new google.auth.GoogleAuth({
       scopes: ["https://www.googleapis.com/auth/spreadsheets"]
     })
@@ -95,7 +100,7 @@ function withLeadStudioWriterLock(owner, callback) {
   return writerLock.withWriterLock({
     bucketName: leadStudioWriterLockBucket.value(),
     owner: owner,
-    ttlMs: 5 * 60 * 1000,
+    ttlMs: WRITER_LOCK_TTL_MS,
     waitMs: 5000
   }, callback);
 }
@@ -105,7 +110,8 @@ function gmailWorkspaceOptions(overrides) {
     delegatedUser: leadStudioGmailUser.value(),
     serviceAccountEmail: leadStudioServiceAccountEmail.value(),
     signJwt: signWorkspaceJwt,
-    timeZone: "Europe/Ljubljana"
+    timeZone: "Europe/Ljubljana",
+    requestTimeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS
   }, overrides || {});
 }
 
@@ -127,7 +133,12 @@ async function signWorkspaceJwt(payload) {
   var auth = new google.auth.GoogleAuth({
     scopes: ["https://www.googleapis.com/auth/cloud-platform"]
   });
-  var iamcredentials = google.iamcredentials({ version: "v1", auth: auth });
+  var iamcredentials = google.iamcredentials({
+    version: "v1",
+    auth: auth,
+    timeout: EXTERNAL_REQUEST_TIMEOUT_MS,
+    retry: false
+  });
   var response = await iamcredentials.projects.serviceAccounts.signJwt({
     name: `projects/-/serviceAccounts/${leadStudioServiceAccountEmail.value()}`,
     requestBody: { payload: JSON.stringify(payload) }
@@ -514,6 +525,7 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
   secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
   serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT
 }, async function (event) {
+  var pushStartedMs = Date.now();
   if (leadStudioGmailPushEnabled.value() !== "true") {
     logger.info("Lead Studio Gmail push skipped because its gate is disabled.");
     return;
@@ -525,6 +537,7 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
     return;
   }
   try {
+    logger.info("Lead Studio Gmail history ingestion started.");
     var output = await withLeadStudioWriterLock("gmail-push", async function () {
       var state = await gmailWatchState.readWatchState(watchStateOptions());
       if (!state || !state.processedHistoryId) {
@@ -535,7 +548,8 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
       var history;
       try {
         history = await workspaceDelegation.loadGmailHistory(gmailWorkspaceOptions({
-          startHistoryId: state.processedHistoryId
+          startHistoryId: state.processedHistoryId,
+          requestTimeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS
         }));
       } catch (historyError) {
         if (Number(historyError && historyError.statusCode) !== 404) throw historyError;
@@ -573,10 +587,19 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
         }));
         return { recovered: true, result: recoveryResult };
       }
+      logger.info("Lead Studio Gmail history loaded.", {
+        pages: history.pages,
+        candidateMessages: history.candidateMessages,
+        durationMs: Date.now() - pushStartedMs
+      });
       var sheetsClient = createWriteSheetsClient();
       var snapshot = await refreshMutation.readSnapshot({
         sheetsClient: sheetsClient,
         spreadsheetId: leadStudioSpreadsheetId.value().trim()
+      });
+      logger.info("Lead Studio Gmail push Sheet snapshot loaded.", {
+        rowCount: snapshot.rows.length,
+        durationMs: Date.now() - pushStartedMs
       });
       var plan = gmailIncrementalMutation.buildIncrementalPlan({
         snapshot: snapshot,
@@ -615,7 +638,8 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
       acceptedOnboarding: output.history ? output.history.acceptedOnboardingMessages.length : 0,
       changedRows: output.result.changedRows,
       appendedRows: output.result.appendedRows,
-      replayed: output.result.replayed
+      replayed: output.result.replayed,
+      durationMs: Date.now() - pushStartedMs
     });
   } catch (error) {
     await recordGmailPushFailure(error);
@@ -623,7 +647,8 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
       name: error && error.name,
       code: error && error.code,
       statusCode: error && error.statusCode,
-      message: error && error.message
+      message: error && error.message,
+      durationMs: Date.now() - pushStartedMs
     });
     throw error;
   }

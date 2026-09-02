@@ -28,3 +28,18 @@ test("production browser source excludes retired GAS and acceptance surfaces", (
   assert.doesNotMatch(source, /leadStudioWriteAcceptanceV4|leadStudioRefreshV4/);
   assert.doesNotMatch(source, /prepareAcceptance|executeAcceptance/);
 });
+
+test("V4 source uses production-only runtime identities and bounded writer calls", () => {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+  const app = fs.readFileSync(path.join(root, "public", "app.js"), "utf8");
+  const functionsIndex = fs.readFileSync(path.join(root, "functions", "index.js"), "utf8");
+  const leadStudio = fs.readFileSync(path.join(root, "functions", "src", "leadStudio.js"), "utf8");
+
+  assert.equal(packageJson.version, "4.0.0");
+  assert.match(app, /clientId:\s*"lead-studio-v4"/);
+  assert.doesNotMatch(app, /lead-studio-v4-test|previewDeployment/);
+  assert.doesNotMatch(functionsIndex, /v4-firebase-pilot/);
+  assert.match(functionsIndex, /WRITER_LOCK_TTL_MS\s*=\s*15\s*\*\s*60\s*\*\s*1000/);
+  assert.match(functionsIndex, /EXTERNAL_REQUEST_TIMEOUT_MS\s*=\s*30\s*\*\s*1000/);
+  assert.doesNotMatch(leadStudio, /read-only-pilot/);
+});
