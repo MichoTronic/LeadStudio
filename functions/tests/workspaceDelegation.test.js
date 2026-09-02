@@ -37,7 +37,9 @@ test("returns mailbox metadata but never the delegated access token", async func
       if (call === 1) {
         return { ok: true, json: async function () { return { access_token: "private-token" }; } };
       }
-      assert.match(url, /users\/marketing%40example.com\/profile$/);
+      var profileUrl = new URL(url);
+      assert.match(profileUrl.pathname, /users\/marketing%40example.com\/profile$/);
+      assert.equal(profileUrl.searchParams.get("fields"), "emailAddress,messagesTotal,threadsTotal");
       assert.equal(request.headers.Authorization, "Bearer private-token");
       return { ok: true, json: async function () {
         return { emailAddress: "marketing@example.com", messagesTotal: 120, threadsTotal: 80, historyId: "secret-history" };
@@ -90,6 +92,30 @@ test("bounds delegated Google API requests and returns a retryable deadline erro
   );
 });
 
+test("shares one delegated credential across parallel Gmail operations", async function () {
+  var signCalls = 0;
+  var tokenCalls = 0;
+  var sharedOptions = {
+    serviceAccountEmail: "runtime@example.iam.gserviceaccount.com",
+    delegatedUser: "marketing@timelesstech.io",
+    signJwt: async function () { signCalls += 1; return "signed-jwt"; },
+    fetchImpl: async function (url) {
+      if (url === delegation.OAUTH_TOKEN_URL) {
+        tokenCalls += 1;
+        return { ok: true, json: async function () { return { access_token: "shared-token" }; } };
+      }
+      return { ok: true, json: async function () { return { messages: [] }; } };
+    }
+  };
+  var accessTokenPromise = delegation.createDelegatedAccessToken(sharedOptions);
+  await Promise.all([
+    delegation.scanGmailLeadMessages(Object.assign({}, sharedOptions, { accessTokenPromise: accessTokenPromise })),
+    delegation.scanGmailOnboardingMessages(Object.assign({}, sharedOptions, { accessTokenPromise: accessTokenPromise }))
+  ]);
+  assert.equal(signCalls, 1);
+  assert.equal(tokenCalls, 1);
+});
+
 test("runs a bounded delegated Gmail lead scan with private append payloads and no tokens", async function () {
   var listCalls = 0;
   var result = await delegation.scanGmailLeadMessages({
@@ -103,12 +129,14 @@ test("runs a bounded delegated Gmail lead scan with private append payloads and 
       }
       var parsedUrl = new URL(url);
       if (parsedUrl.pathname.endsWith("/messages")) {
+        assert.equal(parsedUrl.searchParams.get("fields"), "messages(id),nextPageToken");
         listCalls += 1;
         return { ok: true, json: async function () {
           return { messages: listCalls === 1 ? [{ id: "gmail-1" }] : [{ id: "gmail-1" }, { id: "gmail-2" }] };
         } };
       }
       var id = parsedUrl.pathname.split("/").pop();
+      assert.equal(parsedUrl.searchParams.get("fields"), "id,threadId,internalDate,payload");
       return { ok: true, json: async function () {
         return {
           id: id,
@@ -134,6 +162,42 @@ test("runs a bounded delegated Gmail lead scan with private append payloads and 
   assert.match(result.acceptedMessages[0].values["Full Body"], /^New Contact Email:/);
 });
 
+test("does not download lead messages already persisted in the Sheet", async function () {
+  var fetchedMessageIds = [];
+  var listCalls = 0;
+  var result = await delegation.scanGmailLeadMessages({
+    delegatedUser: "marketing@timelesstech.io",
+    accessToken: "private-token",
+    excludedMessageIdsPromise: Promise.resolve(["gmail-known"]),
+    fetchImpl: async function (url) {
+      var parsedUrl = new URL(url);
+      if (parsedUrl.pathname.endsWith("/messages")) {
+        listCalls += 1;
+        return { ok: true, json: async function () {
+          return { messages: listCalls === 1 ? [{ id: "gmail-known" }] : [{ id: "gmail-new" }] };
+        } };
+      }
+      var id = parsedUrl.pathname.split("/").pop();
+      fetchedMessageIds.push(id);
+      return { ok: true, json: async function () { return {
+        id: id,
+        payload: {
+          headers: [
+            { name: "From", value: "noreply@timelesstech.io" },
+            { name: "To", value: "marketing@timelesstech.io" },
+            { name: "Subject", value: "New Contact" }
+          ],
+          body: { data: Buffer.from("New Contact Email: new@example.com Phone: 1 Address: EU Business Type: Other Company Name: New Interested in: Other Inquiry: Hi Language: en").toString("base64url") }
+        }
+      }; } };
+    }
+  });
+  assert.equal(result.candidateMessages, 2);
+  assert.equal(result.skippedKnownMessages, 1);
+  assert.deepEqual(fetchedMessageIds, ["gmail-new"]);
+  assert.equal(result.acceptedMessages.length, 1);
+});
+
 test("runs a bounded delegated Gmail onboarding scan without returning bodies or tokens", async function () {
   var listCalls = 0;
   var result = await delegation.scanGmailOnboardingMessages({
@@ -147,12 +211,14 @@ test("runs a bounded delegated Gmail onboarding scan without returning bodies or
       }
       var parsedUrl = new URL(url);
       if (parsedUrl.pathname.endsWith("/messages")) {
+        assert.equal(parsedUrl.searchParams.get("fields"), "messages(id),nextPageToken");
         listCalls += 1;
         return { ok: true, json: async function () {
           return { messages: listCalls === 1 ? [{ id: "onboarding-1" }] : [{ id: "onboarding-1" }, { id: "onboarding-2" }] };
         } };
       }
       var id = parsedUrl.pathname.split("/").pop();
+      assert.equal(parsedUrl.searchParams.get("fields"), "id,threadId,internalDate,payload");
       return { ok: true, json: async function () {
         return {
           id: id,
@@ -246,7 +312,8 @@ test("renews a Gmail watch with the delegated mailbox and qualified topic", asyn
   });
   assert.equal(result.historyId, "12345");
   assert.equal(result.emailAddress, "marketing@timelesstech.io");
-  assert.match(watchRequest.url, /users\/marketing%40timelesstech.io\/watch$/);
+  assert.match(new URL(watchRequest.url).pathname, /users\/marketing%40timelesstech.io\/watch$/);
+  assert.equal(new URL(watchRequest.url).searchParams.get("fields"), "historyId,expiration");
   assert.deepEqual(JSON.parse(watchRequest.request.body), {
     topicName: "projects/timeless-lead-studio/topics/lead-studio-gmail-changes"
   });
@@ -268,6 +335,7 @@ test("loads paginated Gmail history and parses each added message only once", as
       }
       var parsedUrl = new URL(url);
       if (parsedUrl.pathname.endsWith("/history")) {
+        assert.equal(parsedUrl.searchParams.get("fields"), "history(messagesAdded(message(id))),historyId,nextPageToken");
         historyCalls += 1;
         if (historyCalls === 1) {
           return { ok: true, json: async function () { return {
@@ -283,6 +351,7 @@ test("loads paginated Gmail history and parses each added message only once", as
         }; } };
       }
       var id = parsedUrl.pathname.split("/").pop();
+      assert.equal(parsedUrl.searchParams.get("fields"), "id,threadId,internalDate,payload");
       if (id === "onboarding-1") {
         return { ok: true, json: async function () { return {
           id: id,

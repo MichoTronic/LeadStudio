@@ -75,6 +75,17 @@ test("builds full existing-row and append mutations without exposing lead conten
   assert.deepEqual(publicResult.appendRowNumbers, [3]);
 });
 
+test("collects unique persisted Gmail message IDs for refresh deduplication", function () {
+  var headers = parser.APPEND_HEADERS.slice();
+  var rows = [
+    headers.map(function (header) { return leadValues({ "Gmail Message ID": "gmail-1" })[header]; }),
+    headers.map(function (header) { return leadValues({ "Gmail Message ID": "gmail-2" })[header]; }),
+    headers.map(function (header) { return leadValues({ "Gmail Message ID": "gmail-1" })[header]; }),
+    headers.map(function (header) { return leadValues({ "Gmail Message ID": "" })[header]; })
+  ];
+  assert.deepEqual(refresh.collectGmailMessageIds({ headers: headers, rows: rows }), ["gmail-1", "gmail-2"]);
+});
+
 test("canonicalizes existing Jira browser links during refresh", function () {
   var headers = parser.APPEND_HEADERS.slice();
   var values = leadValues({

@@ -25,7 +25,8 @@ async function loadOperationsStatus(options) {
     var response = await options.sheetsClient.spreadsheets.values.get({
       spreadsheetId: options.spreadsheetId,
       range: `'Debug Log'!A${startRow}:E${endRow}`,
-      valueRenderOption: "FORMATTED_VALUE"
+      valueRenderOption: "FORMATTED_VALUE",
+      fields: "values"
     });
     var pageEvents = (response && response.data && response.data.values || []).map(toSafeEvent).filter(Boolean);
     events = pageEvents.concat(events).slice(-limit);

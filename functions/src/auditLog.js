@@ -19,7 +19,8 @@ async function findEventDetails(options) {
     var response = await options.sheetsClient.spreadsheets.values.get({
       spreadsheetId: options.spreadsheetId,
       range: `'${DEBUG_LOG_SHEET}'!A${startRow}:E${endRow}`,
-      valueRenderOption: "FORMATTED_VALUE"
+      valueRenderOption: "FORMATTED_VALUE",
+      fields: "values"
     });
     var values = response && response.data && response.data.values || [];
     for (var index = values.length - 1; index >= 0; index -= 1) {

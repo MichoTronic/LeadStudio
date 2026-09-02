@@ -25,7 +25,7 @@ async function loadContactActivity(options) {
   var threadKinds = new Map();
   addThread(threadKinds, lead.gmailThreadId, "original");
 
-  var onboardingMessageIds = splitIds(lead.onboardingMessageId).slice(0, 8);
+  var onboardingMessageIds = Array.from(new Set(splitIds(lead.onboardingMessageId))).slice(0, 8);
   var onboardingMessages = await mapWithConcurrency(onboardingMessageIds, FETCH_CONCURRENCY, function (messageId) {
     return gmailFetch(fetchImpl, messageUrl(delegatedUser, messageId, "metadata"), accessToken, true, requestTimeoutMs);
   });
@@ -36,6 +36,7 @@ async function loadContactActivity(options) {
   var searchUrl = new URL(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages`);
   searchUrl.searchParams.set("q", relatedContactQuery(contactEmail, lead.emailDate));
   searchUrl.searchParams.set("maxResults", String(MAX_RELATED_MESSAGES));
+  searchUrl.searchParams.set("fields", "messages(id,threadId),nextPageToken");
   var relatedListing = await gmailFetch(fetchImpl, searchUrl.toString(), accessToken, false, requestTimeoutMs);
   var relatedMessages = Array.isArray(relatedListing.messages) ? relatedListing.messages : [];
   relatedMessages.forEach(function (message) { addThread(threadKinds, message && message.threadId, "related"); });
@@ -219,12 +220,14 @@ function addThread(map, threadId, kind) {
 function messageUrl(user, messageId, format) {
   var url = new URL(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(user)}/messages/${encodeURIComponent(messageId)}`);
   url.searchParams.set("format", format || "metadata");
+  url.searchParams.set("fields", format === "full" ? "id,threadId,internalDate,payload" : "threadId");
   return url.toString();
 }
 
 function threadUrl(user, threadId) {
   var url = new URL(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(user)}/threads/${encodeURIComponent(threadId)}`);
   url.searchParams.set("format", "full");
+  url.searchParams.set("fields", "id,messages(id,threadId,internalDate,payload)");
   return url.toString();
 }
 

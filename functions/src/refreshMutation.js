@@ -22,7 +22,8 @@ async function readSnapshot(options) {
   var response = await options.sheetsClient.spreadsheets.values.get({
     spreadsheetId: options.spreadsheetId,
     range: `'${LEAD_SHEET}'!A1:${MAX_COLUMNS}600`,
-    valueRenderOption: "UNFORMATTED_VALUE"
+    valueRenderOption: "UNFORMATTED_VALUE",
+    fields: "values"
   });
   var values = response && response.data && response.data.values || [];
   if (!values.length) throw codedError("failed-precondition", "The Lead Studio Sheet is empty.");
@@ -47,9 +48,15 @@ function collectIssueKeys(snapshot, lookup) {
   return keys.slice(0, 100);
 }
 
-function collectNewLeadContacts(snapshot, gmailLeadScan) {
+function collectGmailMessageIds(snapshot) {
   var indexes = headerIndexes(snapshot.headers);
-  var existing = new Set(snapshot.rows.map(function (row) { return normalize(value(row, indexes, "Gmail Message ID")); }).filter(Boolean));
+  return Array.from(new Set(snapshot.rows.map(function (row) {
+    return normalize(value(row, indexes, "Gmail Message ID"));
+  }).filter(Boolean)));
+}
+
+function collectNewLeadContacts(snapshot, gmailLeadScan) {
+  var existing = new Set(collectGmailMessageIds(snapshot));
   var seenEmails = new Set();
   return (gmailLeadScan && Array.isArray(gmailLeadScan.acceptedMessages) ? gmailLeadScan.acceptedMessages : []).reduce(function (output, message) {
     var messageId = normalize(message && message.messageId);
@@ -466,6 +473,7 @@ module.exports = {
   LEAD_SHEET,
   buildOnboardingMailLookup,
   buildRefreshPlan,
+  collectGmailMessageIds,
   collectIssueKeys,
   collectNewLeadContacts,
   executeRefreshPlan,

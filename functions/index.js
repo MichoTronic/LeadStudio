@@ -72,13 +72,22 @@ var LEAD_STUDIO_ORIGINS = [
 var LEAD_STUDIO_WRITER_SERVICE_ACCOUNT = "lead-studio-writer@timeless-lead-studio.iam.gserviceaccount.com";
 var EXTERNAL_REQUEST_TIMEOUT_MS = 30 * 1000;
 var WRITER_LOCK_TTL_MS = 15 * 60 * 1000;
+var sheetsReadClient;
+var sheetsWriteClient;
+var iamCredentialsClient;
 
 function createSheetsClient() {
-  return googleClients.createSheetsClient({ timeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS });
+  if (!sheetsReadClient) {
+    sheetsReadClient = googleClients.createSheetsClient({ timeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS });
+  }
+  return sheetsReadClient;
 }
 
 function createWriteSheetsClient() {
-  return googleClients.createSheetsClient({ write: true, timeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS });
+  if (!sheetsWriteClient) {
+    sheetsWriteClient = googleClients.createSheetsClient({ write: true, timeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS });
+  }
+  return sheetsWriteClient;
 }
 
 function withLeadStudioWriterLock(owner, callback) {
@@ -108,14 +117,17 @@ async function loadOnboardingRows() {
   var response = await createSheetsClient().spreadsheets.values.get({
     spreadsheetId: leadStudioOnboardingSpreadsheetId.value(),
     range: "'OnboardingRequests'!A1:Z500",
-    valueRenderOption: "FORMATTED_VALUE"
+    valueRenderOption: "FORMATTED_VALUE",
+    fields: "values"
   });
   return response && response.data && response.data.values || [];
 }
 
 async function signWorkspaceJwt(payload) {
-  var iamcredentials = googleClients.createIamCredentialsClient({ timeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS });
-  var response = await iamcredentials.projects.serviceAccounts.signJwt({
+  if (!iamCredentialsClient) {
+    iamCredentialsClient = googleClients.createIamCredentialsClient({ timeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS });
+  }
+  var response = await iamCredentialsClient.projects.serviceAccounts.signJwt({
     name: `projects/-/serviceAccounts/${leadStudioServiceAccountEmail.value()}`,
     requestBody: { payload: JSON.stringify(payload) }
   });
@@ -164,7 +176,8 @@ exports.leadStudioActionV5 = functions.onCall({
         var response = await createSheetsClient().spreadsheets.values.get({
           spreadsheetId: leadStudioOnboardingSpreadsheetId.value(),
           range: "'OnboardingRequests'!A1:Z2",
-          valueRenderOption: "FORMATTED_VALUE"
+          valueRenderOption: "FORMATTED_VALUE",
+          fields: "values"
         });
         var values = response && response.data && response.data.values || [];
         return {
@@ -177,7 +190,8 @@ exports.leadStudioActionV5 = functions.onCall({
         var response = await createSheetsClient().spreadsheets.values.get({
           spreadsheetId: leadStudioOnboardingSpreadsheetId.value(),
           range: "'OnboardingRequests'!A1:Z500",
-          valueRenderOption: "FORMATTED_VALUE"
+          valueRenderOption: "FORMATTED_VALUE",
+          fields: "values"
         });
         return response && response.data && response.data.values || [];
       },
@@ -254,9 +268,15 @@ async function buildLiveRefreshPlan(sheetsClient, options) {
     lookbackDays: options.forceFullGmailScan === true || leadStudioGmailNarrowReconciliationEnabled.value() !== "true"
       ? undefined : (Number(leadStudioGmailReconciliationDays.value()) || 14)
   };
+  workspaceOptions.accessTokenPromise = options.accessTokenPromise ||
+    workspaceDelegation.createDelegatedAccessToken(workspaceOptions);
+  var snapshotPromise = refreshMutation.readSnapshot({ sheetsClient: sheetsClient, spreadsheetId: spreadsheetId });
+  var leadScanOptions = Object.assign({}, workspaceOptions, {
+    excludedMessageIdsPromise: snapshotPromise.then(refreshMutation.collectGmailMessageIds)
+  });
   var initial = await Promise.all([
-    refreshMutation.readSnapshot({ sheetsClient: sheetsClient, spreadsheetId: spreadsheetId }),
-    workspaceDelegation.scanGmailLeadMessages(workspaceOptions),
+    snapshotPromise,
+    workspaceDelegation.scanGmailLeadMessages(leadScanOptions),
     workspaceDelegation.scanGmailOnboardingMessages(workspaceOptions),
     loadOnboardingRows()
   ]);
@@ -289,6 +309,7 @@ async function buildLiveRefreshPlan(sheetsClient, options) {
   });
   plan.summary.inputs = {
     gmailLeadCandidates: gmailLeadScan.candidateMessages,
+    gmailLeadSkippedKnown: gmailLeadScan.skippedKnownMessages,
     gmailLeadAccepted: gmailLeadScan.acceptedMessages.length,
     gmailLeadComplete: gmailLeadScan.complete === true,
     gmailOnboardingCandidates: gmailOnboardingScan.candidateMessages,
@@ -327,9 +348,9 @@ exports.leadStudioScheduledRefreshV5 = scheduler.onSchedule({
     return;
   }
   try {
-    var result = await withLeadStudioWriterLock("scheduled-refresh", async function () {
+    var execution = await withLeadStudioWriterLock("scheduled-refresh", async function () {
       var prepared = await buildLiveRefreshPlan();
-      return refreshMutation.executeRefreshPlan({
+      var result = await refreshMutation.executeRefreshPlan({
         plan: prepared.plan,
         sheetsClient: prepared.sheetsClient,
         spreadsheetId: prepared.spreadsheetId,
@@ -338,11 +359,16 @@ exports.leadStudioScheduledRefreshV5 = scheduler.onSchedule({
         expectedVersion: prepared.plan.originalVersion,
         restoreAfterVerify: false
       });
+      return { result: result, inputs: prepared.plan.summary.inputs };
     });
     logger.info("Lead Studio scheduled Firebase refresh completed", {
-      changedRows: result.changedRows,
-      appendedRows: result.appendedRows,
-      replayed: result.replayed
+      changedRows: execution.result.changedRows,
+      appendedRows: execution.result.appendedRows,
+      replayed: execution.result.replayed,
+      gmailLeadCandidates: execution.inputs.gmailLeadCandidates,
+      gmailLeadSkippedKnown: execution.inputs.gmailLeadSkippedKnown,
+      gmailLeadDownloaded: execution.inputs.gmailLeadCandidates - execution.inputs.gmailLeadSkippedKnown,
+      delegatedCredentialExchanges: 1
     });
   } catch (error) {
     logger.error("leadStudioScheduledRefreshV5 failed", {
@@ -496,15 +522,20 @@ exports.leadStudioGmailPushV5 = pubsub.onMessagePublished({
         missingStateError.code = "failed-precondition";
         throw missingStateError;
       }
+      var sharedAccessToken = workspaceDelegation.createDelegatedAccessToken(gmailWorkspaceOptions());
       var history;
       try {
         history = await workspaceDelegation.loadGmailHistory(gmailWorkspaceOptions({
           startHistoryId: state.processedHistoryId,
+          accessTokenPromise: sharedAccessToken,
           requestTimeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS
         }));
       } catch (historyError) {
         if (Number(historyError && historyError.statusCode) !== 404) throw historyError;
-        var recoveryPlan = await buildLiveRefreshPlan(createWriteSheetsClient(), { forceFullGmailScan: true });
+        var recoveryPlan = await buildLiveRefreshPlan(createWriteSheetsClient(), {
+          forceFullGmailScan: true,
+          accessTokenPromise: sharedAccessToken
+        });
         var recoveryEnd = String(notification.historyId || state.watchHistoryId || state.processedHistoryId).trim();
         var recoveryResult = await refreshMutation.executeRefreshPlan({
           plan: recoveryPlan.plan,
@@ -519,7 +550,8 @@ exports.leadStudioGmailPushV5 = pubsub.onMessagePublished({
           command: "gmail_history_recovery"
         });
         var renewed = await workspaceDelegation.renewGmailWatch(gmailWorkspaceOptions({
-          topicName: leadStudioGmailTopicName.value()
+          topicName: leadStudioGmailTopicName.value(),
+          accessTokenPromise: sharedAccessToken
         }));
         var recoveredAt = new Date().toISOString();
         await gmailWatchState.writeWatchState(watchStateOptions(), Object.assign({}, state, {

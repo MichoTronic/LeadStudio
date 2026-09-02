@@ -281,7 +281,8 @@ async function loadLeads(sheetsClient, spreadsheetId, options) {
   var response = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: spreadsheetId,
     range: LEAD_RANGE,
-    valueRenderOption: "FORMATTED_VALUE"
+    valueRenderOption: "FORMATTED_VALUE",
+    fields: "values"
   });
   var values = response && response.data && response.data.values || [];
   if (!values.length) return { leads: [], metadata: { totalRows: 0, returnedRows: 0, anomalies: analyzeLeadAnomalies([]) } };

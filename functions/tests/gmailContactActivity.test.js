@@ -65,11 +65,16 @@ test("loads original, onboarding, and related Gmail conversations without return
     },
     fetchImpl: async function (url) {
       var parsed = new URL(url);
-      if (parsed.pathname.endsWith("/messages/message-onboarding")) return response({ threadId: "thread-onboarding" });
+      if (parsed.pathname.endsWith("/messages/message-onboarding")) {
+        assert.equal(parsed.searchParams.get("fields"), "threadId");
+        return response({ threadId: "thread-onboarding" });
+      }
       if (parsed.pathname.endsWith("/messages")) {
         assert.match(parsed.searchParams.get("q"), /from:ada@example\.com/);
+        assert.equal(parsed.searchParams.get("fields"), "messages(id,threadId),nextPageToken");
         return response({ messages: [{ threadId: "thread-related" }, { threadId: "thread-original" }] });
       }
+      assert.equal(parsed.searchParams.get("fields"), "id,messages(id,threadId,internalDate,payload)");
       if (parsed.pathname.endsWith("/threads/thread-original")) return response({ messages: [original] });
       if (parsed.pathname.endsWith("/threads/thread-onboarding")) return response({ messages: [onboarding] });
       if (parsed.pathname.endsWith("/threads/thread-related")) return response({ messages: [reply, forwarded] });

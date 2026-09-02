@@ -165,7 +165,8 @@ async function readLeadRow(options) {
   var response = await options.sheetsClient.spreadsheets.values.batchGet({
     spreadsheetId: options.spreadsheetId,
     ranges: [`'${LEAD_SHEET}'!A1:${MAX_COLUMNS}1`, `'${LEAD_SHEET}'!A${rowNumber}:${MAX_COLUMNS}${rowNumber}`],
-    valueRenderOption: "UNFORMATTED_VALUE"
+    valueRenderOption: "UNFORMATTED_VALUE",
+    fields: "valueRanges(values)"
   });
   var ranges = response && response.data && response.data.valueRanges || [];
   var headers = ranges[0] && ranges[0].values && ranges[0].values[0] || [];

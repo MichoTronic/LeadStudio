@@ -8,6 +8,7 @@ var OPERATIONAL_PAGE_SIZE = 100;
 var OPERATIONAL_MAX_RESULTS_PER_QUERY = 500;
 var MESSAGE_FETCH_CONCURRENCY = 8;
 var DEFAULT_REQUEST_TIMEOUT_MS = 30 * 1000;
+var GMAIL_MESSAGE_FIELDS = "id,threadId,internalDate,payload";
 var gmailLeadParser = require("./gmailLeadParser");
 
 async function createDelegatedAccessToken(options) {
@@ -46,14 +47,28 @@ async function createDelegatedAccessToken(options) {
   return body.access_token;
 }
 
+async function resolveDelegatedAccessToken(options) {
+  options = options || {};
+  var supplied = normalize(options.accessToken);
+  if (supplied) return supplied;
+  if (options.accessTokenPromise && typeof options.accessTokenPromise.then === "function") {
+    var shared = normalize(await options.accessTokenPromise);
+    if (!shared) throw new Error("Workspace delegation returned an empty shared access token.");
+    return shared;
+  }
+  return createDelegatedAccessToken(options);
+}
+
 async function probeGmailMailbox(options) {
   options = options || {};
   var delegatedUser = normalize(options.delegatedUser).toLowerCase();
-  var accessToken = await createDelegatedAccessToken(options);
+  var accessToken = await resolveDelegatedAccessToken(options);
   var fetchImpl = options.fetchImpl || fetch;
+  var profileUrl = new URL(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/profile`);
+  profileUrl.searchParams.set("fields", "emailAddress,messagesTotal,threadsTotal");
   var response = await fetchWithTimeout(
     fetchImpl,
-    `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/profile`,
+    profileUrl.toString(),
     { headers: { Authorization: `Bearer ${accessToken}` } },
     options.requestTimeoutMs
   );
@@ -71,7 +86,7 @@ async function probeGmailMailbox(options) {
 async function scanGmailLeadMessages(options) {
   options = options || {};
   var delegatedUser = normalize(options.delegatedUser).toLowerCase();
-  var accessToken = await createDelegatedAccessToken(options);
+  var accessToken = await resolveDelegatedAccessToken(options);
   var fetchImpl = options.fetchImpl || fetch;
   var baseQueries = [
     "in:anywhere subject:\"New Contact\"",
@@ -101,12 +116,16 @@ async function scanGmailLeadMessages(options) {
     requestTimeoutMs: options.requestTimeoutMs
   });
   var messageIds = listing.messageIds;
+  var excludedMessageIds = await Promise.resolve(options.excludedMessageIdsPromise || options.excludedMessageIds || []);
+  var excluded = new Set((Array.isArray(excludedMessageIds) ? excludedMessageIds : []).map(normalize).filter(Boolean));
+  var messageIdsToFetch = messageIds.filter(function (messageId) { return !excluded.has(normalize(messageId)); });
 
-  var parsedMessages = await mapWithConcurrency(messageIds, MESSAGE_FETCH_CONCURRENCY, async function (messageId) {
+  var parsedMessages = await mapWithConcurrency(messageIdsToFetch, MESSAGE_FETCH_CONCURRENCY, async function (messageId) {
     var messageUrl = new URL(
       `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageId)}`
     );
     messageUrl.searchParams.set("format", "full");
+    messageUrl.searchParams.set("fields", GMAIL_MESSAGE_FIELDS);
     var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken, undefined, options.requestTimeoutMs);
     return gmailLeadParser.parseGmailLeadMessage(message, { nowMs: options.nowMs, timeZone: options.timeZone });
   });
@@ -114,6 +133,7 @@ async function scanGmailLeadMessages(options) {
   return {
     queries: listing.stats,
     candidateMessages: messageIds.length,
+    skippedKnownMessages: messageIds.length - messageIdsToFetch.length,
     acceptedMessages: accepted,
     complete: listing.complete,
     operational: operational,
@@ -124,7 +144,7 @@ async function scanGmailLeadMessages(options) {
 async function scanGmailOnboardingMessages(options) {
   options = options || {};
   var delegatedUser = normalize(options.delegatedUser).toLowerCase();
-  var accessToken = await createDelegatedAccessToken(options);
+  var accessToken = await resolveDelegatedAccessToken(options);
   var fetchImpl = options.fetchImpl || fetch;
   var operational = options.operational === true;
   var afterDate = formatAfterDate(options.nowMs == null ? Date.now() : options.nowMs, options.lookbackDays);
@@ -149,6 +169,7 @@ async function scanGmailOnboardingMessages(options) {
       `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageId)}`
     );
     messageUrl.searchParams.set("format", "full");
+    messageUrl.searchParams.set("fields", GMAIL_MESSAGE_FIELDS);
     var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken, undefined, options.requestTimeoutMs);
     return gmailLeadParser.parseGmailOnboardingMessage(message, { timeZone: options.timeZone });
   });
@@ -177,6 +198,7 @@ async function listGmailMessagesForQueries(options) {
       var listUrl = new URL(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(options.delegatedUser)}/messages`);
       listUrl.searchParams.set("q", query);
       listUrl.searchParams.set("maxResults", String(Math.min(options.pageSize, remaining)));
+      listUrl.searchParams.set("fields", "messages(id),nextPageToken");
       if (nextPageToken) listUrl.searchParams.set("pageToken", nextPageToken);
       var listResponse = await gmailFetch(
         options.fetchImpl,
@@ -219,11 +241,13 @@ async function renewGmailWatch(options) {
   if (!/^projects\/[a-z][a-z0-9-]{4,28}[a-z0-9]\/topics\/[A-Za-z][A-Za-z0-9._~-]{2,254}$/.test(topicName)) {
     throw new Error("A fully qualified Gmail Pub/Sub topic is required.");
   }
-  var accessToken = await createDelegatedAccessToken(options);
+  var accessToken = await resolveDelegatedAccessToken(options);
   var fetchImpl = options.fetchImpl || fetch;
+  var watchUrl = new URL(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/watch`);
+  watchUrl.searchParams.set("fields", "historyId,expiration");
   var response = await gmailFetch(
     fetchImpl,
-    `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/watch`,
+    watchUrl.toString(),
     accessToken,
     {
       method: "POST",
@@ -247,7 +271,7 @@ async function loadGmailHistory(options) {
   var delegatedUser = normalize(options.delegatedUser).toLowerCase();
   var startHistoryId = normalize(options.startHistoryId);
   if (!startHistoryId) throw new Error("A Gmail history cursor is required.");
-  var accessToken = await createDelegatedAccessToken(options);
+  var accessToken = await resolveDelegatedAccessToken(options);
   var fetchImpl = options.fetchImpl || fetch;
   var messageIds = [];
   var seen = new Set();
@@ -261,6 +285,7 @@ async function loadGmailHistory(options) {
     historyUrl.searchParams.set("startHistoryId", startHistoryId);
     historyUrl.searchParams.set("historyTypes", "messageAdded");
     historyUrl.searchParams.set("maxResults", "500");
+    historyUrl.searchParams.set("fields", "history(messagesAdded(message(id))),historyId,nextPageToken");
     if (nextPageToken) historyUrl.searchParams.set("pageToken", nextPageToken);
     var historyResponse = await gmailFetch(
       fetchImpl,
@@ -287,6 +312,7 @@ async function loadGmailHistory(options) {
       `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages/${encodeURIComponent(messageId)}`
     );
     messageUrl.searchParams.set("format", "full");
+    messageUrl.searchParams.set("fields", GMAIL_MESSAGE_FIELDS);
     var message = await gmailFetch(fetchImpl, messageUrl.toString(), accessToken, undefined, options.requestTimeoutMs);
     return {
       lead: gmailLeadParser.parseGmailLeadMessage(message, { nowMs: options.nowMs, timeZone: options.timeZone }),
@@ -378,6 +404,7 @@ module.exports = {
   loadGmailHistory,
   listGmailMessagesForQueries,
   probeGmailMailbox,
+  resolveDelegatedAccessToken,
   renewGmailWatch,
   scanGmailLeadMessages,
   scanGmailOnboardingMessages
