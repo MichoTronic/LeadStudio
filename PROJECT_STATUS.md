@@ -6,7 +6,45 @@ Last updated: 2026-09-02
 
 Repository: `https://github.com/MichoTronic/LeadStudio.git`
 
-Active release branch: `release/v4`; production source commit `29e7ec1`.
+Active release branch: `release/v5`; production source commit `4323dda`.
+
+## V5 Google Client Upgrade Accepted - 2026-09-02
+
+Lead Studio V5 is live. The monolithic `googleapis` dependency was replaced by
+`@googleapis/sheets` 14 and `@googleapis/iamcredentials` 11, Cloud Storage was
+upgraded to 8.0.1, and Firebase Admin/Functions were upgraded within their
+supported Node 22 lines. `google-auth-library` remains intentionally pinned to
+10.9.1 so Lead Studio shares the same auth major used by the Google/Firebase
+dependency graph instead of loading a second incompatible auth engine.
+
+All 97 tests pass with 96.49% line, 75.72% branch, and 96.35% function coverage;
+the dependency audit reports zero vulnerabilities. The service-specific Google
+client module has 100% line/function coverage, explicit least-privilege scopes,
+30-second request limits, and disabled implicit retries. The installed
+dependency tree is 70,987,955 bytes; the retired `googleapis` package alone was
+183,392,484 bytes. Warm isolated module loading measured about 0.12 seconds,
+versus about 0.95-1.03 seconds for the old umbrella client after filesystem
+warm-up (and 20.70 seconds on the first Drive-backed cold load).
+
+Production Hosting version `51c69433f1156591`, release
+`1788366679323000`, and these exact revisions are active:
+
+- `leadstudioactionv5-00001-xom`
+- `leadstudiogmailpushv5-00001-ceq`
+- `leadstudiohealthcheckv5-00001-nid`
+- `leadstudiomanualjirav5-00001-bub`
+- `leadstudiorenewgmailwatchv5-00001-gim`
+- `leadstudioscheduledrefreshv5-00001-pup`
+
+The independent inventory found exactly six active V5 Functions, three enabled
+V5 Scheduler jobs, and one V5 Eventarc Gmail trigger, with no V4 runtime left.
+The live desktop/mobile shell, production V5 configuration, cache revision,
+security headers, and unsigned 401 boundary passed. Runtime-identity exercises
+passed for health (1.48 seconds), Gmail watch renewal (1.33 seconds), and the
+full scheduled refresh (2.52 seconds; 55 changed rows, zero appends, replayed).
+No lock or compatibility object remained. The only warning after deployment was
+the deliberate unsigned 401 security probe. See
+`Reports/2026_09_02_V5_Google_Client_Compatibility_And_Performance_Review.md`.
 
 ## V4.0.2 Ordered Completion Review Accepted - 2026-09-02
 
@@ -153,23 +191,23 @@ deployment.
 - Storage: `Lead Studio Database` Google Sheet
 - Local folder: `D:\GoogleDrive\_Share\TimelessTech\Marketing\Optmizations\LeadStudio`
 - Parent Google Drive folder: `1keVmyWTXwqQM0cK5AWQzFPIKM7K7hyt1`
-- Current local code line: V4 Firebase production, with the dark Console UI, responsive lead workflow, protected Gmail contact activity, event-driven Gmail ingestion, and accepted Firebase scheduled-refresh runtime
+- Current local code line: V5 Firebase production, with the dark Console UI, responsive lead workflow, protected Gmail contact activity, event-driven Gmail ingestion, and accepted Firebase scheduled-refresh runtime
 - Legacy Apps Script rollback source: `AppsScript/`
 - Official Version 1 checkpoint: Version 45
 - Final GAS version checkpoint: Version 60 - Auth phase cleanup; web deployment retired 2026-08-20
-- Firebase production: `https://timeless-lead-studio.web.app`; accepted Hosting version `21a11812cbf8c21f` promoted on 2026-09-02
-- Firebase action Function: `leadStudioActionV4` revision `leadstudioactionv4-00025-bos`, region `europe-west1`, runtime Node 22, maximum four instances and concurrency 10; canonical operational refresh planner, authorized bounded Gmail contact activity, settings-authorized metadata-only operations status, and 14-day reconciliation status
-- Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00010-voz`, daily 06:00 Europe/Ljubljana, two retries within 15 minutes, one instance/concurrency, operational gate enabled, and 14-day Gmail reconciliation lookback; Form-linked onboarding Sheet reader access repaired and catch-up accepted on 2026-08-19
+- Firebase production: `https://timeless-lead-studio.web.app`; accepted V5 Hosting version `51c69433f1156591` promoted on 2026-09-02
+- Firebase action Function: `leadStudioActionV5` revision `leadstudioactionv5-00001-xom`, region `europe-west1`, runtime Node 22, maximum four instances and concurrency 10; canonical operational refresh planner, authorized bounded Gmail contact activity, settings-authorized metadata-only operations status, and 14-day reconciliation status
+- Firebase scheduled writer: `leadStudioScheduledRefreshV5` revision `leadstudioscheduledrefreshv5-00001-pup`, daily 06:00 Europe/Ljubljana, two retries within 15 minutes, one instance/concurrency, operational gate enabled, and 14-day Gmail reconciliation lookback
 - Firebase Hosting mode: live only; central Auth policy `studioPolicies/lead-studio`
-- Firebase manual Jira workflow: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00014-zar`, one instance/concurrency, signed key-based QA passed, issue-key/API-host/custom-browser-host input enabled, canonical `jira.at.semper7.net` links stored, operational gate enabled, editor enabled on Firebase Hosting, dedicated writer identity
+- Firebase manual Jira workflow: `leadStudioManualJiraV5` revision `leadstudiomanualjirav5-00001-bub`, one instance/concurrency, signed key-based QA passed, issue-key/API-host/custom-browser-host input enabled, canonical `jira.at.semper7.net` links stored, operational gate enabled, editor enabled on Firebase Hosting, dedicated writer identity
 - Firebase writer serialization: private `timeless-lead-studio-writer-locks` bucket with atomic object-generation acquisition shared by scheduled refresh, Gmail push, and manual Jira mutation paths
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
-- Firebase Gmail push: topic `lead-studio-gmail-changes`, daily 03:00 watch renewal in revision `leadstudiorenewgmailwatchv4-00006-fes`, durable private history cursor, retrying single-instance `leadStudioGmailPushV4` revision `leadstudiogmailpushv4-00007-vec`, 30-second provider bounds, 15-minute shared writer lock, and topic-only Gmail publisher IAM; watch/push gates enabled and production timeout-fix smoke passed
-- Firebase health: `leadStudioHealthCheckV4` revision `leadstudiohealthcheckv4-00006-boj` every six hours plus enabled `Lead Studio runtime failures` log-match alert policy to `mitja@timelesstech.io`
+- Firebase Gmail push: topic `lead-studio-gmail-changes`, daily 03:00 watch renewal in revision `leadstudiorenewgmailwatchv5-00001-gim`, durable private history cursor, retrying single-instance `leadStudioGmailPushV5` revision `leadstudiogmailpushv5-00001-ceq`, 30-second provider bounds, 15-minute shared writer lock, and topic-only Gmail publisher IAM
+- Firebase health: `leadStudioHealthCheckV5` revision `leadstudiohealthcheckv5-00001-nid` every six hours plus enabled `Lead Studio runtime failures` log-match alert policy to `mitja@timelesstech.io`
 - Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; scheduled synchronization is operational
-- Current V4 production decision: `GO`; V4.0.1 maintenance accepted in production
-- Current release branch/tag: `release/v4` / `V4.0.1` (original V4 checkpoint retained as `V4`)
-- Current viable/stable baseline: `V4`
+- Current V5 production decision: `GO`; Google client compatibility accepted in production
+- Current release branch/tag: `release/v5` / `V5` (V4.0.2 retained as rollback)
+- Current viable/stable baseline: `V5`
 - Current deployment inventory: retained GAS v60 source with zero triggers and no web deployment, live Firebase Hosting, enabled manual Jira workflow, enabled 06:00 refresh, enabled Gmail watch/push, and enabled health monitoring; obsolete acceptance/callable-refresh Functions are deleted; Console launches the Firebase app
 - Current V3 rollback tag: `v3-stable`
 - Current V57 hotfix rollback tag: `v57-noreply-hotfix`

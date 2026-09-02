@@ -8,12 +8,12 @@ sales export.
 
 - URL: `https://timeless-lead-studio.web.app`
 - Firebase project: `timeless-lead-studio`
-- Live Hosting version: `9f7db17955b94011`
-- Active release: Lead Studio V4
-- Maintenance version: `4.0.2`
-- Active release branch: `release/v4`
-- Production source commit: `29e7ec1`
-- Production Auth client: `lead-studio-v4`
+- Live Hosting version: `51c69433f1156591`
+- Active release: Lead Studio V5
+- Release version: `5.0.0`
+- Active release branch: `release/v5`
+- Production source commit: `4323dda`
+- Production Auth client: `lead-studio-v5`
 - Auth policy: `studioPolicies/lead-studio`
 
 Firebase Node 22 Functions, Scheduler, Gmail push/watch, monitoring, and the
@@ -22,9 +22,10 @@ no versioned web deployment; its source and version history remain in
 `AppsScript/` and Apps Script as rollback/reference material only.
 
 Lead Studio has one production environment and no persistent staging or preview
-environment. V4.0.2 reliability, replay-integrity, export-safety, dependency
-security, runtime cleanup, and the ordered 01-05 completion review are accepted
-in production; new feature work starts from a separately opened V5 branch.
+environment. V5 replaces the monolithic Google API package with service-specific
+Sheets and IAM Credentials clients, upgrades Cloud Storage, and preserves the
+accepted V4.0.2 product contract. Local and production compatibility evidence is
+recorded in `Reports/2026_09_02_V5_Google_Client_Compatibility_And_Performance_Review.md`.
 
 The obsolete callable refresh and write-acceptance Functions, their browser
 hooks, and the retired GAS UI link were removed on 2026-08-20. The six active

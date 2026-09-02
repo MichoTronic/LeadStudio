@@ -5,6 +5,26 @@ Current task and backlog ledger.
 For current status, use `../PROJECT_STATUS.md`.
 For historical implementation detail, use `DocumentationArchive/NOTES.md` with care because it contains sensitive information.
 
+## V5 Google Client Upgrade - 2026-09-02
+
+- [x] Open `release/v5` from the accepted V4.0.2 production baseline.
+- [x] Review current official Google client requirements and breaking changes.
+- [x] Replace the monolithic `googleapis` package with service-specific Sheets
+  and IAM Credentials clients; upgrade Cloud Storage to 8.0.1.
+- [x] Keep one compatible Google Auth major, least-privilege scopes, bounded
+  timeouts, and explicit retry ownership.
+- [x] Add client-construction/API-surface tests and a reusable metadata-only
+  live compatibility smoke.
+- [x] Pass 97 tests, coverage gates, syntax/package checks, dependency audit,
+  local desktop/mobile smoke, and Firebase source discovery.
+- [x] Register and verify exact production Auth client `lead-studio-v5` while
+  retaining V4 only as rollback.
+- [x] Deploy exactly six V5 Functions and Hosting; remove all V4 schedules,
+  Functions, and Eventarc triggers.
+- [x] Pass production health, Gmail-watch renewal, full scheduled refresh,
+  browser, headers, unsigned-access, final-log, and lock-cleanup checks.
+- [x] Capture the reusable upgrade method in the future Maintenance Studio.
+
 ## V4 Production Hardening - 2026-09-02
 
 - [x] Reconcile live Hosting, all six V4 Functions, Auth client, and the absence

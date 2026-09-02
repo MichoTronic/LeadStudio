@@ -41,14 +41,19 @@ permission inspection is allowed. The ecosystem canonical rule is
 - Secrets stay in Secret Manager or approved Script Properties and never in
   source, reports, command history examples, or browser config.
 
-## V4 Feature Freeze
+## Current V5 Production Line
 
-Lead Studio V4 is the production/live release. V4 changes are limited to
-narrowly scoped production fixes that preserve accepted behavior. New features,
-workflow changes, data-model changes, and material UX changes require a
-separately opened V5 branch and scope. Application-owned production identifiers
-use V4 consistently; historical Google API versions and immutable asset paths
-remain unchanged.
+Lead Studio V5 is the production/live release. Application-owned production
+identifiers use V5 consistently. V4.0.2 is the immediate rollback baseline.
+Dependency-major releases require API-surface tests, dependency-graph review,
+local packaging/emulator/browser checks, and production-identity health plus
+writer-path acceptance because local ADC does not prove runtime IAM or Workspace
+delegation.
+
+Future centralized checks follow the advisory contract in
+`../../MaintenanceStudio/ProjectControl/STUDIO_INTEGRATION_CONTRACT.md`. Lead
+Studio remains the authority for its code, credentials, data, release, and
+rollback.
 
 ## Rollback
 
