@@ -4,7 +4,7 @@ Dated review, audit, QA, and decision reports live here.
 
 Use Maintenance Studio's ordered 01-11 review workflow for reusable checks. Save
 completed Lead-specific reports here and follow
-`../ProjectControl/MAINTENANCE_INTEGRATION.md`; the former local template pack is
+`../ProjectControl/integration-maintenance.md`; the former local template pack is
 retained in Git history only.
 
 Naming pattern:
@@ -13,7 +13,7 @@ Naming pattern:
 YYYY_MM_DD_Phase_<phase-or-topic>_<review-name>_Report.md
 ```
 
-Reports are evidence and history. Current active work belongs in `../ProjectControl/CHECKLIST.md`; current status belongs in `../PROJECT_STATUS.md`.
+Reports are evidence and history. Current active work belongs in `../ProjectControl/checklist-project.md`; current status belongs in `../PROJECT_STATUS.md`.
 
 ## Index
 

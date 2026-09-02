@@ -6,7 +6,7 @@ Scope: Lead Studio V3 stable candidate after observability, smoke-test, endpoint
 
 - `README.md`
 - `PROJECT_STATUS.md`
-- `ProjectControl/CHECKLIST.md`
+- `ProjectControl/checklist-project.md`
 - `AppsScript/`
 - `Reports/`
 - `Phase_Completion_Review_Pack/`

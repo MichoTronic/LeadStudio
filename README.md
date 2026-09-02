@@ -41,12 +41,12 @@ push, Gmail-watch renewal, and health check.
 | Need | Canonical file |
 | --- | --- |
 | Current runtime and deployment truth | `PROJECT_STATUS.md` |
-| Architecture and ownership boundaries | `ProjectControl/SYSTEM_OVERVIEW.md` |
-| Active and deferred tasks | `ProjectControl/CHECKLIST.md` |
-| Release and rollback rules | `ProjectControl/RELEASE_GOVERNANCE.md` |
-| Durable decisions | `ProjectControl/DECISION_LOG.md` |
-| Documentation ownership | `ProjectControl/DOCUMENTATION_GOVERNANCE.md` |
-| Auth policy contract | `ProjectControl/AUTHENTICATOR_RULES.md` |
+| Architecture and ownership boundaries | `ProjectControl/system-overview.md` |
+| Active and deferred tasks | `ProjectControl/checklist-project.md` |
+| Release and rollback rules | `ProjectControl/governance-release.md` |
+| Durable decisions | `ProjectControl/decision-log.md` |
+| Documentation ownership | `ProjectControl/governance-documentation.md` |
+| Auth policy contract | `ProjectControl/governance-authentication.md` |
 | Dated evidence | `Reports/README.md` |
 | Legacy GAS source | `AppsScript/` |
 

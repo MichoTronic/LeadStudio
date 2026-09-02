@@ -15,11 +15,11 @@ must preserve the exact existing state and must not mutate permissions. OAuth
 scopes are not approval. Any exception requires an exact file-specific owner
 instruction, before/after state, dependency check, and restore plan. Read-only
 permission inspection is allowed. The ecosystem canonical rule is
-`MarketingStudioConsole/ProjectControl/GOOGLE_WORKSPACE_SHARING_GOVERNANCE.md`.
+`MarketingStudioConsole/ProjectControl/governance-google-workspace-sharing.md`.
 
 ## Pre-Deployment Gate
 
-1. Read `../PROJECT_STATUS.md`, this file, and `CHECKLIST.md`.
+1. Read `../PROJECT_STATUS.md`, this file, and `checklist-project.md`.
 2. Reconcile source branch/commit with live Hosting and Function revisions.
 3. Confirm GAS still has zero installed triggers before Firebase writer changes.
 4. Confirm the Form-linked onboarding Sheet connection remains intact.
@@ -55,7 +55,7 @@ writer-path acceptance because local ADC does not prove runtime IAM or Workspace
 delegation.
 
 Future centralized checks follow the advisory contract in
-`../../MaintenanceStudio/ProjectControl/STUDIO_INTEGRATION_CONTRACT.md`. Lead
+`../../MaintenanceStudio/ProjectControl/contract-studio-integration.md`. Lead
 Studio remains the authority for its code, credentials, data, release, and
 rollback.
 

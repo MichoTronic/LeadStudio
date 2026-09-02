@@ -4,11 +4,11 @@ This is the navigation index for current Lead controls. It does not own policy.
 
 | Function | Files |
 | --- | --- |
-| Current architecture and work | `SYSTEM_OVERVIEW.md`, `CHECKLIST.md`, `DECISION_LOG.md` |
-| Governance | `DOCUMENTATION_GOVERNANCE.md`, `RELEASE_GOVERNANCE.md`, `AUTHENTICATOR_RULES.md` |
-| Ecosystem boundary | `MAINTENANCE_INTEGRATION.md` |
+| Current architecture and work | `system-overview.md`, `checklist-project.md`, `decision-log.md` |
+| Governance | `governance-documentation.md`, `governance-release.md`, `governance-authentication.md` |
+| Ecosystem boundary | `integration-maintenance.md` |
 
 Canonical naming and single-owner rules are maintained in
-`../../MaintenanceStudio/ProjectControl/DOCUMENTATION_GOVERNANCE.md` under
-`GOV-003`, `GOV-008` and `GOV-010`. Lead files add only Lead-specific facts,
+`../../MaintenanceStudio/ProjectControl/governance-documentation.md` under
+`GOV-003` and `GOV-008` through `GOV-012`. Lead files add only Lead-specific facts,
 commands and decisions.

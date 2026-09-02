@@ -16,7 +16,7 @@ Added source-level integration with the shared `TimelessStudioAuth` system so Le
   - `read` for bootstrap, lead reads, and operations status.
   - `write` for Gmail refreshes, Jira refreshes, and manual Jira link save.
   - `settings` for diagnostics and smoke tests.
-- Added `ProjectControl/AUTHENTICATOR_RULES.md`.
+- Added `ProjectControl/governance-authentication.md`.
 
 ## Verification
 

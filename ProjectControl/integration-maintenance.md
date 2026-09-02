@@ -22,6 +22,6 @@ logs remain excluded.
 
 The canonical `_Workspace` identity and use rules are owned by
 `../../MaintenanceStudio/registry/ecosystem-roots.json` and
-`../../MaintenanceStudio/ProjectControl/WORKSPACE_AND_REPOSITORY_STRUCTURE_GOVERNANCE.md`.
+`../../MaintenanceStudio/ProjectControl/governance-workspace-and-repository-structure.md`.
 This Studio does not redefine them; it treats `_Workspace` only as shared
 non-product infrastructure.

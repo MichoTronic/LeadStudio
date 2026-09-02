@@ -39,4 +39,4 @@ AKfycbwDqwHWHOsur0fWcpiIC4uQh-DZ1VZ7nyYxYB8fH4lyL5Jtblo9Ww3R8aBdVdBQbGSNvA @60 -
 - Browser-test approved Mitja access.
 - Browser-test approved Gaja and Vanesa access.
 - Browser-test denied external account behavior.
-- Keep broader V4 items in `ProjectControl/CHECKLIST.md`; do not expand this auth cleanup into unrelated refactors.
+- Keep broader V4 items in `ProjectControl/checklist-project.md`; do not expand this auth cleanup into unrelated refactors.
