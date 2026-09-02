@@ -10,7 +10,7 @@ sales export.
 - Firebase project: `timeless-lead-studio`
 - Live Hosting version: `21a11812cbf8c21f`
 - Active release: Lead Studio V4
-- Maintenance version: `4.0.1`
+- Maintenance version: `4.0.2`
 - Active release branch: `release/v4`
 - Production source commit: `8920416`
 - Production Auth client: `lead-studio-v4`
@@ -22,7 +22,8 @@ no versioned web deployment; its source and version history remain in
 `AppsScript/` and Apps Script as rollback/reference material only.
 
 Lead Studio has one production environment and no persistent staging or preview
-environment. V4.0.1 reliability, replay-integrity, export-safety, and runtime
+  environment. V4.0.2 reliability, replay-integrity, export-safety, dependency
+  security, and runtime
 cleanup are accepted in production; new feature work starts from a separately
 opened V5 branch.
 
@@ -61,9 +62,14 @@ push, Gmail-watch renewal, and health check.
 
 ```powershell
 npm test --prefix functions
+npm run audit
 node --check public/app.js
 git diff --check
 ```
+
+With the Firebase Hosting emulator running on port `5000`, run the repeatable
+desktop/mobile browser shell check with `npm run smoke:browser`. Pass a live URL
+as the final argument to verify a deployed release.
 
 Use `PROJECT_STATUS.md` for the complete runtime inventory, current acceptance
 evidence, and remaining post-live monitoring items.

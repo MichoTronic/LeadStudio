@@ -23,8 +23,11 @@ The review pack is reusable instruction/template material. Do not edit these fil
 ## Before Running
 
 - Read `../README.md`, `../PROJECT_STATUS.md`, and `../ProjectControl/CHECKLIST.md`.
-- Confirm `clasp status` points at `AppsScript/`.
-- Confirm whether the stable Apps Script deployment has been updated or only project head has changed.
+- Confirm Firebase project, Hosting release, active Function revisions, and live
+  gates before testing.
+- Confirm `clasp status` points only at inactive rollback source in `AppsScript/`
+  and that Apps Script has zero triggers.
+- Confirm whether the review is read-only or authorizes production maintenance.
 - Do not copy secrets from `../ProjectControl/DocumentationArchive/NOTES.md` into review reports.
 
 ## After Running

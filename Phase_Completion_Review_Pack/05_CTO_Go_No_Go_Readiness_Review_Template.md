@@ -10,6 +10,8 @@ Scope: final release/readiness decision after reviews 01-04.
 - Completed full-feature QA review.
 - `../PROJECT_STATUS.md`
 - `../ProjectControl/CHECKLIST.md`
+- Exact production deployment inventory, post-deploy logs, test/coverage/audit
+  results, browser smoke, Git branch/tag/remote state, and rollback path.
 
 ## Readiness Scorecard
 
@@ -23,6 +25,7 @@ Scope: final release/readiness decision after reviews 01-04.
 | Documentation readiness |  |  |  |
 | Security readiness |  |  |  |
 | Developer experience readiness |  |  |  |
+| Operations and rollback readiness |  |  |  |
 
 ## Green Items
 

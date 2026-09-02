@@ -38,6 +38,21 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Promote and document V4.0.1 while retaining `V4` as the original rollback
   tag and reserving feature/dependency-major work for V5.
 
+## V4.0.2 Ordered Completion Review - 2026-09-02
+
+- [x] Run completion reviews 01 through 05 against the active Firebase runtime,
+  using the Content Studio reports as a review framework only.
+- [x] Bound settings-only Jira discovery/direct diagnostics to four concurrent
+  requests while preserving deterministic output order.
+- [x] Patch Firebase Admin and the vulnerable transitive `qs` dependency; retain
+  major Google client upgrades for a separately reviewed release.
+- [x] Add root entrypoint checking, dependency-audit scripts, and dependency-free
+  desktop/mobile browser smoke automation.
+- [x] Add clickjacking protection and integrity verification for the pinned
+  third-party Lucide browser asset.
+- [x] Update the reusable 01-05 templates from obsolete GAS-live assumptions to
+  the current Firebase/central-auth/Gmail/Jira architecture.
+
 ## Active Cleanup
 
 - [x] Add root `README.md` with canonical project orientation.
@@ -51,15 +66,20 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Add `../Phase_Completion_Review_Pack/` with ordered completion-review templates.
 - [x] Add `../Reports/` for dated review/audit/QA outputs.
 - [x] Add `.gitignore` rules for sensitive notes, snapshots, local zip archives, and Drive shortcut files.
-- [ ] Decide whether both `../Resources/Lead Studio Database.gsheet` and `../Resources/Lead Studio Database.url` need to stay.
-- [ ] Decide whether `Setup.js` and setup/test token endpoints should remain available in the deployed app.
+- [x] Keep both ignored database shortcuts: `.gsheet` supports the native Drive
+  client and `.url` is the portable browser fallback.
+- [x] Keep `Setup.js` only in inactive rollback source; its setup/test endpoints
+  remain disabled by default and are not exposed by Firebase production.
 
 ## Security And Secrets
 
 - [x] Revoke the Jira API token exposed on 2026-08-17, update the GAS Script Property, and set the replacement directly as Firebase secret `LEAD_STUDIO_JIRA_API_TOKEN`.
-- [ ] Move all operational secrets into Apps Script Script Properties or managed secret storage.
-- [ ] Confirm `DocumentationArchive/NOTES.md` remains excluded from `clasp` pushes and external sharing.
-- [ ] Review `appsscript.json` web app access and execution API settings before broader team use.
+- [x] Store active Firebase secrets in Secret Manager and retain only rollback
+  GAS credentials in Script Properties; no credential file is tracked.
+- [x] Confirm `DocumentationArchive/NOTES.md` remains excluded from Git and clasp
+  deployment scope.
+- [x] Treat `appsscript.json` access settings as rollback-only: GAS has zero
+  triggers and no versioned web deployment.
 - [x] Add shared `TimelessStudioAuth` gate and backend verifier calls for Lead Studio.
 - [x] Register local auth rules for `studioPolicies/lead-studio`.
 - [x] Deploy Lead Studio shared-auth integration to the stable Apps Script web app.
@@ -84,7 +104,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Verify responsible-person fallback matches do not create false positives.
 - [ ] Add a conflict review path when manual Jira key differs from onboarding-sheet Jira key.
 - [ ] Add visibility for unmapped Jira statuses so new lifecycle statuses are not missed.
-- [ ] Confirm whether Jira status should refresh on every normal Gmail refresh or only through explicit Jira refresh actions.
+- [x] Refresh Jira status in the daily 06:00 reconciliation; narrow Gmail push
+  ingestion remains focused on message/onboarding changes.
 
 ## UI And Export
 
@@ -203,10 +224,12 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Promote accepted Hosting version `2ebf4cbe315f4974` to production and update the Console launcher.
 - [x] Add current architecture, release, documentation, and decision governance files.
 - [ ] Run live QA for Deep Refresh Jira Matches.
-- [ ] Review web app access settings before broader team/external use.
+- [x] Retire GAS web-app access; Firebase production is gated by central SSO and
+  backend scope verification.
 - [x] Remove obsolete callable-refresh/write-acceptance Functions, browser
   hooks, and the retired GAS launcher while preserving test history in Git.
-- [ ] Split client utilities from `Script.html` after test coverage improves.
+- [x] Do not refactor inactive `Script.html`; Firebase production already splits
+  app, list, and export browser responsibilities.
 - [ ] Tighten `PROJECT_STATUS.md` Latest Change history into current-state summary plus release notes.
 - [ ] Add a lightweight local lint or syntax-check path for Apps Script files if future work becomes regular.
 - [ ] Keep rollback checkpoints only for meaningful deployments; archive or remove duplicate local copies after a stable deployment is confirmed.

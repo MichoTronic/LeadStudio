@@ -1,25 +1,36 @@
 # 01 Architecture And Code Health Review Template
 
-Scope: Lead Studio Apps Script source, control docs, folder structure, and deployment boundary.
+Scope: Lead Studio Firebase source, inactive Apps Script rollback source, control
+docs, folder structure, and deployment boundary.
 
 ## Review Inputs
 
 - `../README.md`
 - `../PROJECT_STATUS.md`
 - `../ProjectControl/CHECKLIST.md`
-- `../AppsScript/`
+- `../functions/`
+- `../public/`
+- `../firebase.json`
+- `../package.json`
+- `../AppsScript/` only for rollback-boundary verification
 - `../Resources/`
 - `../ProjectControl/DocumentationArchive/NOTES.md` only when historical context is needed; redact secrets from output.
 
 ## Questions
 
-- Does `AppsScript/` contain only live deployment source files?
-- Does `.clasp.json` point at the correct root directory?
+- Are `functions/` and `public/` the only active production source roots?
+- Is `AppsScript/` clearly inactive, trigger-free, and isolated from Firebase writes?
+- Does `.clasp.json` still point at `AppsScript/` for rollback maintenance only?
 - Are deployment files separated from reports, snapshots, resources, and historical notes?
-- Are backend responsibilities still clear across `Code.js`, `Config.js`, `Storage.js`, `GmailScanner.js`, `OnboardingSheet.js`, `Jira.js`, `GoogleAuth.js`, and `Setup.js`?
-- Are UI responsibilities still clear across `Index.html`, `Styles.html`, and `Script.html`?
-- Are any setup/test/debug endpoints still exposed beyond their current need?
+- Are backend responsibilities clear across Function entrypoints, action/read
+  logic, Gmail delegation/parsing, Jira, onboarding, mutation, audit, health,
+  watch state, and writer-lock modules?
+- Are UI responsibilities clear across HTML, CSS, app orchestration, list helpers,
+  and export helpers?
+- Are any acceptance-only Functions, preview selectors, or legacy launchers exposed?
 - Are large files growing in ways that should trigger tests or later splitting?
+- Do root verification commands cover deployable entrypoints, tests, dependency
+  audit, browser smoke, and diff hygiene?
 
 ## Findings
 
@@ -42,7 +53,12 @@ Scope: Lead Studio Apps Script source, control docs, folder structure, and deplo
 ## Verification Results
 
 ```text
-clasp status
+npm run check
+npm run audit
+npm run test:coverage
+npm run smoke:browser
+npx clasp status
+git diff --check
 ```
 
 ## Final Assessment

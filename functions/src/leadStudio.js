@@ -1,6 +1,7 @@
 "use strict";
 
 var HttpsError = require("firebase-functions/v2/https").HttpsError;
+var mapWithConcurrency = require("./asyncUtils").mapWithConcurrency;
 var onboardingSheet = require("./onboardingSheet");
 
 var CENTRAL_VERIFIER_URL = "https://europe-west1-timeless-studio-auth.cloudfunctions.net/verifyStudioAccess";
@@ -215,15 +216,13 @@ async function runAction(request, dependencies) {
     }
     var discoverySheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId);
     var candidates = jiraDiscoveryCandidates(discoverySheetResult.leads, 12);
-    var discoveryResults = [];
-    for (var index = 0; index < candidates.length; index += 1) {
-      var candidate = candidates[index];
-      discoveryResults.push({
+    var discoveryResults = await mapWithConcurrency(candidates, 4, async function (candidate) {
+      return {
         rowNumber: candidate.rowNumber,
         sheetIssueKey: candidate.sheetIssueKey,
         jira: await dependencies.jiraIssueForEmail(candidate.contactEmail)
-      });
-    }
+      };
+    });
     return {
       mode: "read-only-diagnostic",
       jiraDiscoveryParity: compareJiraDiscovery(discoveryResults),
@@ -237,11 +236,13 @@ async function runAction(request, dependencies) {
     var directSheetResult = await loadLeads(dependencies.sheetsClient, dependencies.spreadsheetId);
     var directBaseline = jiraStatusBaseline(directSheetResult.leads);
     var directKeys = directBaseline.issueKeys.slice(0, 12);
+    var directIssues = await mapWithConcurrency(directKeys, 4, function (issueKey) {
+      return dependencies.jiraIssueByKey(issueKey);
+    });
     var directStatuses = {};
-    for (var directIndex = 0; directIndex < directKeys.length; directIndex += 1) {
-      var issue = await dependencies.jiraIssueByKey(directKeys[directIndex]);
+    directIssues.forEach(function (issue) {
       if (issue) directStatuses[issue.issueKey] = issue;
-    }
+    });
     var selectedBaseline = Object.fromEntries(directKeys.map(function (key) {
       return [key, directBaseline.statuses[key]];
     }));

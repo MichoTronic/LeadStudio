@@ -1,5 +1,7 @@
 "use strict";
 
+var mapWithConcurrency = require("./asyncUtils").mapWithConcurrency;
+
 async function probeJiraConnection(options) {
   options = options || {};
   var config = createConfig(options);
@@ -143,20 +145,6 @@ async function safeJson(response) {
 
 function uniqueIssueKeys(values) {
   return Array.from(new Set((Array.isArray(values) ? values : []).map(normalizeIssueKey).filter(Boolean)));
-}
-
-async function mapWithConcurrency(values, concurrency, worker) {
-  var results = new Array(values.length);
-  var cursor = 0;
-  async function runWorker() {
-    while (cursor < values.length) {
-      var index = cursor;
-      cursor += 1;
-      results[index] = await worker(values[index], index);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(concurrency, values.length || 1) }, runWorker));
-  return results;
 }
 
 function normalizeIssueKey(value) {

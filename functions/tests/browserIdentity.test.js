@@ -35,7 +35,7 @@ test("V4 source uses production-only runtime identities and bounded writer calls
   const functionsIndex = fs.readFileSync(path.join(root, "functions", "index.js"), "utf8");
   const leadStudio = fs.readFileSync(path.join(root, "functions", "src", "leadStudio.js"), "utf8");
 
-  assert.equal(packageJson.version, "4.0.1");
+  assert.equal(packageJson.version, "4.0.2");
   assert.match(app, /clientId:\s*"lead-studio-v4"/);
   assert.match(fs.readFileSync(path.join(root, "public", "index.html"), "utf8"), /mode-badge">Production</);
   assert.doesNotMatch(app, /url\.protocol === "http:"/);
@@ -55,7 +55,13 @@ test("hosting applies baseline browser security headers", () => {
 
   assert.equal(headers["Referrer-Policy"], "no-referrer");
   assert.equal(headers["X-Content-Type-Options"], "nosniff");
+  assert.equal(headers["X-Frame-Options"], "DENY");
   assert.equal(headers["Permissions-Policy"], "camera=(), microphone=(), geolocation=()");
+});
+
+test("third-party browser assets are version-pinned and integrity-protected", () => {
+  const index = fs.readFileSync(path.join(root, "public", "index.html"), "utf8");
+  assert.match(index, /lucide@0\.468\.0[^>]+integrity="sha384-[A-Za-z0-9+/=]+"[^>]+crossorigin="anonymous"/);
 });
 
 test("writer replay checks are not pinned to the oldest 5,000 audit rows", () => {

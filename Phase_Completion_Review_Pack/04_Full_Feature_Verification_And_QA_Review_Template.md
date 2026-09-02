@@ -4,14 +4,15 @@ Scope: end-to-end functional behavior and UI verification.
 
 ## Review Inputs
 
-- `../AppsScript/`
+- `../functions/`
+- `../public/`
 - Latest project status and checklist.
-- Current stable web app deployment or Apps Script project head, depending on test target.
+- Current production Hosting release and exact active Function revisions.
 
 ## Feature Checklist
 
 - [ ] App loads and viewer identity displays.
-- [ ] Refresh Leads completes without UI lockup.
+- [ ] Refresh Leads completes without UI lockup and requires authorized read access.
 - [ ] Fast Gmail scan respects the configured recent window.
 - [ ] Deep Scan Marketing Inbox works when intentionally triggered.
 - [ ] Business Type, Target Region, and Interested In filters work.
@@ -25,13 +26,19 @@ Scope: end-to-end functional behavior and UI verification.
 - [ ] Jira links open in a new tab without opening lead details.
 - [ ] CSV export matches visible filtered rows.
 - [ ] XLSX export matches visible filtered rows.
-- [ ] Settings diagnostics open and report useful output.
+- [ ] Settings-scoped diagnostics reject insufficient access and return useful,
+  PII-minimized output when authorized.
+- [ ] Gmail push/watch, scheduled refresh, health check, and manual Jira gates
+  match the intended production posture.
+- [ ] Unauthenticated callable access is rejected before Sheet/provider reads.
+- [ ] Hosting security/cache headers and third-party asset integrity are correct.
+- [ ] Browser smoke reports no runtime exceptions, failed resources, or horizontal overflow.
 
 ## Viewports
 
 - [ ] Desktop wide viewport.
 - [ ] Laptop width viewport.
-- [ ] Mobile/narrow viewport if the app is expected to be used there.
+- [ ] Mobile/narrow viewport at 390 px.
 
 ## Findings
 

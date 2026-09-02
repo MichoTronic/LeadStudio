@@ -1,5 +1,6 @@
 desktop.ini
 AppsScript/desktop.ini
+**/desktop.ini
 node_modules/**
 .git/**
 .gitignore
