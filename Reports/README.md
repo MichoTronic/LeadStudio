@@ -2,7 +2,10 @@
 
 Dated review, audit, QA, and decision reports live here.
 
-Use `../Phase_Completion_Review_Pack/` for the reusable ordered phase-completion review templates. Save completed reports here, not inside the review pack.
+Use Maintenance Studio's ordered 01-11 review workflow for reusable checks. Save
+completed Lead-specific reports here and follow
+`../ProjectControl/MAINTENANCE_INTEGRATION.md`; the former local template pack is
+retained in Git history only.
 
 Naming pattern:
 

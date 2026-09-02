@@ -402,7 +402,7 @@ Apps Script Triggers => 0 triggers
 
 ## Completion Review Rules
 
-- Run `Phase_Completion_Review_Pack/` before declaring a major phase stable.
+- Run Maintenance Studio's ordered 01-11 workflow before declaring a major phase stable.
 - Save dated reports in `Reports/` using the existing `YYYY_MM_DD_Phase_<phase>_*_Report.md` naming pattern.
 - Move any open review conditions into `ProjectControl/CHECKLIST.md`.
 - Create a snapshot under `Archive/Snapshots/` only after the review reports and control docs are updated.
@@ -452,4 +452,4 @@ Next controlled slices:
 - Update this file after meaningful runtime, deployment, integration, or folder-structure changes.
 - Keep active tasks in `ProjectControl/CHECKLIST.md`.
 - Keep historical deployment details in `ProjectControl/DocumentationArchive/NOTES.md`, but do not copy secrets into status/control docs.
-- Use `Phase_Completion_Review_Pack/` for reusable phase-review templates and save completed dated reports in `Reports/`.
+- Use Maintenance Studio for reusable review protocol and save completed Lead-specific dated reports in `Reports/`.
