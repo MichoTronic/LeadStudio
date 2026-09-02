@@ -348,7 +348,7 @@ deployment.
 - Filtered exports, key-based manual Jira linking, canonical custom-host Jira URLs, five-product normalization, custom dates, row interaction, dark Console styling, and desktop/mobile layout passed owner acceptance and are live.
 - The expiring Hosting preview is retained only for QA/rollback; production uses the permanent live channel.
 - Drive permission metadata confirms the source Sheet has no anonymous permission. Named collaborators and the dedicated runtime identities retain explicit access.
-- `NOTES.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
+- `ProjectControl/DocumentationArchive/notes-early-design-historical-undated.md` contains sensitive historical setup details and must stay excluded from push/share workflows.
 - Apps Script shows zero installed triggers. Do not reinstall its daily trigger unless explicitly rolling back and first disabling the Firebase scheduled-refresh gate.
 - Setup/test URL token handlers still exist in `Code.js`, but URL access is disabled by default unless `LEAD_STUDIO_SETUP_ENDPOINTS_ENABLED=true` or `LEAD_STUDIO_TEST_ENDPOINTS_ENABLED=true` is set temporarily.
 - There is a lightweight Apps Script smoke-test harness for parser, Jira mapping, date-range, and export-row behavior; sheet-update behavior still needs deeper automated coverage later.
@@ -406,7 +406,7 @@ Apps Script Triggers => 0 triggers
 - Save dated reports in `Reports/` using the existing `YYYY_MM_DD_Phase_<phase>_*_Report.md` naming pattern.
 - Move any open review conditions into `ProjectControl/checklist-project.md`.
 - Create a snapshot under `Archive/Snapshots/` only after the review reports and control docs are updated.
-- Do not commit `ProjectControl/DocumentationArchive/NOTES.md`, `Archive/`, local zip snapshots, or Google Drive shortcut files to GitHub.
+- Do not commit `ProjectControl/DocumentationArchive/notes-early-design-historical-undated.md`, `Archive/`, local zip snapshots, or Google Drive shortcut files to GitHub.
 
 ## V3 Notes
 
@@ -451,5 +451,5 @@ Next controlled slices:
 
 - Update this file after meaningful runtime, deployment, integration, or folder-structure changes.
 - Keep active tasks in `ProjectControl/checklist-project.md`.
-- Keep historical deployment details in `ProjectControl/DocumentationArchive/NOTES.md`, but do not copy secrets into status/control docs.
+- Keep historical deployment details in `ProjectControl/DocumentationArchive/notes-early-design-historical-undated.md`, but do not copy secrets into status/control docs.
 - Use Maintenance Studio for reusable review protocol and save completed Lead-specific dated reports in `Reports/`.

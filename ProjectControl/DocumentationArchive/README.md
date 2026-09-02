@@ -6,7 +6,7 @@ contract is owned by
 
 | Historical file | Original role | Active successor | Status |
 | --- | --- | --- | --- |
-| `NOTES.md` | Early private operational notes | Current ProjectControl, runtime configuration, and provider consoles | Historical only; never an execution source |
+| `notes-early-design-historical-undated.md` | Early private operational notes | Current ProjectControl, runtime configuration, and provider consoles | Historical only; ignored by Git and never an execution source |
 
 Do not copy credentials, tokens, private operational values, or stale setup
 instructions from historical notes into current documentation or code.

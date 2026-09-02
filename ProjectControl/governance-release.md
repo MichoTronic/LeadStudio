@@ -1,5 +1,11 @@
 # Release Governance
 
+This file owns Lead-specific deployment, writer and rollback gates. The
+ecosystem release/branch/version contract is
+`../../MaintenanceStudio/ProjectControl/governance-studio-release-lifecycle.md`.
+Lead uses the **single production environment** procedure in
+`../../MaintenanceStudio/ProjectControl/runbook-production-only-release.md`.
+
 ## Release Rule
 
 Hosting, Functions, Scheduler, IAM, Secret Manager, Pub/Sub, and GAS deployment

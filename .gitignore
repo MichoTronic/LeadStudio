@@ -17,7 +17,7 @@ build/
 *.pem
 
 # Sensitive historical setup notes
-ProjectControl/DocumentationArchive/NOTES.md
+ProjectControl/DocumentationArchive/notes-early-design-historical-undated.md
 
 # Local rollback archives and binary snapshots
 Archive/

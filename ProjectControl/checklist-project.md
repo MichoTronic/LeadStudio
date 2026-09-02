@@ -3,7 +3,7 @@
 Current task and backlog ledger.
 
 For current status, use `../PROJECT_STATUS.md`.
-For historical implementation detail, use `DocumentationArchive/NOTES.md` with care because it contains sensitive information.
+For historical implementation detail, use `DocumentationArchive/notes-early-design-historical-undated.md` with care because it contains sensitive information.
 
 ## V5 Google Client Upgrade - 2026-09-02
 
@@ -116,7 +116,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Revoke the Jira API token exposed on 2026-08-17, update the GAS Script Property, and set the replacement directly as Firebase secret `LEAD_STUDIO_JIRA_API_TOKEN`.
 - [x] Store active Firebase secrets in Secret Manager and retain only rollback
   GAS credentials in Script Properties; no credential file is tracked.
-- [x] Confirm `DocumentationArchive/NOTES.md` remains excluded from Git and clasp
+- [x] Confirm `DocumentationArchive/notes-early-design-historical-undated.md` remains excluded from Git and clasp
   deployment scope.
 - [x] Treat `appsscript.json` access settings as rollback-only: GAS has zero
   triggers and no versioned web deployment.
