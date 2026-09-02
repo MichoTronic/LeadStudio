@@ -8,10 +8,10 @@ sales export.
 
 - URL: `https://timeless-lead-studio.web.app`
 - Firebase project: `timeless-lead-studio`
-- Live Hosting version: `298d0a3af1bf3263`
+- Live Hosting version: `d30e9c52d40b5b98`
 - Active release: Lead Studio V4
-- Active development branch: `hotfix/v4-gmail-push-timeout`
-- Production source commit: `78732e5`
+- Active release branch: `release/v4`
+- Production source commit: `1e5ee1e`
 - Production Auth client: `lead-studio-v4`
 - Auth policy: `studioPolicies/lead-studio`
 
@@ -21,8 +21,8 @@ no versioned web deployment; its source and version history remain in
 `AppsScript/` and Apps Script as rollback/reference material only.
 
 Lead Studio has one production environment and no persistent staging or preview
-environment. The V4 Gmail-push timeout hardening is an approved production
-candidate; current deployment evidence remains authoritative until promotion.
+environment. The V4 Gmail-push timeout hardening is accepted in production; new
+feature work starts from a separately opened V5 branch.
 
 The obsolete callable refresh and write-acceptance Functions, their browser
 hooks, and the retired GAS UI link were removed on 2026-08-20. The six active

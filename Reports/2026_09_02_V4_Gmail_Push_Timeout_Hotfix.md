@@ -1,7 +1,7 @@
 # Lead Studio V4 Gmail Push Timeout Hotfix
 
 Date: 2026-09-02
-Status: approved production candidate
+Status: ACCEPTED PRODUCTION
 
 ## Incident
 
@@ -68,6 +68,46 @@ Historical reports keep their exact V2/V3/V4 evidence.
   - Gmail-watch renewal: `leadstudiorenewgmailwatchv4-00003-won`;
   - scheduled refresh: `leadstudioscheduledrefreshv4-00007-lew`.
 
-No Google Sheet, Form connection, Gmail watch cursor, Jira record, Workspace
-sharing, IAM, secret, Pub/Sub topic, Scheduler gate, or GAS trigger was changed
-during diagnosis and candidate preparation.
+No Google Sheet, Form connection, Jira record, Workspace sharing, IAM, secret,
+Pub/Sub topic, Scheduler gate, or GAS trigger was changed during diagnosis and
+candidate preparation.
+
+## Production Promotion And Acceptance
+
+Owner approval for the production-only rollout was given in-session on
+2026-09-02. Source commit `1e5ee1e` was deployed to all six V4 Functions and
+Firebase Hosting with zero Function deployment errors.
+
+- Hosting version: `d30e9c52d40b5b98`; live release
+  `1788344092595000`.
+- Action: `leadstudioactionv4-00023-geb`.
+- Gmail push: `leadstudiogmailpushv4-00005-jid`.
+- Health check: `leadstudiohealthcheckv4-00004-nak`.
+- Manual Jira: `leadstudiomanualjirav4-00012-xok`.
+- Gmail-watch renewal: `leadstudiorenewgmailwatchv4-00004-buc`.
+- Scheduled refresh: `leadstudioscheduledrefreshv4-00008-qad`.
+- Every Function serves 100% of traffic from the listed revision.
+
+Production verification passed:
+
+- Hosting returned HTTP 200 with the required cache policy and contained only
+  Auth client `lead-studio-v4`.
+- An unsigned action request returned the expected HTTP 401 before protected
+  data access.
+- The scheduled health check returned HTTP 200 in 4.65 seconds and logged a
+  passing runtime status.
+- A manual invocation of the existing Gmail-watch renewal job returned HTTP
+  200 in 4.05 seconds and renewed the watch successfully.
+- A controlled Pub/Sub notification exercised the new Gmail-push revision. It
+  returned HTTP 204 in 6.86 seconds, loaded one Gmail history page and the
+  309-row Sheet snapshot, found zero candidates, and completed in 6.82 seconds
+  with zero changed or appended rows.
+- The local suite passed 83/83 and the production dependency audit found zero
+  vulnerabilities.
+
+The watch renewal updated the normal private Gmail watch state as designed;
+the controlled push updated its success timestamps/cursor without changing any
+lead row. Firebase deployment refreshed the existing Scheduler job definitions
+without changing their schedules or enabled gates. Firebase CLI also enabled
+the Cloud Billing API during its standard billing-linked deployment preflight;
+no billing account or budget setting changed.

@@ -16,7 +16,7 @@ Reports are evidence and history. Current active work belongs in `../ProjectCont
 
 | Date | Report | Status |
 | --- | --- | --- |
-| 2026-09-02 | `2026_09_02_V4_Gmail_Push_Timeout_Hotfix.md` | APPROVED PRODUCTION CANDIDATE; provider request bounds, lock lease repair, and V4 production-only naming |
+| 2026-09-02 | `2026_09_02_V4_Gmail_Push_Timeout_Hotfix.md` | ACCEPTED PRODUCTION; provider bounds, lock repair, V4 naming, and 6.82-second production push smoke |
 | 2026-08-05 | `2026_08_05_Lead_Studio_Shared_Auth_Integration_Report.md` | Shared auth integration deployed to Apps Script version 59 |
 | 2026-08-05 | `2026_08_05_Phase_Shared_Auth_Completion_Report.md` | Shared auth phase cleanup deployed to Apps Script version 60 |
 | 2026-08-19 | `Cross_Studio_Completion_Review_2026_08_19.md` | GO; accepted Firebase baseline revalidated with 83 checks |

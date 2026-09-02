@@ -16,9 +16,9 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Align current source on package `4.0.0`, production Auth client
   `lead-studio-v4`, and V4 Function identifiers; remove retired preview paths.
 - [x] Pass all 83 local checks and verify all six Auth production clients.
-- [ ] Deploy the approved production candidate and verify new revisions,
+- [x] Deploy the approved production candidate and verify new revisions,
   Hosting, event processing, health logs, and rollback inventory.
-- [ ] Close V4 on `release/v4` with tag `V4`; start new feature work only in an
+- [x] Close V4 on `release/v4` with tag `V4`; start new feature work only in an
   explicitly opened V5 branch.
 
 ## Active Cleanup

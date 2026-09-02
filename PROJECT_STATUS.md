@@ -6,10 +6,9 @@ Last updated: 2026-09-02
 
 Repository: `https://github.com/MichoTronic/LeadStudio.git`
 
-Active branch: `hotfix/v4-gmail-push-timeout`; production source commit remains
-`78732e5` until the approved hotfix is promoted.
+Active release branch: `release/v4`; production source commit `1e5ee1e`.
 
-## V4 Gmail Push Timeout Candidate - 2026-09-02
+## V4 Gmail Push Timeout Hotfix Accepted - 2026-09-02
 
 Two Gmail Pub/Sub requests on 2026-09-01 returned HTTP 504 at the exact
 360-second deadline. The executions later completed successfully with one or
@@ -18,15 +17,18 @@ subsequent deliveries are healthy. The defect is an unbounded provider-request
 path combined with a five-minute writer-lock lease shorter than the Function
 deadline.
 
-The approved candidate adds 30-second Gmail/OAuth, IAM Credentials, and Sheets
+The accepted production fix adds 30-second Gmail/OAuth, IAM Credentials, and Sheets
 request bounds; disables implicit Google-client retries in favor of the existing
 whole-event Pub/Sub retry/idempotency; extends the shared lock lease to 15
-minutes; and adds metadata-only stage timing. All 83 checks pass.
+minutes; and adds metadata-only stage timing. All 83 checks pass and the
+production dependency audit reports zero vulnerabilities.
 
 Current source now uses V4 consistently: package `4.0.0`, V4 Function names,
 and production Auth client `lead-studio-v4`. Lead Studio has no persistent
 staging/preview environment, so retired preview selection, origin, and Auth
-fixture are being removed. See
+fixture are removed. All six new revisions serve 100% traffic. A controlled
+production push returned HTTP 204 in 6.86 seconds and completed in 6.82 seconds
+with zero changed/appended rows. See
 `Reports/2026_09_02_V4_Gmail_Push_Timeout_Hotfix.md`.
 
 ## Final Validation And Runtime Cleanup - 2026-08-20
@@ -104,18 +106,18 @@ deployment.
 - Legacy Apps Script rollback source: `AppsScript/`
 - Official Version 1 checkpoint: Version 45
 - Final GAS version checkpoint: Version 60 - Auth phase cleanup; web deployment retired 2026-08-20
-- Firebase production: `https://timeless-lead-studio.web.app`; accepted Hosting version `298d0a3af1bf3263` promoted on 2026-08-20
-- Firebase pilot function: `leadStudioActionV4`, region `europe-west1`, runtime Node 22
-- Firebase action Function: `leadStudioActionV4` revision `leadstudioactionv4-00022-qoj`; canonical operational refresh planner, authorized Gmail contact activity, settings-authorized metadata-only operations status, and 14-day reconciliation status
-- Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00007-lew`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled, and 14-day Gmail reconciliation lookback; Form-linked onboarding Sheet reader access repaired and catch-up accepted on 2026-08-19
+- Firebase production: `https://timeless-lead-studio.web.app`; accepted Hosting version `d30e9c52d40b5b98` promoted on 2026-09-02
+- Firebase action Function: `leadStudioActionV4` revision `leadstudioactionv4-00023-geb`, region `europe-west1`, runtime Node 22; canonical operational refresh planner, authorized Gmail contact activity, settings-authorized metadata-only operations status, and 14-day reconciliation status
+- Firebase scheduled writer: `leadStudioScheduledRefreshV4` revision `leadstudioscheduledrefreshv4-00008-qad`, daily 06:00 Europe/Ljubljana, no retries, one instance/concurrency, operational gate enabled, and 14-day Gmail reconciliation lookback; Form-linked onboarding Sheet reader access repaired and catch-up accepted on 2026-08-19
 - Firebase Hosting mode: live only; central Auth policy `studioPolicies/lead-studio`
-- Firebase manual Jira workflow: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00011-xon`, signed key-based QA passed, issue-key/API-host/custom-browser-host input enabled, canonical `jira.at.semper7.net` links stored, operational gate enabled, editor enabled on Firebase Hosting, dedicated writer identity
+- Firebase manual Jira workflow: `leadStudioManualJiraV4` revision `leadstudiomanualjirav4-00012-xok`, signed key-based QA passed, issue-key/API-host/custom-browser-host input enabled, canonical `jira.at.semper7.net` links stored, operational gate enabled, editor enabled on Firebase Hosting, dedicated writer identity
 - Firebase writer serialization: private `timeless-lead-studio-writer-locks` bucket with atomic object-generation acquisition shared by scheduled refresh, Gmail push, and manual Jira mutation paths
 - Firebase Gmail delegation: keyless IAM `signJwt` as `819383433430-compute@developer.gserviceaccount.com`, impersonating `marketing@timelesstech.io` with Gmail readonly scope
-- Firebase Gmail push: topic `lead-studio-gmail-changes`, daily 03:00 watch renewal, durable private history cursor, retrying single-instance `leadStudioGmailPushV4` revision `leadstudiogmailpushv4-00004-tew`, shared writer lock, and topic-only Gmail publisher IAM; watch/push gates enabled and natural trusted-lead acceptance passed
-- Firebase health: `leadStudioHealthCheckV4` every six hours plus enabled `Lead Studio runtime failures` log-match alert policy to `mitja@timelesstech.io`
+- Firebase Gmail push: topic `lead-studio-gmail-changes`, daily 03:00 watch renewal in revision `leadstudiorenewgmailwatchv4-00004-buc`, durable private history cursor, retrying single-instance `leadStudioGmailPushV4` revision `leadstudiogmailpushv4-00005-jid`, 30-second provider bounds, 15-minute shared writer lock, and topic-only Gmail publisher IAM; watch/push gates enabled and production timeout-fix smoke passed
+- Firebase health: `leadStudioHealthCheckV4` revision `leadstudiohealthcheckv4-00004-nak` every six hours plus enabled `Lead Studio runtime failures` log-match alert policy to `mitja@timelesstech.io`
 - Firebase Jira credential: `LEAD_STUDIO_JIRA_API_TOKEN` in Secret Manager; scheduled synchronization is operational
-- Current V4 production decision: `GO`; timeout hardening candidate approved
+- Current V4 production decision: `GO`; timeout hardening accepted in production
+- Current release branch/tag: `release/v4` / `V4`
 - Current viable/stable baseline: `V4`
 - Current deployment inventory: retained GAS v60 source with zero triggers and no web deployment, live Firebase Hosting, enabled manual Jira workflow, enabled 06:00 refresh, enabled Gmail watch/push, and enabled health monitoring; obsolete acceptance/callable-refresh Functions are deleted; Console launches the Firebase app
 - Current V3 rollback tag: `v3-stable`
