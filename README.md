@@ -72,7 +72,8 @@ git diff --check
 ```
 
 With the Firebase Hosting emulator running on port `5000`, run the repeatable
-desktop/mobile browser shell check with `npm run smoke:browser`. Pass a live URL
+responsive 320px/mobile/tablet/desktop browser shell check with `npm run
+smoke:browser`. Pass a live URL
 as the final argument to verify a deployed release.
 
 Use `PROJECT_STATUS.md` for the complete runtime inventory, current acceptance

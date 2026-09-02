@@ -19,6 +19,11 @@ dependency summaries, tests/coverage, deployment inventory, alert health and
 dated reviews. Contact data, message bodies, tokens, secrets and unrestricted
 logs remain excluded.
 
+Browser surfaces are registered in `../../MaintenanceStudio/registry/ui-surfaces.json`
+and consume the single canonical contract in
+`../../MaintenanceStudio/ProjectControl/governance-responsive-ui-and-display-outputs.md`.
+Lead records only its routes and product-specific acceptance evidence here.
+
 ## Shared workspace reference
 
 The canonical `_Workspace` identity and use rules are owned by

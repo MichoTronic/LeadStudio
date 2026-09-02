@@ -75,11 +75,14 @@ function connect(page) {
   };
 }
 
-async function inspectViewport(client, name, width, height) {
+async function inspectViewport(client, viewport) {
+  const { name, width, height, mobile = false, touch = false } = viewport;
   client.events.length = 0;
   await client.send("Emulation.setDeviceMetricsOverride", {
-    width, height, deviceScaleFactor: 1, mobile: false
+    width, height, screenWidth: width, screenHeight: height,
+    deviceScaleFactor: 1, mobile
   });
+  await client.send("Emulation.setTouchEmulationEnabled", { enabled: touch, maxTouchPoints: touch ? 5 : 1 });
   await client.send("Page.navigate", { url: baseUrl });
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const state = await client.send("Runtime.evaluate", {
@@ -144,10 +147,16 @@ async function main() {
       })
     };`
   });
-  const results = [
-    await inspectViewport(client, "desktop", 1440, 1000),
-    await inspectViewport(client, "mobile", 390, 844)
+  const viewports = [
+    { name: "reflow-320", width: 320, height: 800, mobile: true, touch: true },
+    { name: "mobile-390", width: 390, height: 844, mobile: true, touch: true },
+    { name: "tablet-portrait-768", width: 768, height: 1024, mobile: true, touch: true },
+    { name: "tablet-landscape-1024", width: 1024, height: 768, mobile: true, touch: true },
+    { name: "desktop-1280", width: 1280, height: 720 },
+    { name: "desktop-1440", width: 1440, height: 900 }
   ];
+  const results = [];
+  for (const viewport of viewports) results.push(await inspectViewport(client, viewport));
   console.log(JSON.stringify({ baseUrl, results }, null, 2));
   client.close();
   if (results.some((result) => !result.passed)) process.exitCode = 1;

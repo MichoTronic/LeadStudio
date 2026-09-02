@@ -55,6 +55,7 @@ test("hosting applies baseline browser security headers", () => {
   const headers = Object.fromEntries(allFiles.headers.map((header) => [header.key, header.value]));
 
   assert.equal(headers["Referrer-Policy"], "no-referrer");
+  assert.equal(headers["Strict-Transport-Security"], "max-age=31536000");
   assert.equal(headers["X-Content-Type-Options"], "nosniff");
   assert.equal(headers["X-Frame-Options"], "DENY");
   assert.equal(headers["Permissions-Policy"], "camera=(), microphone=(), geolocation=()");
