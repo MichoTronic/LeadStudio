@@ -72,7 +72,14 @@ promise that every Cloud Run cold start will improve by the same amount.
 - Gmail watch renewal: HTTP 200, 1.33 seconds.
 - Full refresh: HTTP 200, 2.52 seconds, 55 changed rows, zero appends, replayed.
 - Security boundary: valid unsigned callable request returned 401.
-- Final warnings/errors: only that deliberate 401; no runtime failure.
+- Initial cross-service log sweep: detected Eventarc delivery 403s because the
+  newly created V5 Cloud Run push service had no invoker policy.
+- Repair: granted `roles/run.invoker` only to the existing Eventarc/writer
+  service account and only on `leadstudiogmailpushv5`.
+- Queued natural delivery after repair: HTTP 204 in 8.56 seconds; one candidate,
+  one accepted trusted lead, one append, zero changed rows, replay false, and
+  application completion in 6.98 seconds.
+- Post-repair warnings/errors: zero.
 - Writer lock and `compatibility/` object counts after testing: zero.
 
 ## Cross-Studio Pattern
@@ -82,7 +89,8 @@ map exact API methods/scopes; keep a single auth major where possible; codify
 timeouts and retry ownership; test real method surfaces; measure package/load
 before and after; distinguish local ADC from runtime identity; deploy with a
 rollback baseline; exercise read, delegated-auth, and writer paths; reconcile
-Functions/Scheduler/Eventarc inventories; and close with clean logs and locks.
+Functions/Scheduler/Eventarc inventories; verify the trigger identity can invoke
+the newly named Cloud Run service; and close with clean logs and locks.
 
 The reusable procedure and governance boundaries are recorded in
 `../../MaintenanceStudio/Knowledge/GOOGLE_NODE_CLIENT_UPGRADE_PATTERN.md`.

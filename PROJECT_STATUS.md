@@ -42,8 +42,14 @@ The live desktop/mobile shell, production V5 configuration, cache revision,
 security headers, and unsigned 401 boundary passed. Runtime-identity exercises
 passed for health (1.48 seconds), Gmail watch renewal (1.33 seconds), and the
 full scheduled refresh (2.52 seconds; 55 changed rows, zero appends, replayed).
-No lock or compatibility object remained. The only warning after deployment was
-the deliberate unsigned 401 security probe. See
+No lock or compatibility object remained. The final broad log sweep then found
+that the newly named Gmail push service lacked its service-level Eventarc
+invoker binding. Queued deliveries returned 403 until the exact V5 Cloud Run
+service granted `roles/run.invoker` to the existing writer/trigger service
+account. The next retry returned HTTP 204 in 8.56 seconds and completed in 6.98
+seconds, accepting one trusted lead and appending it exactly once. There were no
+later warnings. A read-only release check now verifies the trigger identity and
+service binding after every deploy. See
 `Reports/2026_09_02_V5_Google_Client_Compatibility_And_Performance_Review.md`.
 
 ## V4.0.2 Ordered Completion Review Accepted - 2026-09-02

@@ -28,6 +28,10 @@ permission inspection is allowed. The ecosystem canonical rule is
 7. Record current Hosting and Function rollback revisions.
 8. Update status/checklist and obtain explicit approval.
 9. Deploy one environment at a time and run signed read/write/restore smoke.
+10. After creating or renaming the Gmail event Function, run
+   `npm run verify:gmail-push-iam`; verify the exact Eventarc service account has
+   `roles/run.invoker` on the exact Cloud Run push service and confirm one
+   authenticated delivery. Do not grant public or project-wide invocation.
 
 ## Environment Rules
 

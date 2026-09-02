@@ -23,6 +23,9 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
   Functions, and Eventarc triggers.
 - [x] Pass production health, Gmail-watch renewal, full scheduled refresh,
   browser, headers, unsigned-access, final-log, and lock-cleanup checks.
+- [x] Repair the V5 Gmail push service-level Eventarc invoker binding, confirm
+  the queued event returns 204 and appends its trusted lead exactly once, and
+  add a read-only post-deploy IAM verifier.
 - [x] Capture the reusable upgrade method in the future Maintenance Studio.
 
 ## V4 Production Hardening - 2026-09-02

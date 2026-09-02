@@ -5,10 +5,11 @@
   "scripts": {
     "test": "npm --prefix functions test",
     "test:coverage": "npm --prefix functions run test:coverage",
-    "check": "node --check functions/index.js && node --check public/config.js && node --check public/export-utils.js && node --check public/lead-list-utils.js && node --check public/app.js && node --check scripts/browser-smoke.js && node --check scripts/google-client-live-smoke.js && npm test",
+    "check": "node --check functions/index.js && node --check functions/scripts/verify-gmail-push-invoker.js && node --check public/config.js && node --check public/export-utils.js && node --check public/lead-list-utils.js && node --check public/app.js && node --check scripts/browser-smoke.js && node --check scripts/google-client-live-smoke.js && npm test",
     "audit": "npm audit --prefix functions --omit=dev",
     "outdated": "npm outdated --prefix functions",
     "smoke:browser": "node scripts/browser-smoke.js",
-    "smoke:google-clients": "node scripts/google-client-live-smoke.js"
+    "smoke:google-clients": "node scripts/google-client-live-smoke.js",
+    "verify:gmail-push-iam": "node functions/scripts/verify-gmail-push-invoker.js"
   }
 }
