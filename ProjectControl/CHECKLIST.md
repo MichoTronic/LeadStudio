@@ -27,6 +27,16 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
   the queued event returns 204 and appends its trusted lead exactly once, and
   add a read-only post-deploy IAM verifier.
 - [x] Capture the reusable upgrade method in the future Maintenance Studio.
+- [x] Audit all V5 Gmail, Sheets, IAM Credentials, Storage, Scheduler, and
+  Function client calls for behavior-preserving efficiency improvements.
+- [x] Share one delegated credential per refresh/recovery operation and reuse
+  stateless Google clients across warm Function invocations.
+- [x] Add Gmail/Sheets partial responses and skip full downloads for immutable
+  lead messages already represented by a stored Gmail ID.
+- [x] Preserve onboarding recomputation and every idempotency, locking,
+  optimistic-concurrency, audit, verification, and recovery call.
+- [x] Pass 100 tests and production health/watch/full-refresh acceptance; prove
+  7 of 10 live lead candidates were safely skipped with zero duplicate append.
 
 ## V4 Production Hardening - 2026-09-02
 

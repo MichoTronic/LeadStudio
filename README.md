@@ -12,7 +12,7 @@ sales export.
 - Active release: Lead Studio V5
 - Release version: `5.0.0`
 - Active release branch: `release/v5`
-- Production source commit: `4323dda`
+- Production source commit: `1d8a7d0`
 - Production Auth client: `lead-studio-v5`
 - Auth policy: `studioPolicies/lead-studio`
 
@@ -26,6 +26,10 @@ environment. V5 replaces the monolithic Google API package with service-specific
 Sheets and IAM Credentials clients, upgrades Cloud Storage, and preserves the
 accepted V4.0.2 product contract. Local and production compatibility evidence is
 recorded in `Reports/2026_09_02_V5_Google_Client_Compatibility_And_Performance_Review.md`.
+V5 also shares delegated credentials within each refresh, reuses warm clients,
+requests partial Google responses, and avoids downloading already-stored lead
+messages. Production evidence is in
+`Reports/2026_09_02_V5_Google_API_Efficiency_Review.md`.
 
 The obsolete callable refresh and write-acceptance Functions, their browser
 hooks, and the retired GAS UI link were removed on 2026-08-20. The six active

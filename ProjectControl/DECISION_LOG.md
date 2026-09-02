@@ -22,6 +22,7 @@
 | 2026-09-02 | Keep direct `google-auth-library` on 10.9.1 during V5. | Google/Firebase dependencies already share auth major 10; adding auth 11 would load a second auth engine and its request-contract breaking change without providing a Lead feature or security benefit. Revisit only as a coordinated graph migration. |
 | 2026-09-02 | Use Maintenance Studio as a future advisory governance layer, not an autonomous production operator. | Studios retain deployment and data authority. Central checks may inventory, report, and prepare reviewed changes, but cannot mutate credentials, permissions, data, schedules, or production without explicit Studio-scoped authorization. |
 | 2026-09-02 | Verify Eventarc-to-Cloud-Run invoke IAM after every event-Function rename or creation. | V5 creation produced a healthy Function and trigger but no service-level invoker binding. Grant only the trigger service account on the exact service, verify queued delivery, and keep a read-only release check; a successful deploy alone is insufficient. |
+| 2026-09-02 | Optimize Google API use inside V5 without removing correctness calls. | Share delegated credentials within a bounded operation, reuse warm clients, use partial responses, and skip immutable lead messages already stored by Gmail ID. Retain onboarding scans, locks, idempotency, rereads, verification, audit, and recovery even when they add calls. |
 
 ## Pending Decisions
 

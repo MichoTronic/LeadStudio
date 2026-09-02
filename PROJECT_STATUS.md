@@ -6,7 +6,38 @@ Last updated: 2026-09-02
 
 Repository: `https://github.com/MichoTronic/LeadStudio.git`
 
-Active release branch: `release/v5`; production source commit `4323dda`.
+Active release branch: `release/v5`; production source commit `1d8a7d0`.
+
+## V5 Google API Efficiency Accepted - 2026-09-02
+
+Lead Studio remains V5. Google API work is now reduced without changing the
+product contract: refreshes share one delegated credential across lead and
+onboarding scans, warm Function instances reuse client objects, Gmail and
+Sheets return only consumed fields, and lead reconciliation does not redownload
+messages whose immutable Gmail IDs already exist in the Sheet. Onboarding
+scanning, new-message parsing, Jira enrichment, scheduled reconciliation,
+locking, idempotency, optimistic rereads, write verification, and auditing are
+unchanged.
+
+All 100 tests pass with 96.58% line, 76.06% branch, and 96.44% function
+coverage; the dependency audit remains clean. The production refresh completed
+in 5.67 seconds with 56 normal row updates, zero appends, and no replay. It
+listed 10 candidate lead messages, skipped 7 stored IDs, downloaded 3, and used
+one delegated credential exchange. For this real run, full lead-message
+downloads fell 70% and credential exchanges fell 50%. Health and Gmail-watch
+renewal returned HTTP 200 in 1.79 and 1.32 seconds respectively. Gmail push IAM
+verification passed and no post-acceptance warning/error was found.
+
+Production revisions are:
+
+- `leadstudioactionv5-00002-cez`
+- `leadstudiogmailpushv5-00002-wow`
+- `leadstudiohealthcheckv5-00002-hex`
+- `leadstudiomanualjirav5-00002-tid`
+- `leadstudiorenewgmailwatchv5-00002-vor`
+- `leadstudioscheduledrefreshv5-00002-juq`
+
+See `Reports/2026_09_02_V5_Google_API_Efficiency_Review.md`.
 
 ## V5 Google Client Upgrade Accepted - 2026-09-02
 
