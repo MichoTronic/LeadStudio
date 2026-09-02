@@ -153,7 +153,7 @@ async function executeRefreshPlan(options) {
   if (!plan || expectedVersion !== plan.originalVersion) throw codedError("aborted", "The prepared refresh snapshot is stale.");
 
   var auditEventPrefix = normalize(options.auditEventPrefix) || "FIREBASE_REFRESH";
-  var auditSource = normalize(options.auditSource) || "leadStudioRefreshV4";
+  var auditSource = normalize(options.auditSource) || "leadStudioRefreshV5";
   var command = normalize(options.command) || (options.restoreAfterVerify === true ? "refresh_round_trip" : "refresh");
   var replay = await findCompletedAudit(options, idempotencyKey, `${auditEventPrefix}_COMPLETE`);
   if (replay) return replay;
@@ -370,7 +370,7 @@ async function appendAudit(options, eventName, message, details, source) {
     range: `'${DEBUG_LOG_SHEET}'!A:E`,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
-    requestBody: { values: [[new Date().toISOString(), eventName, normalize(source) || "leadStudioRefreshV4", message, JSON.stringify(details)]] }
+    requestBody: { values: [[new Date().toISOString(), eventName, normalize(source) || "leadStudioRefreshV5", message, JSON.stringify(details)]] }
   });
 }
 

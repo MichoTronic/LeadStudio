@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
-import { firebaseConfig, leadStudioConfig } from "./config.js?v=4.0.22";
+import { firebaseConfig, leadStudioConfig } from "./config.js?v=5.0.0";
 
 const backendApp = initializeApp(firebaseConfig, "lead-studio-backend");
 const backendFunctions = getFunctions(backendApp, leadStudioConfig.functionRegion);
@@ -13,7 +13,7 @@ const manualJiraAction = httpsCallable(
   leadStudioConfig.manualJiraFunctionName
 );
 const authConfig = {
-  clientId: "lead-studio-v4",
+  clientId: "lead-studio-v5",
   studioId: "lead-studio",
   requiredScope: "read",
   authorizeUrl: "https://timeless-studio-auth.firebaseapp.com/authorize",

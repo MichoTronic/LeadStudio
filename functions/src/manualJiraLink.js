@@ -228,7 +228,7 @@ async function appendAudit(options, eventName, message, details) {
     range: `'${DEBUG_LOG_SHEET}'!A:E`,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
-    requestBody: { values: [[new Date().toISOString(), eventName, "leadStudioManualJiraV4", message, JSON.stringify(details)]] }
+    requestBody: { values: [[new Date().toISOString(), eventName, "leadStudioManualJiraV5", message, JSON.stringify(details)]] }
   });
 }
 

@@ -8,8 +8,8 @@ export const firebaseConfig = Object.freeze({
 });
 
 export const leadStudioConfig = Object.freeze({
-  functionName: "leadStudioActionV4",
-  manualJiraFunctionName: "leadStudioManualJiraV4",
+  functionName: "leadStudioActionV5",
+  manualJiraFunctionName: "leadStudioManualJiraV5",
   manualJiraEnabled: true,
   jiraBrowserBaseUrl: "https://jira.at.semper7.net",
   functionRegion: "europe-west1"

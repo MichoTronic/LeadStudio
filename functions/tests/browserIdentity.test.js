@@ -29,22 +29,23 @@ test("production browser source excludes retired GAS and acceptance surfaces", (
   assert.doesNotMatch(source, /prepareAcceptance|executeAcceptance/);
 });
 
-test("V4 source uses production-only runtime identities and bounded writer calls", () => {
+test("V5 source uses production-only identities and bounded writer calls", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
   const app = fs.readFileSync(path.join(root, "public", "app.js"), "utf8");
   const functionsIndex = fs.readFileSync(path.join(root, "functions", "index.js"), "utf8");
   const leadStudio = fs.readFileSync(path.join(root, "functions", "src", "leadStudio.js"), "utf8");
 
-  assert.equal(packageJson.version, "4.0.2");
-  assert.match(app, /clientId:\s*"lead-studio-v4"/);
+  assert.equal(packageJson.version, "5.0.0");
+  assert.match(app, /clientId:\s*"lead-studio-v5"/);
   assert.match(fs.readFileSync(path.join(root, "public", "index.html"), "utf8"), /mode-badge">Production</);
   assert.doesNotMatch(app, /url\.protocol === "http:"/);
-  assert.doesNotMatch(app, /lead-studio-v4-test|previewDeployment/);
+  assert.doesNotMatch(app, /lead-studio-v4|lead-studio-v5-test|previewDeployment/);
   assert.doesNotMatch(functionsIndex, /v4-firebase-pilot/);
   assert.match(functionsIndex, /WRITER_LOCK_TTL_MS\s*=\s*15\s*\*\s*60\s*\*\s*1000/);
   assert.match(functionsIndex, /EXTERNAL_REQUEST_TIMEOUT_MS\s*=\s*30\s*\*\s*1000/);
-  assert.match(functionsIndex, /leadStudioScheduledRefreshV4\s*=\s*scheduler\.onSchedule\(\{[\s\S]*?retryCount:\s*2/);
-  assert.match(functionsIndex, /leadStudioManualJiraV4\s*=\s*functions\.onCall\(\{[\s\S]*?concurrency:\s*1/);
+  assert.match(functionsIndex, /leadStudioScheduledRefreshV5\s*=\s*scheduler\.onSchedule\(\{[\s\S]*?retryCount:\s*2/);
+  assert.match(functionsIndex, /leadStudioManualJiraV5\s*=\s*functions\.onCall\(\{[\s\S]*?concurrency:\s*1/);
+  assert.doesNotMatch(functionsIndex, /exports\.leadStudio[A-Za-z]+V4/);
   assert.doesNotMatch(leadStudio, /read-only-pilot/);
 });
 

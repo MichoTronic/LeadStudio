@@ -10,6 +10,7 @@ var gmailIncrementalMutation = require("./src/gmailIncrementalMutation");
 var jiraClient = require("./src/jiraClient");
 var gmailContactActivity = require("./src/gmailContactActivity");
 var gmailWatchState = require("./src/gmailWatchState");
+var googleClients = require("./src/googleClients");
 var leadStudio = require("./src/leadStudio");
 var manualJiraLink = require("./src/manualJiraLink");
 var onboardingSheet = require("./src/onboardingSheet");
@@ -73,27 +74,11 @@ var EXTERNAL_REQUEST_TIMEOUT_MS = 30 * 1000;
 var WRITER_LOCK_TTL_MS = 15 * 60 * 1000;
 
 function createSheetsClient() {
-  var google = require("googleapis").google;
-  return google.sheets({
-    version: "v4",
-    timeout: EXTERNAL_REQUEST_TIMEOUT_MS,
-    retry: false,
-    auth: new google.auth.GoogleAuth({
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-    })
-  });
+  return googleClients.createSheetsClient({ timeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS });
 }
 
 function createWriteSheetsClient() {
-  var google = require("googleapis").google;
-  return google.sheets({
-    version: "v4",
-    timeout: EXTERNAL_REQUEST_TIMEOUT_MS,
-    retry: false,
-    auth: new google.auth.GoogleAuth({
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
-    })
-  });
+  return googleClients.createSheetsClient({ write: true, timeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS });
 }
 
 function withLeadStudioWriterLock(owner, callback) {
@@ -129,16 +114,7 @@ async function loadOnboardingRows() {
 }
 
 async function signWorkspaceJwt(payload) {
-  var google = require("googleapis").google;
-  var auth = new google.auth.GoogleAuth({
-    scopes: ["https://www.googleapis.com/auth/cloud-platform"]
-  });
-  var iamcredentials = google.iamcredentials({
-    version: "v1",
-    auth: auth,
-    timeout: EXTERNAL_REQUEST_TIMEOUT_MS,
-    retry: false
-  });
+  var iamcredentials = googleClients.createIamCredentialsClient({ timeoutMs: EXTERNAL_REQUEST_TIMEOUT_MS });
   var response = await iamcredentials.projects.serviceAccounts.signJwt({
     name: `projects/-/serviceAccounts/${leadStudioServiceAccountEmail.value()}`,
     requestBody: { payload: JSON.stringify(payload) }
@@ -146,7 +122,7 @@ async function signWorkspaceJwt(payload) {
   return response && response.data && response.data.signedJwt;
 }
 
-exports.leadStudioActionV4 = functions.onCall({
+exports.leadStudioActionV5 = functions.onCall({
   region: "europe-west1",
   cors: LEAD_STUDIO_ORIGINS,
   secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
@@ -257,7 +233,7 @@ exports.leadStudioActionV4 = functions.onCall({
     });
   } catch (error) {
     if (error instanceof functions.HttpsError) throw error;
-    logger.error("leadStudioActionV4 failed", {
+    logger.error("leadStudioActionV5 failed", {
       name: error && error.name,
       message: error && error.message
     });
@@ -330,7 +306,7 @@ async function buildLiveRefreshPlan(sheetsClient, options) {
   };
 }
 
-exports.leadStudioScheduledRefreshV4 = scheduler.onSchedule({
+exports.leadStudioScheduledRefreshV5 = scheduler.onSchedule({
   region: "europe-west1",
   schedule: "0 6 * * *",
   timeZone: "Europe/Ljubljana",
@@ -369,7 +345,7 @@ exports.leadStudioScheduledRefreshV4 = scheduler.onSchedule({
       replayed: result.replayed
     });
   } catch (error) {
-    logger.error("leadStudioScheduledRefreshV4 failed", {
+    logger.error("leadStudioScheduledRefreshV5 failed", {
       name: error && error.name,
       code: error && error.code,
       message: error && error.message
@@ -397,7 +373,7 @@ async function renewGmailWatch() {
   });
 }
 
-exports.leadStudioRenewGmailWatchV4 = scheduler.onSchedule({
+exports.leadStudioRenewGmailWatchV5 = scheduler.onSchedule({
   region: "europe-west1",
   schedule: "0 3 * * *",
   timeZone: "Europe/Ljubljana",
@@ -419,7 +395,7 @@ exports.leadStudioRenewGmailWatchV4 = scheduler.onSchedule({
       expiration: state.watchExpiration
     });
   } catch (error) {
-    logger.error("leadStudioRenewGmailWatchV4 failed", {
+    logger.error("leadStudioRenewGmailWatchV5 failed", {
       name: error && error.name,
       code: error && error.code,
       statusCode: error && error.statusCode,
@@ -429,7 +405,7 @@ exports.leadStudioRenewGmailWatchV4 = scheduler.onSchedule({
   }
 });
 
-exports.leadStudioHealthCheckV4 = scheduler.onSchedule({
+exports.leadStudioHealthCheckV5 = scheduler.onSchedule({
   region: "europe-west1",
   schedule: "15 */6 * * *",
   timeZone: "Europe/Ljubljana",
@@ -489,7 +465,7 @@ async function recordGmailPushFailure(error) {
   } catch (_) {}
 }
 
-exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
+exports.leadStudioGmailPushV5 = pubsub.onMessagePublished({
   topic: "lead-studio-gmail-changes",
   region: "europe-west1",
   retry: true,
@@ -539,7 +515,7 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
           expectedVersion: recoveryPlan.plan.originalVersion,
           restoreAfterVerify: false,
           auditEventPrefix: "FIREBASE_GMAIL_RECOVERY",
-          auditSource: "leadStudioGmailPushV4",
+          auditSource: "leadStudioGmailPushV5",
           command: "gmail_history_recovery"
         });
         var renewed = await workspaceDelegation.renewGmailWatch(gmailWorkspaceOptions({
@@ -590,7 +566,7 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
         expectedVersion: plan.originalVersion,
         restoreAfterVerify: false,
         auditEventPrefix: "FIREBASE_GMAIL_PUSH",
-        auditSource: "leadStudioGmailPushV4",
+        auditSource: "leadStudioGmailPushV5",
         command: "gmail_history_ingestion"
       });
       var now = new Date().toISOString();
@@ -618,7 +594,7 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
     });
   } catch (error) {
     await recordGmailPushFailure(error);
-    logger.error("leadStudioGmailPushV4 failed", {
+    logger.error("leadStudioGmailPushV5 failed", {
       name: error && error.name,
       code: error && error.code,
       statusCode: error && error.statusCode,
@@ -629,7 +605,7 @@ exports.leadStudioGmailPushV4 = pubsub.onMessagePublished({
   }
 });
 
-exports.leadStudioManualJiraV4 = functions.onCall({
+exports.leadStudioManualJiraV5 = functions.onCall({
   region: "europe-west1",
   cors: LEAD_STUDIO_ORIGINS,
   secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
@@ -687,7 +663,7 @@ exports.leadStudioManualJiraV4 = functions.onCall({
     if (error instanceof functions.HttpsError) throw error;
     var safeCodes = new Set(["aborted", "data-loss", "failed-precondition", "invalid-argument"]);
     var code = safeCodes.has(error && error.code) ? error.code : "internal";
-    logger.error("leadStudioManualJiraV4 failed", {
+    logger.error("leadStudioManualJiraV5 failed", {
       code: code,
       name: error && error.name,
       providerStatus: Number(error && error.response && error.response.status) || 0

@@ -26,8 +26,8 @@ test("reads only a bounded Debug Log tail and returns metadata-only health", asy
         valueCalls += 1;
         if (valueCalls > 1) return { data: { values: [] } };
         return { data: { values: [
-          ["2026-08-18T04:00:00.000Z", "FIREBASE_REFRESH_COMPLETE", "leadStudioScheduledRefreshV4", "complete", JSON.stringify({ outcome: "complete", durationMs: 15000, changedRows: 55, appendedRows: 1, contactEmail: "must-not-leak@example.com" })],
-          ["2026-08-18T08:01:00.000Z", "FIREBASE_GMAIL_PUSH_FAILED", "leadStudioGmailPushV4", "failed", JSON.stringify({ outcome: "failed", errorCode: "aborted", messageId: "private-message" })]
+          ["2026-08-18T04:00:00.000Z", "FIREBASE_REFRESH_COMPLETE", "leadStudioScheduledRefreshV5", "complete", JSON.stringify({ outcome: "complete", durationMs: 15000, changedRows: 55, appendedRows: 1, contactEmail: "must-not-leak@example.com" })],
+          ["2026-08-18T08:01:00.000Z", "FIREBASE_GMAIL_PUSH_FAILED", "leadStudioGmailPushV5", "failed", JSON.stringify({ outcome: "failed", errorCode: "aborted", messageId: "private-message" })]
         ] } };
       } }
     } }
