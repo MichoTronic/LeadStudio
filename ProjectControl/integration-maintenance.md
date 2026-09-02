@@ -6,7 +6,8 @@ runtime recovery and release decisions. Maintenance Studio owns the reusable
 
 Keep Lead-specific contracts and runbooks here. Store dated Lead evidence in
 `Reports/`; do not copy generic Maintenance templates back into this repository.
-The former `Phase_Completion_Review_Pack/` is retained in Git history only.
+The former root completion-review template directory is retained in Git history
+only.
 
 The integration is documentation-only: no Maintenance agent, scheduler,
 service account, webhook, repository token, production write or dependency

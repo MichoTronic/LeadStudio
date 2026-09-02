@@ -1,5 +1,12 @@
 # Lead Studio Documentation Archive
 
-Historical notes and old working ledgers live here.
+This is the inventory for superseded Lead Studio controls. The lifecycle
+contract is owned by
+`../../../MaintenanceStudio/ProjectControl/governance-documentation.md`.
 
-`NOTES.md` is sensitive historical material and may contain credentials, deployment IDs, setup tokens, or other private operational details. Use it for context only, and do not copy secrets into README, status, checklist, reports, tickets, or chat.
+| Historical file | Original role | Active successor | Status |
+| --- | --- | --- | --- |
+| `NOTES.md` | Early private operational notes | Current ProjectControl, runtime configuration, and provider consoles | Historical only; never an execution source |
+
+Do not copy credentials, tokens, private operational values, or stale setup
+instructions from historical notes into current documentation or code.

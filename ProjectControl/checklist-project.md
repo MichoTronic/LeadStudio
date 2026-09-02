@@ -103,7 +103,7 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Move live Apps Script source files into `../AppsScript/` and update `.clasp.json` `rootDir`.
 - [x] Move database shortcuts into `../Resources/`.
 - [x] Move historical sensitive notes into `DocumentationArchive/`.
-- [x] Add `../Phase_Completion_Review_Pack/` with ordered completion-review templates.
+- [x] Add the former ordered completion-review templates; these are now retired in favor of Maintenance Studio reviews.
 - [x] Add `../Reports/` for dated review/audit/QA outputs.
 - [x] Add `.gitignore` rules for sensitive notes, snapshots, local zip archives, and Drive shortcut files.
 - [x] Keep both ignored database shortcuts: `.gsheet` supports the native Drive
@@ -196,8 +196,8 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
 - [x] Create final `../Archive/Snapshots/Lead Studio V3 Stable/` archive after metric fixes.
 - [x] Run `runLeadStudioSmokeTests()` from Apps Script editor or Settings after V3 deployment.
 - [x] Tag V3 rollback state as `v3-stable`.
-- [x] Run the full `../Phase_Completion_Review_Pack/` for V2.
-- [x] Run the full `../Phase_Completion_Review_Pack/` for V3.
+- [x] Run the historical ordered review set for V2.
+- [x] Run the historical ordered review set for V3.
 - [x] Save completed V3 completion-review reports in `../Reports/`.
 - [x] Move remaining V3 action items into this checklist.
 - [x] Declare V3 as the current viable/stable Lead Studio baseline.
