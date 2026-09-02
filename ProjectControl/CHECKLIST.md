@@ -52,6 +52,13 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
   third-party Lucide browser asset.
 - [x] Update the reusable 01-05 templates from obsolete GAS-live assumptions to
   the current Firebase/central-auth/Gmail/Jira architecture.
+- [x] Pass 93/93 tests, 96.43% line coverage, zero-vulnerability production
+  audit, and live desktop/mobile browser-shell smoke checks.
+- [x] Deploy source `29e7ec1`; verify all six revisions, Hosting version
+  `9f7db17955b94011`, and the unsigned 401 authorization boundary.
+- [x] Run production health and scheduled refresh checks; verify 55 normal row
+  updates, zero appends/replay, and a clean final warning/error window.
+- [x] Publish the ordered 01-05 reports and record the final CTO GO decision.
 
 ## Active Cleanup
 
