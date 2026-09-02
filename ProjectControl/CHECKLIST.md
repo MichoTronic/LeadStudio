@@ -13,13 +13,30 @@ For historical implementation detail, use `DocumentationArchive/NOTES.md` with c
   successful zero-write completion plus healthy subsequent deliveries.
 - [x] Add 30-second provider request bounds, a 15-minute writer-lock lease, and
   metadata-only stage-duration logging.
-- [x] Align current source on package `4.0.0`, production Auth client
+- [x] Align the original V4 source on package `4.0.0`, production Auth client
   `lead-studio-v4`, and V4 Function identifiers; remove retired preview paths.
 - [x] Pass all 83 local checks and verify all six Auth production clients.
 - [x] Deploy the approved production candidate and verify new revisions,
   Hosting, event processing, health logs, and rollback inventory.
 - [x] Close V4 on `release/v4` with tag `V4`; start new feature work only in an
   explicitly opened V5 branch.
+
+## V4.0.1 Deep Maintenance - 2026-09-02
+
+- [x] Sweep all current Function/browser source, tests, dependencies, live
+  revisions, Scheduler jobs, Hosting channels, and recent runtime errors.
+- [x] Bound Gmail activity and Jira discovery requests; reduce callable
+  concurrency and add bounded scheduled-refresh retries.
+- [x] Repair idempotency lookup beyond 5,000 audit rows and add regression
+  coverage for newest-first bounded paging.
+- [x] Harden CSV/XLSX output, HTTPS link handling, Hosting headers, production
+  labeling, accessibility, and cache revisioning.
+- [x] Remove all six retired acceptance/refresh variables from the local
+  production environment and every deployed Function.
+- [x] Pass 90/90 tests, 96.42% line coverage, dependency audit, live Hosting,
+  unsigned-auth, health, runtime-log, and full scheduled-refresh checks.
+- [x] Promote and document V4.0.1 while retaining `V4` as the original rollback
+  tag and reserving feature/dependency-major work for V5.
 
 ## Active Cleanup
 

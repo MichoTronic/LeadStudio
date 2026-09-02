@@ -8,10 +8,11 @@ sales export.
 
 - URL: `https://timeless-lead-studio.web.app`
 - Firebase project: `timeless-lead-studio`
-- Live Hosting version: `d30e9c52d40b5b98`
+- Live Hosting version: `21a11812cbf8c21f`
 - Active release: Lead Studio V4
+- Maintenance version: `4.0.1`
 - Active release branch: `release/v4`
-- Production source commit: `1e5ee1e`
+- Production source commit: `8920416`
 - Production Auth client: `lead-studio-v4`
 - Auth policy: `studioPolicies/lead-studio`
 
@@ -21,8 +22,9 @@ no versioned web deployment; its source and version history remain in
 `AppsScript/` and Apps Script as rollback/reference material only.
 
 Lead Studio has one production environment and no persistent staging or preview
-environment. The V4 Gmail-push timeout hardening is accepted in production; new
-feature work starts from a separately opened V5 branch.
+environment. V4.0.1 reliability, replay-integrity, export-safety, and runtime
+cleanup are accepted in production; new feature work starts from a separately
+opened V5 branch.
 
 The obsolete callable refresh and write-acceptance Functions, their browser
 hooks, and the retired GAS UI link were removed on 2026-08-20. The six active

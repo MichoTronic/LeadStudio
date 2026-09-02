@@ -1,7 +1,7 @@
 # Lead Studio V4.0.1 Deep Maintenance Sweep
 
 Date: 2026-09-02
-Status: RELEASE CANDIDATE
+Status: ACCEPTED PRODUCTION
 
 ## Scope
 
@@ -85,4 +85,34 @@ alter a Jira record, change Workspace sharing, or reactivate Apps Script.
 
 ## Production Promotion
 
-Pending deployment and production smoke verification.
+Owner authorization for production implementation and QA was already provided
+for this session. Candidate source commit `8920416` was deployed without any
+Function deployment error. The local production `.env` was then cleaned of six
+retired acceptance/refresh variables and the same source was redeployed so the
+cleanup is durable for future Firebase deployments.
+
+- Hosting version: `21a11812cbf8c21f`; live release `1788346320278000`.
+- Action: `leadstudioactionv4-00025-bos`, concurrency 10.
+- Gmail push: `leadstudiogmailpushv4-00007-vec`, concurrency 1.
+- Health check: `leadstudiohealthcheckv4-00006-boj`, concurrency 1.
+- Manual Jira: `leadstudiomanualjirav4-00014-zar`, concurrency 1.
+- Gmail-watch renewal: `leadstudiorenewgmailwatchv4-00006-fes`.
+- Scheduled refresh: `leadstudioscheduledrefreshv4-00010-voz`, with two
+  retries bounded to 900 seconds.
+- Every Function is active and serves 100% from its listed revision; none has
+  a retired environment variable.
+
+Production verification passed:
+
+- Hosting returned HTTP 200, the Production badge and V4.0.1 asset revision,
+  no-cache HTML, and all three new security headers.
+- An unsigned action request returned the expected HTTP 401.
+- The scheduled health check returned HTTP 200 in 4.39 seconds and logged a
+  passing runtime state.
+- A full manual invocation of the existing production refresh completed on the
+  new revision with 55 normal row updates, zero appends, and no replay.
+- The post-deployment runtime log check found zero error-severity entries.
+
+The refresh QA made only its normal audited reconciliation/timestamp updates.
+No manual Jira record, Form connection, Workspace sharing, IAM binding, secret,
+Pub/Sub topic, schedule, gate value, or GAS trigger was changed.
