@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
-import { firebaseConfig, leadStudioConfig } from "./config.js?v=4.0.2";
+import { firebaseConfig, leadStudioConfig } from "./config.js?v=4.0.22";
 
 const backendApp = initializeApp(firebaseConfig, "lead-studio-backend");
 const backendFunctions = getFunctions(backendApp, leadStudioConfig.functionRegion);
@@ -884,22 +884,13 @@ function statusClass(value) {
 function statusMarkup(value) { return `<span class="status-pill${statusClass(value)}">${escapeHtml(value || "Unassigned")}</span>`; }
 function safeHttpUrl(value) {
   if (!value) return false;
-  try { const url = new URL(value); return url.protocol === "https:" || url.protocol === "http:"; } catch (_) { return false; }
+  try { return new URL(value).protocol === "https:"; } catch (_) { return false; }
 }
 
 function canonicalJiraUrl(issueKey, fallback) {
   const key = String(issueKey || "").trim().toUpperCase();
   if (!/^[A-Z][A-Z0-9]+-\d+$/.test(key)) return fallback || "";
   return `${leadStudioConfig.jiraBrowserBaseUrl}/browse/${key}`;
-}
-function parseLeadDate(value) {
-  if (!value) return null;
-  const direct = new Date(value);
-  if (!Number.isNaN(direct.getTime())) return direct;
-  const match = String(value).match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);
-  if (!match) return null;
-  const date = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
-  return Number.isNaN(date.getTime()) ? null : date;
 }
 function escapeHtml(value) {
   return String(value || "").replace(/[&<>"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character]);

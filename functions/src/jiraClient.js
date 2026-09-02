@@ -66,6 +66,20 @@ async function findJiraIssueForContact(options) {
   };
 }
 
+async function findJiraIssuesForContacts(options) {
+  options = options || {};
+  var emails = Array.from(new Set((Array.isArray(options.contactEmails) ? options.contactEmails : [])
+    .map(function (email) { return normalize(email).toLowerCase(); })
+    .filter(function (email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); })))
+    .slice(0, 500);
+  var concurrency = Math.min(Math.max(Number(options.concurrency) || 4, 1), 8);
+  var results = await mapWithConcurrency(emails, concurrency, function (contactEmail) {
+    return findJiraIssueForContact(Object.assign({}, options, { contactEmail: contactEmail }))
+      .then(function (issue) { return [contactEmail, issue]; });
+  });
+  return Object.fromEntries(results);
+}
+
 async function loadJiraIssueByKey(options) {
   options = options || {};
   var config = createConfig(options);
@@ -131,6 +145,20 @@ function uniqueIssueKeys(values) {
   return Array.from(new Set((Array.isArray(values) ? values : []).map(normalizeIssueKey).filter(Boolean)));
 }
 
+async function mapWithConcurrency(values, concurrency, worker) {
+  var results = new Array(values.length);
+  var cursor = 0;
+  async function runWorker() {
+    while (cursor < values.length) {
+      var index = cursor;
+      cursor += 1;
+      results[index] = await worker(values[index], index);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, values.length || 1) }, runWorker));
+  return results;
+}
+
 function normalizeIssueKey(value) {
   var match = normalize(value).toUpperCase().match(/^[A-Z][A-Z0-9]+-\d+$/);
   return match ? match[0] : "";
@@ -160,6 +188,7 @@ function normalize(value) {
 
 module.exports = {
   findJiraIssueForContact,
+  findJiraIssuesForContacts,
   loadJiraIssueByKey,
   loadJiraIssueStatuses,
   normalizeBaseUrl,

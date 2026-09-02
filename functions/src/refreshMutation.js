@@ -1,6 +1,7 @@
 "use strict";
 
 var crypto = require("node:crypto");
+var auditLog = require("./auditLog");
 var gmailLeadParser = require("./gmailLeadParser");
 var onboardingSheet = require("./onboardingSheet");
 
@@ -345,29 +346,22 @@ async function restorePlan(options, plan) {
 }
 
 async function findCompletedAudit(options, idempotencyKey, completeEventName) {
-  var response = await options.sheetsClient.spreadsheets.values.get({
+  var details = await auditLog.findEventDetails({
+    sheetsClient: options.sheetsClient,
     spreadsheetId: options.spreadsheetId,
-    range: `'${DEBUG_LOG_SHEET}'!A1:E5000`,
-    valueRenderOption: "FORMATTED_VALUE"
+    eventName: normalize(completeEventName) || "FIREBASE_REFRESH_COMPLETE",
+    idempotencyKey: idempotencyKey
   });
-  var values = response && response.data && response.data.values || [];
-  for (var index = values.length - 1; index >= 0; index -= 1) {
-    if (normalize(values[index][1]) !== (normalize(completeEventName) || "FIREBASE_REFRESH_COMPLETE")) continue;
-    var details;
-    try { details = JSON.parse(values[index][4] || "{}"); } catch (_) { details = {}; }
-    if (normalize(details.idempotencyKey) !== idempotencyKey) continue;
-    return {
-      restored: details.restored === true,
-      replayed: true,
-      originalVersion: normalize(details.expectedVersion),
-      writtenVersion: normalize(details.writtenVersion),
-      restoredVersion: normalize(details.restoredVersion),
-      changedRows: Number(details.changedRows) || 0,
-      appendedRows: Number(details.appendedRows) || 0,
-      idempotencyKey: idempotencyKey
-    };
-  }
-  return null;
+  return details ? {
+    restored: details.restored === true,
+    replayed: true,
+    originalVersion: normalize(details.expectedVersion),
+    writtenVersion: normalize(details.writtenVersion),
+    restoredVersion: normalize(details.restoredVersion),
+    changedRows: Number(details.changedRows) || 0,
+    appendedRows: Number(details.appendedRows) || 0,
+    idempotencyKey: idempotencyKey
+  } : null;
 }
 
 async function appendAudit(options, eventName, message, details, source) {

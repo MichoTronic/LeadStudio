@@ -152,66 +152,37 @@ exports.leadStudioActionV4 = functions.onCall({
   secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
   timeoutSeconds: 60,
   memory: "256MiB",
-  maxInstances: 4
+  maxInstances: 4,
+  concurrency: 10
 }, async function (request) {
   try {
     return await leadStudio.runAction(request, {
       sheetsClient: createSheetsClient(),
       spreadsheetId: leadStudioSpreadsheetId.value().trim(),
       gmailProbe: function () {
-        return workspaceDelegation.probeGmailMailbox({
-          delegatedUser: leadStudioGmailUser.value(),
-          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
-          signJwt: signWorkspaceJwt
-        });
+        return workspaceDelegation.probeGmailMailbox(gmailWorkspaceOptions());
       },
       gmailLeadScan: function () {
-        return workspaceDelegation.scanGmailLeadMessages({
-          delegatedUser: leadStudioGmailUser.value(),
-          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
-          signJwt: signWorkspaceJwt
-        });
+        return workspaceDelegation.scanGmailLeadMessages(gmailWorkspaceOptions());
       },
       gmailDeepLeadScan: function () {
-        return workspaceDelegation.scanGmailLeadMessages({
-          delegatedUser: leadStudioGmailUser.value(),
-          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
-          signJwt: signWorkspaceJwt,
+        return workspaceDelegation.scanGmailLeadMessages(gmailWorkspaceOptions({
           deepScan: true
-        });
+        }));
       },
       gmailOnboardingScan: function () {
-        return workspaceDelegation.scanGmailOnboardingMessages({
-          delegatedUser: leadStudioGmailUser.value(),
-          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
-          signJwt: signWorkspaceJwt
-        });
+        return workspaceDelegation.scanGmailOnboardingMessages(gmailWorkspaceOptions());
       },
       gmailOperationalLeadScan: function () {
-        return workspaceDelegation.scanGmailLeadMessages({
-          delegatedUser: leadStudioGmailUser.value(),
-          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
-          signJwt: signWorkspaceJwt,
-          operational: true,
-          timeZone: "Europe/Ljubljana"
-        });
+        return workspaceDelegation.scanGmailLeadMessages(gmailWorkspaceOptions({ operational: true }));
       },
       gmailOperationalOnboardingScan: function () {
-        return workspaceDelegation.scanGmailOnboardingMessages({
-          delegatedUser: leadStudioGmailUser.value(),
-          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
-          signJwt: signWorkspaceJwt,
-          operational: true,
-          timeZone: "Europe/Ljubljana"
-        });
+        return workspaceDelegation.scanGmailOnboardingMessages(gmailWorkspaceOptions({ operational: true }));
       },
       gmailContactActivity: function (lead) {
-        return gmailContactActivity.loadContactActivity({
-          delegatedUser: leadStudioGmailUser.value(),
-          serviceAccountEmail: leadStudioServiceAccountEmail.value(),
-          signJwt: signWorkspaceJwt,
+        return gmailContactActivity.loadContactActivity(gmailWorkspaceOptions({
           lead: lead
-        });
+        }));
       },
       onboardingSheetProbe: async function () {
         var response = await createSheetsClient().spreadsheets.values.get({
@@ -326,9 +297,9 @@ async function buildLiveRefreshPlan(sheetsClient, options) {
   };
   var jiraResults = await Promise.all([
     jiraClient.loadJiraIssueStatuses(Object.assign({}, jiraConfig, { issueKeys: issueKeys })),
-    Promise.all(newLeadEmails.map(function (contactEmail) {
-      return jiraClient.findJiraIssueForContact(Object.assign({}, jiraConfig, { contactEmail: contactEmail }))
-        .then(function (issue) { return [contactEmail, issue]; });
+    jiraClient.findJiraIssuesForContacts(Object.assign({}, jiraConfig, {
+      contactEmails: newLeadEmails,
+      concurrency: 4
     }))
   ]);
   var plan = refreshMutation.buildRefreshPlan({
@@ -337,7 +308,7 @@ async function buildLiveRefreshPlan(sheetsClient, options) {
     gmailOnboardingScan: gmailOnboardingScan,
     onboardingLookup: onboardingLookup,
     liveStatuses: jiraResults[0],
-    jiraByEmail: Object.fromEntries(jiraResults[1]),
+    jiraByEmail: jiraResults[1],
     timeZone: "Europe/Ljubljana"
   });
   plan.summary.inputs = {
@@ -363,7 +334,11 @@ exports.leadStudioScheduledRefreshV4 = scheduler.onSchedule({
   region: "europe-west1",
   schedule: "0 6 * * *",
   timeZone: "Europe/Ljubljana",
-  retryCount: 0,
+  retryCount: 2,
+  maxRetrySeconds: 900,
+  minBackoffSeconds: 60,
+  maxBackoffSeconds: 300,
+  maxDoublings: 2,
   secrets: [leadStudioSpreadsheetId, leadStudioJiraApiToken],
   timeoutSeconds: 180,
   memory: "512MiB",
@@ -661,7 +636,8 @@ exports.leadStudioManualJiraV4 = functions.onCall({
   serviceAccount: LEAD_STUDIO_WRITER_SERVICE_ACCOUNT,
   timeoutSeconds: 30,
   memory: "256MiB",
-  maxInstances: 1
+  maxInstances: 1,
+  concurrency: 1
 }, async function (request) {
   try {
     var data = request && request.data || {};

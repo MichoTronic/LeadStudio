@@ -90,7 +90,9 @@
   }
 
   function escapeCsvCell(value) {
-    return '"' + String(value == null ? "" : value).replace(/"/g, '""') + '"';
+    var text = String(value == null ? "" : value);
+    if (/^[\t\r\n ]*[=+\-@]/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
   }
 
   function createXlsxBlob(headers, rows) {
@@ -132,6 +134,7 @@
 
   function escapeXml(value) {
     return String(value == null ? "" : value)
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")

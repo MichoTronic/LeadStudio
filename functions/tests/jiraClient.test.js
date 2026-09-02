@@ -190,3 +190,34 @@ test("returns null for a missing Jira issue and rejects malformed keys", async f
     /issue key is invalid/
   );
 });
+
+test("bounds concurrent Jira discovery and deduplicates contact emails", async function () {
+  var active = 0;
+  var maximumActive = 0;
+  var calls = 0;
+  var results = await jiraClient.findJiraIssuesForContacts({
+    baseUrl: "https://gaming-universe.atlassian.net",
+    email: "admin@example.com",
+    apiToken: "replacement-secret",
+    contactEmails: ["one@example.com", "TWO@example.com", "one@example.com", "invalid", "three@example.com"],
+    concurrency: 2,
+    fetchImpl: async function (url) {
+      calls += 1;
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise(function (resolve) { setTimeout(resolve, 5); });
+      active -= 1;
+      var jql = new URL(url).searchParams.get("jql");
+      var key = jql.includes("one@example.com") ? "SF-1" : jql.includes("two@example.com") ? "SF-2" : "SF-3";
+      return {
+        ok: true,
+        status: 200,
+        json: async function () { return { issues: [{ key: key, fields: { status: { name: "01 New Lead" } } }] }; }
+      };
+    }
+  });
+  assert.equal(calls, 3);
+  assert.equal(maximumActive, 2);
+  assert.deepEqual(Object.keys(results), ["one@example.com", "two@example.com", "three@example.com"]);
+  assert.equal(results["two@example.com"].issueKey, "SF-2");
+});

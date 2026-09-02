@@ -56,12 +56,24 @@ test("creates an Excel-friendly quoted UTF-8 CSV", async function () {
   assert.match(csv, /\r\n/);
 });
 
-test("creates an XLSX zip and a stable filtered filename", async function () {
-  var result = exporter.buildExportRows([{ companyName: "A & B <Gaming>" }]);
+test("neutralizes spreadsheet formulas in CSV exports", async function () {
+  var blob = exporter.createCsvBlob(["Company"], [["=HYPERLINK(\"https://example.invalid\")"], ["  @SUM(1,1)"], ["Safe"]]);
+  var csv = await blob.text();
+
+  assert.match(csv, /"'=HYPERLINK\(""https:\/\/example\.invalid""\)"/);
+  assert.match(csv, /"'  @SUM\(1,1\)"/);
+  assert.match(csv, /"Safe"/);
+});
+
+test("creates a valid-character XLSX zip and a stable filtered filename", async function () {
+  var result = exporter.buildExportRows([{ companyName: "A & B <Gaming>\u0001" }]);
   var bytes = new Uint8Array(await exporter.createXlsxBlob(result.headers, result.rows).arrayBuffer());
+  var archiveText = new TextDecoder().decode(bytes);
 
   assert.deepEqual(Array.from(bytes.slice(0, 4)), [0x50, 0x4b, 0x03, 0x04]);
   assert.ok(bytes.length > 2000);
+  assert.doesNotMatch(archiveText, /A &amp; B &lt;Gaming&gt;\u0001/);
+  assert.match(archiveText, /A &amp; B &lt;Gaming&gt;/);
   assert.equal(
     exporter.buildExportFilename("xlsx", "Qualified Leads", new Date("2026-08-17T10:00:00Z")),
     "lead-studio-qualified-leads-visible-2026-08-17.xlsx"

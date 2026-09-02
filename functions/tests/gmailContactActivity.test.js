@@ -109,3 +109,26 @@ test("returns an empty bounded activity for an invalid contact email", async fun
   assert.deepEqual(result.conversations, []);
   assert.equal(result.messageCount, 0);
 });
+
+test("bounds contact-activity Gmail requests and sanitizes timeout failures", async function () {
+  await assert.rejects(
+    activity.loadContactActivity({
+      accessToken: "private-token",
+      delegatedUser: "marketing@timelesstech.io",
+      lead: { contactEmail: "ada@example.com" },
+      requestTimeoutMs: 25,
+      fetchImpl: async function (_, request) {
+        assert.ok(request.signal);
+        var error = new Error("provider-private-timeout-detail");
+        error.name = "TimeoutError";
+        throw error;
+      }
+    }),
+    function (error) {
+      assert.equal(error.code, "deadline-exceeded");
+      assert.equal(error.message, "Google API request timed out.");
+      assert.doesNotMatch(error.message, /provider-private/);
+      return true;
+    }
+  );
+});

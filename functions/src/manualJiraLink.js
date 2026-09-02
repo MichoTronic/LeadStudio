@@ -1,6 +1,7 @@
 "use strict";
 
 var crypto = require("node:crypto");
+var auditLog = require("./auditLog");
 
 var LEAD_SHEET = "Email Matches";
 var DEBUG_LOG_SHEET = "Debug Log";
@@ -204,28 +205,21 @@ function fieldsEqual(snapshot, expected) {
 }
 
 async function findCompletedAudit(options, idempotencyKey) {
-  var response = await options.sheetsClient.spreadsheets.values.get({
+  var details = await auditLog.findEventDetails({
+    sheetsClient: options.sheetsClient,
     spreadsheetId: options.spreadsheetId,
-    range: `'${DEBUG_LOG_SHEET}'!A1:E5000`,
-    valueRenderOption: "FORMATTED_VALUE"
+    eventName: "FIREBASE_MANUAL_JIRA_COMPLETE",
+    idempotencyKey: idempotencyKey
   });
-  var values = response && response.data && response.data.values || [];
-  for (var index = values.length - 1; index >= 0; index -= 1) {
-    if (normalize(values[index][1]) !== "FIREBASE_MANUAL_JIRA_COMPLETE") continue;
-    var details;
-    try { details = JSON.parse(values[index][4] || "{}"); } catch (_) { details = {}; }
-    if (normalize(details.idempotencyKey) !== idempotencyKey) continue;
-    return {
-      rowNumber: Number(details.rowNumber) || Number(options.rowNumber),
-      restored: details.restored === true,
-      replayed: true,
-      originalVersion: normalize(details.expectedVersion),
-      writtenVersion: normalize(details.writtenVersion),
-      restoredVersion: normalize(details.restoredVersion),
-      idempotencyKey: idempotencyKey
-    };
-  }
-  return null;
+  return details ? {
+    rowNumber: Number(details.rowNumber) || Number(options.rowNumber),
+    restored: details.restored === true,
+    replayed: true,
+    originalVersion: normalize(details.expectedVersion),
+    writtenVersion: normalize(details.writtenVersion),
+    restoredVersion: normalize(details.restoredVersion),
+    idempotencyKey: idempotencyKey
+  } : null;
 }
 
 async function appendAudit(options, eventName, message, details) {

@@ -7,6 +7,7 @@ var MAX_CONVERSATIONS = 8;
 var MAX_MESSAGES = 40;
 var MAX_BODY_CHARS = 12000;
 var FETCH_CONCURRENCY = 4;
+var REQUEST_TIMEOUT_MS = 15 * 1000;
 
 async function loadContactActivity(options) {
   options = options || {};
@@ -18,13 +19,14 @@ async function loadContactActivity(options) {
   }
 
   var fetchImpl = options.fetchImpl || fetch;
+  var requestTimeoutMs = Number(options.requestTimeoutMs) > 0 ? Number(options.requestTimeoutMs) : REQUEST_TIMEOUT_MS;
   var accessToken = normalize(options.accessToken) || await workspaceDelegation.createDelegatedAccessToken(options);
   var threadKinds = new Map();
   addThread(threadKinds, lead.gmailThreadId, "original");
 
   var onboardingMessageIds = splitIds(lead.onboardingMessageId).slice(0, 8);
   var onboardingMessages = await mapWithConcurrency(onboardingMessageIds, FETCH_CONCURRENCY, function (messageId) {
-    return gmailFetch(fetchImpl, messageUrl(delegatedUser, messageId, "metadata"), accessToken, true);
+    return gmailFetch(fetchImpl, messageUrl(delegatedUser, messageId, "metadata"), accessToken, true, requestTimeoutMs);
   });
   onboardingMessages.filter(Boolean).forEach(function (message) {
     addThread(threadKinds, message.threadId, "onboarding");
@@ -33,14 +35,14 @@ async function loadContactActivity(options) {
   var searchUrl = new URL(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(delegatedUser)}/messages`);
   searchUrl.searchParams.set("q", relatedContactQuery(contactEmail, lead.emailDate));
   searchUrl.searchParams.set("maxResults", String(MAX_RELATED_MESSAGES));
-  var relatedListing = await gmailFetch(fetchImpl, searchUrl.toString(), accessToken);
+  var relatedListing = await gmailFetch(fetchImpl, searchUrl.toString(), accessToken, false, requestTimeoutMs);
   var relatedMessages = Array.isArray(relatedListing.messages) ? relatedListing.messages : [];
   relatedMessages.forEach(function (message) { addThread(threadKinds, message && message.threadId, "related"); });
 
   var threadEntries = Array.from(threadKinds.entries());
   var selectedThreads = threadEntries.slice(0, MAX_CONVERSATIONS);
   var fetchedThreads = await mapWithConcurrency(selectedThreads, FETCH_CONCURRENCY, function (entry) {
-    return gmailFetch(fetchImpl, threadUrl(delegatedUser, entry[0]), accessToken, true)
+    return gmailFetch(fetchImpl, threadUrl(delegatedUser, entry[0]), accessToken, true, requestTimeoutMs)
       .then(function (thread) { return thread ? { thread: thread, kind: entry[1] } : null; });
   });
 
@@ -225,8 +227,13 @@ function threadUrl(user, threadId) {
   return url.toString();
 }
 
-async function gmailFetch(fetchImpl, url, accessToken, allowNotFound) {
-  var response = await fetchImpl(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+async function gmailFetch(fetchImpl, url, accessToken, allowNotFound, requestTimeoutMs) {
+  var response = await workspaceDelegation.fetchWithTimeout(
+    fetchImpl,
+    url,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+    requestTimeoutMs
+  );
   var body = await response.json().catch(function () { return {}; });
   if (allowNotFound && response.status === 404) return null;
   if (!response.ok) throw new Error(`Gmail contact activity request failed (HTTP ${Number(response.status) || 0}).`);
@@ -304,6 +311,7 @@ module.exports = {
   MAX_BODY_CHARS,
   MAX_CONVERSATIONS,
   MAX_MESSAGES,
+  REQUEST_TIMEOUT_MS,
   cleanMessageText,
   extractPlainText,
   loadContactActivity,

@@ -16,6 +16,7 @@ Reports are evidence and history. Current active work belongs in `../ProjectCont
 
 | Date | Report | Status |
 | --- | --- | --- |
+| 2026-09-02 | `2026_09_02_V4_Deep_Maintenance_Sweep.md` | V4.0.1 RELEASE CANDIDATE; full code/runtime sweep and bounded reliability/security maintenance |
 | 2026-09-02 | `2026_09_02_V4_Gmail_Push_Timeout_Hotfix.md` | ACCEPTED PRODUCTION; provider bounds, lock repair, V4 naming, and 6.82-second production push smoke |
 | 2026-08-05 | `2026_08_05_Lead_Studio_Shared_Auth_Integration_Report.md` | Shared auth integration deployed to Apps Script version 59 |
 | 2026-08-05 | `2026_08_05_Phase_Shared_Auth_Completion_Report.md` | Shared auth phase cleanup deployed to Apps Script version 60 |

@@ -1,9 +1,10 @@
 {
   "name": "timeless-lead-studio",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "private": true,
   "scripts": {
     "test": "npm --prefix functions test",
+    "test:coverage": "npm --prefix functions run test:coverage",
     "check": "node --check public/config.js && node --check public/export-utils.js && node --check public/lead-list-utils.js && node --check public/app.js && npm test"
   }
 }

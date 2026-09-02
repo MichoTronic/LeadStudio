@@ -386,6 +386,7 @@ module.exports = {
   OPERATIONAL_MAX_RESULTS_PER_QUERY,
   OPERATIONAL_PAGE_SIZE,
   createDelegatedAccessToken,
+  fetchWithTimeout,
   loadGmailHistory,
   listGmailMessagesForQueries,
   probeGmailMailbox,

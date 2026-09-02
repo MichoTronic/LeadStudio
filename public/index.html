@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=browser-identity-v1">
   <link rel="preconnect" href="https://timeless-studio-auth.web.app" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=4.0.9">
+  <link rel="stylesheet" href="/styles.css?v=4.0.22">
 </head>
 <body class="auth-locked">
   <section class="auth-gate" aria-live="polite">
@@ -64,7 +64,7 @@
               <button id="export-xlsx-button" type="button"><i data-lucide="sheet"></i><span>Download XLSX</span></button>
             </div>
           </details>
-          <span class="mode-badge">Preview</span>
+          <span class="mode-badge">Production</span>
         </div>
       </header>
 
@@ -130,7 +130,7 @@
     </section>
   </main>
 
-  <dialog id="lead-dialog" class="lead-dialog">
+  <dialog id="lead-dialog" class="lead-dialog" aria-labelledby="dialog-title">
     <div class="dialog-header">
       <div><span class="eyebrow">Contact details</span><h2 id="dialog-title">Contact</h2></div>
       <button id="dialog-close" class="icon-button" type="button" title="Close" aria-label="Close"><i data-lucide="x"></i></button>
@@ -140,8 +140,8 @@
 
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
   <script src="https://timeless-studio-auth.web.app/studio-sso-client.js"></script>
-  <script src="/export-utils.js?v=4.0.2"></script>
-  <script src="/lead-list-utils.js?v=4.0.2"></script>
-  <script type="module" src="/app.js?v=4.0.20"></script>
+  <script src="/export-utils.js?v=4.0.22"></script>
+  <script src="/lead-list-utils.js?v=4.0.22"></script>
+  <script type="module" src="/app.js?v=4.0.22"></script>
 </body>
 </html>
