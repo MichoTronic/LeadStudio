@@ -35,7 +35,7 @@ test("V5 source uses production-only identities and bounded writer calls", () =>
   const functionsIndex = fs.readFileSync(path.join(root, "functions", "index.js"), "utf8");
   const leadStudio = fs.readFileSync(path.join(root, "functions", "src", "leadStudio.js"), "utf8");
 
-  assert.equal(packageJson.version, "5.0.0");
+  assert.equal(packageJson.version, "5.0.1");
   assert.match(app, /clientId:\s*"lead-studio-v5"/);
   assert.match(fs.readFileSync(path.join(root, "public", "index.html"), "utf8"), /mode-badge">Production</);
   assert.doesNotMatch(app, /url\.protocol === "http:"/);
@@ -64,6 +64,17 @@ test("hosting applies baseline browser security headers", () => {
 test("third-party browser assets are version-pinned and integrity-protected", () => {
   const index = fs.readFileSync(path.join(root, "public", "index.html"), "utf8");
   assert.match(index, /lucide@0\.468\.0[^>]+integrity="sha384-[A-Za-z0-9+/=]+"[^>]+crossorigin="anonymous"/);
+  assert.match(index, /sdk\/0\.1\.2\/studio-sso-client\.js[^>]+integrity="sha384-[A-Za-z0-9+/=]+"[^>]+crossorigin="anonymous"/);
+});
+
+test("hosting enforces a coordinated CSP for Auth and Firebase dependencies", () => {
+  const firebase = JSON.parse(fs.readFileSync(path.join(root, "firebase.json"), "utf8"));
+  const allFiles = firebase.hosting.headers.find((rule) => rule.source === "**");
+  const csp = allFiles.headers.find((header) => header.key === "Content-Security-Policy").value;
+  assert.match(csp, /default-src 'none'/);
+  assert.match(csp, /script-src 'self' https:\/\/www\.gstatic\.com https:\/\/unpkg\.com https:\/\/timeless-studio-auth\.web\.app/);
+  assert.match(csp, /frame-ancestors 'none'/);
+  assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval/);
 });
 
 test("writer replay checks are not pinned to the oldest 5,000 audit rows", () => {
