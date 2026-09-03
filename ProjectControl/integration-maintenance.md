@@ -24,6 +24,11 @@ and consume the single canonical contract in
 `../../MaintenanceStudio/ProjectControl/governance-responsive-ui-and-display-outputs.md`.
 Lead records only its routes and product-specific acceptance evidence here.
 
+Runtime and test execution are registered once in
+`../../MaintenanceStudio/registry/execution-profiles.json`. This local file does
+not duplicate working-directory, isolation, install, audit, compile or test
+commands; product-specific acceptance evidence remains owned by this Studio.
+
 ## Shared workspace reference
 
 The canonical `_Workspace` identity and use rules are owned by
